@@ -5,12 +5,21 @@
 #include <HTTPClient.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
+#include <WiFiMulti.h>
+#include <esp_sntp.h>
 #include <esp_random.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include <time.h>
 
+#include "RtcClock.h"
 #include "secrets.h"
+
+// 2 つ目の Wi-Fi（自宅など）は任意。secrets.h に無ければ使わない
+#ifndef WIFI_SSID2
+#define WIFI_SSID2 ""
+#define WIFI_PASSWORD2 ""
+#endif
 
 namespace net {
 
@@ -41,6 +50,10 @@ static uint32_t s_report_seq = 0;
 static uint32_t s_next_report_ms = 0;
 static String s_device_id;
 
+static WiFiMulti s_wifi_multi;
+static uint32_t s_next_wifi_try_ms = 0;
+static volatile bool s_ntp_synced = false;     // SNTP のコールバックで立て、loop 側で RTC に保存する
+
 static bool s_time_configured = false;
 static uint32_t s_next_weather_ms = 0;
 static wl_status_t s_last_status = WL_IDLE_STATUS;
@@ -59,6 +72,27 @@ void begin()
     WiFi.setAutoReconnect(true);
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
     Serial.printf("[NET] connecting to \"%s\"\n", WIFI_SSID);
+}
+
+void debugScan()
+{
+    // 周囲の Wi-Fi 名は記録に残さず、登録済みの Wi-Fi が見えるかと電波の強さだけを出す
+    WiFi.scanDelete();
+    int n = WiFi.scanNetworks(false, true);
+    // 自動接続のスキャンと重なると -1（実行中）が返るので、完了まで待つ
+    const uint32_t start = millis();
+    while (n < 0 && millis() - start < 10000) {
+        delay(100);
+        n = WiFi.scanComplete();
+    }
+    Serial.printf("[SCAN] %d networks found\n", n);
+    for (int i = 0; i < n; ++i) {
+        const String ssid = WiFi.SSID(i);
+        const char *tag = ssid == WIFI_SSID ? "WIFI_SSID (1)"
+                        : (strlen(WIFI_SSID2) > 0 && ssid == WIFI_SSID2) ? "WIFI_SSID2 (2)" : "other";
+        Serial.printf("[SCAN] %-14s ch=%2d rssi=%d\n", tag, WiFi.channel(i), WiFi.RSSI(i));
+    }
+    WiFi.scanDelete();
 }
 
 bool wifiConnected()
@@ -194,6 +228,16 @@ static void pollReports()
 
 bool poll(Weather &out)
 {
+    // 未接続なら 10 秒ごとに周囲をスキャンして、登録済みの Wi-Fi に接続を試みる
+    if (WiFi.status() != WL_CONNECTED && (int32_t)(millis() - s_next_wifi_try_ms) >= 0) {
+        s_next_wifi_try_ms = millis() + 10000;
+        s_wifi_multi.run(5000);
+    }
+    if (s_ntp_synced) {
+        s_ntp_synced = false;
+        rtc::saveSystemTime();
+    }
+
     const wl_status_t status = WiFi.status();
     if (status != s_last_status) {
         s_last_status = status;
@@ -209,6 +253,8 @@ bool poll(Weather &out)
     }
 
     if (!s_time_configured) {
+        // NTP で時刻が合うたびに（起動後と、以後約 1 時間ごと）時計チップへ保存する
+        sntp_set_time_sync_notification_cb([](struct timeval *) { s_ntp_synced = true; });
         configTzTime("JST-9", "ntp.nict.jp", "time.google.com", "pool.ntp.org");
         s_time_configured = true;
     }

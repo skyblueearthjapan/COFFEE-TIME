@@ -4,6 +4,7 @@
 #include <lvgl.h>
 #include <time.h>
 
+#include "Battery.h"
 #include "CupState.h"
 
 LV_FONT_DECLARE(ct_font_time_104);
@@ -37,6 +38,7 @@ static lv_obj_t *s_taken = nullptr;
 static lv_obj_t *s_left = nullptr;
 static lv_obj_t *s_left_box = nullptr;
 static lv_obj_t *s_wifi = nullptr;
+static lv_obj_t *s_battery = nullptr;
 static lv_obj_t *s_toast = nullptr;
 
 static uint32_t s_left_press_ms = 0;
@@ -175,6 +177,16 @@ static void clockTimerCb(lv_timer_t *t)
         }
     }
     lv_obj_set_style_text_color(s_wifi, net::wifiConnected() ? COLOR_SUBTEXT : COLOR_DIM, 0);
+
+    // 電池電圧（充電確認のため当面は電圧を表示する）
+    const uint32_t mv = battery::millivolts();
+    const int pct = battery::percent();
+    const char *icon = pct >= 80 ? LV_SYMBOL_BATTERY_FULL
+                     : pct >= 55 ? LV_SYMBOL_BATTERY_3
+                     : pct >= 30 ? LV_SYMBOL_BATTERY_2
+                     : pct >= 10 ? LV_SYMBOL_BATTERY_1 : LV_SYMBOL_BATTERY_EMPTY;
+    lv_label_set_text_fmt(s_battery, "%s %lu.%02luV", icon, (unsigned long)(mv / 1000), (unsigned long)(mv % 1000 / 10));
+    lv_obj_set_style_text_color(s_battery, pct < 10 ? COLOR_EMPTY : COLOR_SUBTEXT, 0);
 }
 
 static lv_obj_t *makeLabel(lv_obj_t *parent, const lv_font_t *font, lv_color_t color, const char *text)
@@ -262,7 +274,10 @@ bool create()
     lv_obj_align(logo, LV_ALIGN_BOTTOM_MID, 0, -42);
 
     s_wifi = makeLabel(scr, &lv_font_montserrat_16, COLOR_DIM, LV_SYMBOL_WIFI);
-    lv_obj_align(s_wifi, LV_ALIGN_BOTTOM_MID, 0, -18);
+    lv_obj_align(s_wifi, LV_ALIGN_BOTTOM_MID, -44, -18);
+
+    s_battery = makeLabel(scr, &lv_font_montserrat_16, COLOR_SUBTEXT, "");
+    lv_obj_align(s_battery, LV_ALIGN_BOTTOM_MID, 14, -18);
 
     // 補充したときなどの一時メッセージ
     s_toast = makeLabel(scr, &ct_font_22, COLOR_BG, "");

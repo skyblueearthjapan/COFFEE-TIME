@@ -8,9 +8,11 @@
 #include <esp_heap_caps.h>
 #include <lvgl.h>
 #include "lvgl_v8_port.h"
+#include "Battery.h"
 #include "CupState.h"
 #include "HomeScreen.h"
 #include "NetService.h"
+#include "RtcClock.h"
 
 using namespace esp_panel::drivers;
 using namespace esp_panel::board;
@@ -42,6 +44,9 @@ static void sendSnapshot()
 void setup()
 {
     Serial.begin(115200);
+    // 時刻は日本時間で扱う（Wi-Fi 接続前・RTC から復元した時刻にも適用するため最初に設定）
+    setenv("TZ", "JST-9", 1);
+    tzset();
 
     Serial.println("Initializing board");
     Board *board = new Board();
@@ -62,6 +67,9 @@ void setup()
         return;
     }
 
+    // Wi-Fi が無くても日付が分かるよう、時計チップから時刻を復元（I2C は board->begin() で初期化済み）
+    rtc::restoreSystemTime();
+
     Serial.println("Initializing LVGL");
     if (!lvgl_port_init(board->getLCD(), board->getTouch())) {
         Serial.println("ERROR: LVGL port init failed");
@@ -69,6 +77,8 @@ void setup()
     }
 
     cup::load();
+    battery::begin();
+    battery::update();
 
     Serial.println("Creating UI");
     if (!lvgl_port_lock(-1)) {
@@ -94,6 +104,17 @@ void loop()
         return;
     }
 
+    static uint32_t s_last_bat_ms = 0;
+    static uint32_t s_last_bat_log_ms = 0;
+    if (millis() - s_last_bat_ms >= 1000) {
+        s_last_bat_ms = millis();
+        battery::update();
+        if (millis() - s_last_bat_log_ms >= 5000) {
+            s_last_bat_log_ms = millis();
+            Serial.printf("[BAT] %lu mV (%d%%)\n", (unsigned long)battery::millivolts(), battery::percent());
+        }
+    }
+
     net::Weather weather;
     const bool got_weather = net::poll(weather);
 
@@ -113,6 +134,7 @@ void loop()
             // 開発用：T=+1 / R=補充（通知やシート記録も実際に行われる）
             case 'T': home::debugTake(); break;
             case 'R': home::debugRefill(); break;
+            case 'W': net::debugScan(); break;       // 開発用：Wi-Fi スキャン
             default: break;
             }
         }

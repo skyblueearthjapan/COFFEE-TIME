@@ -18,6 +18,7 @@ void begin();
 // 新しい天気を取得したら true を返し、out に格納する
 bool poll(Weather &out);
 bool wifiConnected();
+void debugScan();          // 開発用：周囲の Wi-Fi をスキャンしてログに出す
 bool timeSynced();
 
 // 杯数イベントを送信キューに積む（どのタスクからでも呼べる）。
