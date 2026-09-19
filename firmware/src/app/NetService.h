@@ -3,7 +3,7 @@
 #include <stdint.h>
 
 /**
- * Wi-Fi 接続・時刻同期 (NTP)・天気取得 (Open-Meteo)。
+ * Wi-Fi 接続・時刻同期 (NTP)・天気取得 (Open-Meteo)・記録サーバー (GAS) への送信。
  * loop() から net::poll() を呼び続ける。LVGL は触らない。
  */
 namespace net {
@@ -19,5 +19,9 @@ void begin();
 bool poll(Weather &out);
 bool wifiConnected();
 bool timeSynced();
+
+// 杯数イベントを送信キューに積む（どのタスクからでも呼べる）。
+// event: "take" / "refill" / "newday"
+void reportEvent(const char *event, uint32_t taken, uint32_t left);
 
 }  // namespace net

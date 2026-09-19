@@ -127,6 +127,7 @@ static void plusOneClickedCb(lv_event_t *e)
 {
     (void)e;
     cup::takeOne();
+    net::reportEvent("take", cup::taken(), cup::remaining());
     refreshCups();
     pulse(s_taken);
 }
@@ -142,6 +143,7 @@ static void leftBoxEventCb(lv_event_t *e)
         if (!s_refill_fired && lv_tick_elaps(s_left_press_ms) >= kRefillHoldMs) {
             s_refill_fired = true;
             cup::refill();
+            net::reportEvent("refill", cup::taken(), cup::remaining());
             refreshCups();
             pulse(s_left);
             showToast("REFILLED: 10 CUPS");
@@ -165,6 +167,7 @@ static void clockTimerCb(lv_timer_t *t)
         const uint32_t before = cup::taken() + cup::remaining() * 1000;
         cup::checkNewDay(ymd);
         if (before != cup::taken() + cup::remaining() * 1000) {
+            net::reportEvent("newday", cup::taken(), cup::remaining());
             refreshCups();
         }
     }
