@@ -290,6 +290,19 @@ void setWeather(const net::Weather &w)
 
 namespace home {
 
+// 開発用：画面操作と同じ処理をシリアルから呼ぶ
+void debugTake()
+{
+    plusOneClickedCb(nullptr);
+}
+
+void debugRefill()
+{
+    cup::refill();
+    net::reportEvent("refill", cup::taken(), cup::remaining());
+    refreshCups();
+}
+
 void debugForceHour(int hour)
 {
     s_forced_hour = hour;

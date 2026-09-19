@@ -110,6 +110,9 @@ void loop()
             case 'N': home::debugForceHour(13); break;
             case 'E': home::debugForceHour(19); break;
             case 'A': home::debugForceHour(-1); break;
+            // 開発用：T=+1 / R=補充（通知やシート記録も実際に行われる）
+            case 'T': home::debugTake(); break;
+            case 'R': home::debugRefill(); break;
             default: break;
             }
         }

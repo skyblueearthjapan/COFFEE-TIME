@@ -133,19 +133,37 @@ static bool sendReport(const Report &r)
     String payload;
     serializeJson(doc, payload);
 
-    // GAS は応答を別ホストへ 302 リダイレクトするため追従する（POST 本体は最初の要求で処理済み）
+    // GAS は POST を処理したあと、結果を別ホスト (script.googleusercontent.com) へ 302 で渡す。
+    // HTTPClient の自動追従はヘッダーを引き継いで 400 になるため、転送先は新しい接続で GET する。
     WiFiClientSecure client;
     client.setInsecure();
     HTTPClient http;
     http.setTimeout(15000);
-    http.setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS);
     if (!http.begin(client, GAS_URL)) {
         return false;
     }
+    const char *collect[] = {"Location"};
+    http.collectHeaders(collect, 1);
     http.addHeader("Content-Type", "application/json");
-    const int status = http.POST(payload);
-    const String resp = status > 0 ? http.getString() : String();
-    http.end();
+    int status = http.POST(payload);
+    String resp;
+    if (status == HTTP_CODE_FOUND || status == HTTP_CODE_MOVED_PERMANENTLY || status == HTTP_CODE_SEE_OTHER) {
+        const String location = http.header("Location");
+        http.end();
+        WiFiClientSecure client2;
+        client2.setInsecure();
+        HTTPClient http2;
+        http2.setTimeout(15000);
+        if (location.isEmpty() || !http2.begin(client2, location)) {
+            return false;
+        }
+        status = http2.GET();
+        resp = status > 0 ? http2.getString() : String();
+        http2.end();
+    } else {
+        resp = status > 0 ? http.getString() : String();
+        http.end();
+    }
 
     const bool ok = status == HTTP_CODE_OK && resp.indexOf("\"ok\":true") >= 0;
     Serial.printf("[GAS] %s %s left=%lu -> HTTP %d %s\n", r.event, r.id, (unsigned long)r.left, status,
