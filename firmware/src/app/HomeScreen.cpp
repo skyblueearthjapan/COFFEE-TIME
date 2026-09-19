@@ -42,18 +42,19 @@ static lv_obj_t *s_toast = nullptr;
 static uint32_t s_left_press_ms = 0;
 static bool s_refill_fired = false;
 
+// WMO 天気コード → 日本語。使う文字は fonts/ct_font_jp_symbols.txt に含めること
 static const char *weatherText(int code)
 {
-    if (code == 0) return "Clear";
-    if (code <= 2) return "Partly Cloudy";
-    if (code == 3) return "Cloudy";
-    if (code == 45 || code == 48) return "Fog";
-    if (code >= 51 && code <= 57) return "Drizzle";
-    if (code >= 61 && code <= 67) return "Rain";
-    if (code >= 71 && code <= 77) return "Snow";
-    if (code >= 80 && code <= 82) return "Showers";
-    if (code >= 85 && code <= 86) return "Snow Showers";
-    if (code >= 95) return "Thunderstorm";
+    if (code <= 1) return "晴れ";
+    if (code == 2) return "晴れ時々くもり";
+    if (code == 3) return "くもり";
+    if (code == 45 || code == 48) return "霧";
+    if (code >= 51 && code <= 57) return "霧雨";
+    if (code >= 61 && code <= 67) return "雨";
+    if (code >= 71 && code <= 77) return "雪";
+    if (code >= 80 && code <= 82) return "にわか雨";
+    if (code >= 85 && code <= 86) return "にわか雪";
+    if (code >= 95) return "雷雨";
     return "--";
 }
 
@@ -157,12 +158,8 @@ static void clockTimerCb(lv_timer_t *t)
         localtime_r(&now, &tm);
         lv_label_set_text_fmt(s_time, "%02d:%02d", tm.tm_hour, tm.tm_min);
         updateBackground(tm.tm_hour);
-        char buf[24];
-        strftime(buf, sizeof(buf), "%a, %b %d", &tm);   // 例: Sat, Sep 19
-        for (char *p = buf; *p; ++p) {
-            *p = toupper((unsigned char)*p);
-        }
-        lv_label_set_text(s_date, buf);
+        static const char *const kWeekdays[] = {"日", "月", "火", "水", "木", "金", "土"};
+        lv_label_set_text_fmt(s_date, "%d月%d日（%s）", tm.tm_mon + 1, tm.tm_mday, kWeekdays[tm.tm_wday]);
 
         const uint32_t ymd = (tm.tm_year + 1900) * 10000 + (tm.tm_mon + 1) * 100 + tm.tm_mday;
         const uint32_t before = cup::taken() + cup::remaining() * 1000;
@@ -220,14 +217,14 @@ bool create()
     updateBackground(-1);
 
     // 上部：日付・時刻・天気（丸画面の円の内側に収める）
-    s_date = makeLabel(scr, &ct_font_22, COLOR_SUBTEXT, "--- , --- --");
-    lv_obj_set_style_text_letter_space(s_date, 2, 0);
-    lv_obj_align(s_date, LV_ALIGN_TOP_MID, 0, 48);
+    s_date = makeLabel(scr, &ct_font_22, COLOR_SUBTEXT, "--月--日");
+    lv_obj_set_style_text_letter_space(s_date, 1, 0);
+    lv_obj_align(s_date, LV_ALIGN_TOP_MID, 0, 40);
 
     s_time = makeLabel(scr, &ct_font_time_104, COLOR_TEXT, "--:--");
     lv_obj_align(s_time, LV_ALIGN_TOP_MID, 0, 72);
 
-    s_weather = makeLabel(scr, &ct_font_30, COLOR_SUBTEXT, "Connecting...");
+    s_weather = makeLabel(scr, &ct_font_30, COLOR_SUBTEXT, "接続中…");
     lv_obj_align(s_weather, LV_ALIGN_TOP_MID, 0, 186);
 
     // 中段：本日杯数 / +1 / 残り杯数
