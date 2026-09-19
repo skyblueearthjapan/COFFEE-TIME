@@ -49,6 +49,7 @@ static bool fetchWeather(Weather &out)
     client.setInsecure();
     HTTPClient http;
     http.setTimeout(8000);
+    http.useHTTP10(true);   // chunked 転送を避け、getStream() をそのまま JSON として読めるようにする
     if (!http.begin(client, kWeatherUrl)) {
         return false;
     }

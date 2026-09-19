@@ -9,6 +9,9 @@
 LV_FONT_DECLARE(ct_font_time_104);
 LV_FONT_DECLARE(ct_font_30);
 LV_FONT_DECLARE(ct_font_22);
+LV_IMG_DECLARE(bg_morning);
+LV_IMG_DECLARE(bg_noon);
+LV_IMG_DECLARE(bg_evening);
 
 namespace home {
 
@@ -25,6 +28,8 @@ namespace home {
 
 static constexpr uint32_t kRefillHoldMs = 1500;  // 残り杯数を長押しして補充するまでの時間
 
+static lv_obj_t *s_bg = nullptr;
+static const lv_img_dsc_t *s_bg_src = nullptr;
 static lv_obj_t *s_date = nullptr;
 static lv_obj_t *s_time = nullptr;
 static lv_obj_t *s_weather = nullptr;
@@ -50,6 +55,26 @@ static const char *weatherText(int code)
     if (code >= 85 && code <= 86) return "Snow Showers";
     if (code >= 95) return "Thunderstorm";
     return "--";
+}
+
+// 時間帯で背景を切り替える：5-11 時 朝 / 11-16 時 昼 / それ以外 夕方〜夜
+static int s_forced_hour = -1;   // 開発用：背景確認のため時間帯を固定する
+
+static void updateBackground(int hour)
+{
+    if (s_forced_hour >= 0) {
+        hour = s_forced_hour;
+    }
+    const lv_img_dsc_t *src = &bg_evening;
+    if (hour >= 5 && hour < 11) {
+        src = &bg_morning;
+    } else if (hour >= 11 && hour < 16) {
+        src = &bg_noon;
+    }
+    if (src != s_bg_src) {
+        s_bg_src = src;
+        lv_img_set_src(s_bg, src);
+    }
 }
 
 static void refreshCups()
@@ -131,6 +156,7 @@ static void clockTimerCb(lv_timer_t *t)
         struct tm tm;
         localtime_r(&now, &tm);
         lv_label_set_text_fmt(s_time, "%02d:%02d", tm.tm_hour, tm.tm_min);
+        updateBackground(tm.tm_hour);
         char buf[24];
         strftime(buf, sizeof(buf), "%a, %b %d", &tm);   // 例: Sat, Sep 19
         for (char *p = buf; *p; ++p) {
@@ -188,6 +214,11 @@ bool create()
     lv_obj_set_style_bg_color(scr, COLOR_BG, 0);
     lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
 
+    // 背景写真（時刻取得前は夕方〜夜の画像）
+    s_bg = lv_img_create(scr);
+    lv_obj_center(s_bg);
+    updateBackground(-1);
+
     // 上部：日付・時刻・天気（丸画面の円の内側に収める）
     s_date = makeLabel(scr, &ct_font_22, COLOR_SUBTEXT, "--- , --- --");
     lv_obj_set_style_text_letter_space(s_date, 2, 0);
@@ -196,7 +227,7 @@ bool create()
     s_time = makeLabel(scr, &ct_font_time_104, COLOR_TEXT, "--:--");
     lv_obj_align(s_time, LV_ALIGN_TOP_MID, 0, 72);
 
-    s_weather = makeLabel(scr, &ct_font_30, COLOR_DIM, "Connecting...");
+    s_weather = makeLabel(scr, &ct_font_30, COLOR_SUBTEXT, "Connecting...");
     lv_obj_align(s_weather, LV_ALIGN_TOP_MID, 0, 186);
 
     // 中段：本日杯数 / +1 / 残り杯数
@@ -253,6 +284,16 @@ void setWeather(const net::Weather &w)
     }
     lv_obj_set_style_text_color(s_weather, COLOR_TEXT, 0);
     lv_label_set_text_fmt(s_weather, "%s  %d\xC2\xB0" "C", weatherText(w.code), (int)lroundf(w.temperature));
+}
+
+}  // namespace home
+
+namespace home {
+
+void debugForceHour(int hour)
+{
+    s_forced_hour = hour;
+    updateBackground(hour);
 }
 
 }  // namespace home

@@ -10,5 +10,6 @@ namespace home {
 
 bool create();                              // 1 回だけ呼ぶ
 void setWeather(const net::Weather &w);
+void debugForceHour(int hour);            // 開発用：背景の時間帯を固定（-1 で解除）
 
 }  // namespace home

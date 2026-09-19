@@ -103,8 +103,14 @@ void loop()
         }
         cup::saveIfDirty();
         while (Serial.available() > 0) {
-            if (Serial.read() == 'S') {
-                sendSnapshot();
+            switch (Serial.read()) {
+            case 'S': sendSnapshot(); break;
+            // 開発用：背景の時間帯を固定 M=朝 N=昼 E=夕方 A=自動
+            case 'M': home::debugForceHour(8); break;
+            case 'N': home::debugForceHour(13); break;
+            case 'E': home::debugForceHour(19); break;
+            case 'A': home::debugForceHour(-1); break;
+            default: break;
             }
         }
         lvgl_port_unlock();
