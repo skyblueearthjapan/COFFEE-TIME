@@ -9,3 +9,6 @@ backup/
 .omc/
 
 __pycache__/
+
+# Wi-Fi などの秘密情報
+firmware/include/secrets.h
