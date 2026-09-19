@@ -1,7 +1,7 @@
 # COFFEE TIME 引き継ぎ書
 
-- 最終更新: 2026-09-19（第 2 版）
-- 最新コミット: `a95f132`（残り 0 杯の至急通知まで反映）
+- 最終更新: 2026-09-20（第 3 版）
+- 最新コミット: `e004abc`（電池表示・RTC・時刻設定コマンドまで反映）
 - リポジトリ: https://github.com/skyblueearthjapan/COFFEE-TIME （ブランチ `main`）
 
 > ⚠️ **このリポジトリは PUBLIC。** Wi-Fi のパスワード・合言葉 (TOKEN)・GAS の URL・デプロイ ID を、
@@ -41,6 +41,7 @@
 | 2 | Wi-Fi・時計(NTP)・天気・残り杯数・時間帯別背景・日本語表示 | ✅ 実機確認済み・タグ `stage2` |
 | 3 | GAS へ記録・残り 3 杯でメール通知（HTML・PC レイアウト） | ✅ 実機で押下〜メール受信まで確認済み・タグ `stage3` |
 | 3+ | 残り 0 杯で【至急】メール | ✅ 実装・デプロイ済み（見本メールのみ確認。実機 1→0 は未確認） |
+| 3+ | 電池電圧表示・RTC で時刻保持・PC から時刻設定 | ✅ 2026-09-20 実機確認済み |
 | 4 | 画面追加（今日の状況グラフ・メニュー・設定・スクリーンセーバー） | 未着手 |
 | — | LINE WORKS 通知 | 未着手（GAS に送信先を足す想定） |
 | 5 | 省電力・LiPo 1500mAh・3D プリント筐体 | 未着手 |
@@ -48,6 +49,22 @@
 
 次に何をやるかはユーザー未決定（4 / LINE WORKS / 5 を提示済み）。
 タグ `stage3` は 0 杯通知の前（`3786174`）。0 杯通知を含む最新は `main` の先頭。
+
+### 2026-09-20 に分かったこと・追加したこと
+
+- **電池（LiPo 1500mAh）**: 充電は正常。基板の「Battery Power Control Switch」は**電池 → 本体の給電**を入り切りするもので、
+  OFF だと USB を抜いた瞬間に電源が落ちる（ユーザーはこれを「充電されていない」と認識していた）。充電は USB を挿せばスイッチ位置に関係なく行われる
+- **電池電圧**: BAT_ADC = GPIO4（200k/100k 分圧なので ×3）。画面下の Wi-Fi アイコン隣に電圧を表示（`Battery.*`）
+- **RTC (PCF85063, I2C 0x51)**: 起動時にシステム時刻へ復元し、NTP 同期のたびに保存（`RtcClock.*`）。
+  I2C は ESP32_Display_Panel が従来型ドライバーで port 0 に用意済みのものを共用する（`board->begin()` の後に呼ぶこと）
+- **TZ は setup の冒頭で `setenv("TZ","JST-9")`**（Wi-Fi 接続前・RTC 復元時刻にも効かせるため）
+- **Wi-Fi が無い場所での時刻設定**: `python tools/settime.py COM8`（シリアルで `C<UNIX秒>` を送る）。RTC にも保存される。
+  これで日付が変わったときの TODAY リセットが Wi-Fi 無しでも動く（2026-09-20 に実機で確認）
+- **Wi-Fi は 2 つまで登録可**: `secrets.h` の `WIFI_SSID2` / `WIFI_PASSWORD2`（空なら未使用）。WiFiMulti で強い方に接続
+- **⚠ 受信感度が異常に弱い**: 同じ部屋で PC が 2.4GHz を 4 台・60% で見えるのに、ESP32 は 0〜4 台・**-95dBm**。
+  画面を使わない `wifitest` でも同じなのでソフトの問題ではない。基板上端の赤いセラミックアンテナのすぐ横を
+  **ケースの金属リングが囲んでいる**のが有力な原因（写真で確認）。U.FL コネクタは実装済みなので外付けアンテナも可。
+  ユーザー判断で**当面は保留**（社内でつながれば可）。社内でも 2026-09-19 時点で -88dBm と余裕がない点に注意
 
 ### 実機の現在の状態（2026-09-19 夕方時点）
 - 最新ファームを書き込み済み。Wi-Fi 接続・時刻・天気取得は正常
@@ -114,6 +131,8 @@
 cd firmware
 python -m platformio run -e app -t upload --upload-port COM8      # 本体
 python -m platformio run -e hwtest -t upload --upload-port COM8   # LCD・タッチ試験（カラーバー + 座標ログ）
+python -m platformio run -e app_uart -t upload --upload-port COM9 # 「USB TO UART」側の端子(CH343)につないだとき
+python -m platformio run -e wifitest -t upload --upload-port COM8 # 画面なしで Wi-Fi 受信だけを試す
 ```
 
 ### 開発用ツール（シリアルポートは同時に 1 プロセスしか開けない）
@@ -123,11 +142,12 @@ python -m platformio run -e hwtest -t upload --upload-port COM8   # LCD・タッ
 | `python tools/serlog.py COM8 45 send=RTT` | 接続後に開発コマンドを送りつつログ表示 |
 | `python tools/snapshot.py COM8 out.png` | **実機画面のスクリーンショット**（エージェントが画面を確認する手段） |
 | `python tools/send.py COM8 M` | 1 文字コマンド送信 |
+| `python tools/settime.py COM8` | PC の時計を ESP32 と RTC に設定（Wi-Fi 不要） |
 | `python tools/img2lvgl.py in.png out.c name --dim 0.75` | 背景画像を LVGL 用 C 配列へ変換 |
 | `bash tools/gen_fonts.sh` | フォント再生成（日本語を足したら先に `fonts/ct_font_jp_symbols.txt` へ文字を追加） |
 | `powershell -File tools/gen_bg.ps1 <name> "<雰囲気>"` | Codex CLI で背景画像を生成 |
 
-シリアル開発コマンド: `S`=スクショ / `M`・`N`・`E`=背景を朝・昼・夕に固定 / `A`=自動 / `T`=+1 / `R`=補充
+シリアル開発コマンド: `S`=スクショ / `M`・`N`・`E`=背景を朝・昼・夕に固定 / `A`=自動 / `T`=+1 / `R`=補充 / `W`=Wi-Fi スキャン / `C<UNIX秒>`=時刻設定
 **`T`・`R` は本物のイベントとして GAS に送られ、残り 3・0 杯で登録者全員にメールが飛ぶ。**
 
 ### GAS（clasp 3.2.0）
@@ -179,7 +199,8 @@ python -m platformio run -e hwtest -t upload --upload-port COM8   # LCD・タッ
 - [ ] 【至急】通知の実機確認（LEFT 1 → +1 で 0）。全員にメールが届くのでユーザーと時機を合わせる
 - [ ] Wi-Fi の電波が弱い（RSSI 約 -88dBm）。設置場所で確認
 - [ ] HTTPS は `setInsecure()`（証明書検証なし）。社内用途として許容中。将来は CA バンドル化
-- [ ] 送信キューは RAM のみ。長時間の Wi-Fi 断＋再起動で未送信分が消える（必要なら NVS 化）
+- [ ] 送信キューは RAM のみ。長時間の Wi-Fi 断＋再起動で未送信分が消える（電波が弱いので NVS 化の優先度は上がった）
+- [ ] Wi-Fi 受信感度（上記）。ケース見直し or 外付けアンテナ。ユーザー判断で保留中
 - [ ] 段階 1 の未実施試験: 50 回連続タップ、電源 OFF→ON（NVS 導入後は「杯数が保持される」が期待値）
 - [ ] 背景画像の生成に GPT Image 2.5 が使われたかは、Codex が版数を出さず未確認
 - [ ] 「ログ」シートの試験データを本番前に消すか
