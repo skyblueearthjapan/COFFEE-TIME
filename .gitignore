@@ -12,3 +12,8 @@ __pycache__/
 
 # Wi-Fi などの秘密情報
 firmware/include/secrets.h
+
+# GAS の合言葉と clasp のプロジェクト設定
+gas/Secret.gs
+gas/.clasp.json
+.clasp.json
