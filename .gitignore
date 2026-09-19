@@ -1,0 +1,11 @@
+# PlatformIO build output
+firmware/.pio/
+firmware/.vscode/
+
+# 工場出荷時ファームのバックアップ（16MB・端末固有のためリポジトリに含めない）
+backup/
+
+# oh-my-claudecode local state
+.omc/
+
+__pycache__/
