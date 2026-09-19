@@ -6,6 +6,7 @@
 #include <Arduino.h>
 #include <esp_display_panel.hpp>
 #include <esp_heap_caps.h>
+#include <sys/time.h>
 #include <lvgl.h>
 #include "lvgl_v8_port.h"
 #include "Battery.h"
@@ -39,6 +40,26 @@ static void sendSnapshot()
         Serial.println("[SNAP] failed");
     }
     heap_caps_free(buf);
+}
+
+// PC から "C<UNIX秒>改行" を受け取り、時刻を設定して時計チップにも保存する（Wi-Fi が使えない場所用）
+static void setTimeFromSerial()
+{
+    Serial.setTimeout(1000);
+    const String arg = Serial.readStringUntil('\n');
+    const long long epoch = atoll(arg.c_str());
+    if (epoch < 1700000000LL) {
+        Serial.printf("[TIME] invalid value: %s\n", arg.c_str());
+        return;
+    }
+    const struct timeval tv = {(time_t)epoch, 0};
+    settimeofday(&tv, nullptr);
+    const time_t now = time(nullptr);
+    struct tm tm;
+    localtime_r(&now, &tm);
+    Serial.printf("[TIME] set to %04d-%02d-%02d %02d:%02d:%02d JST\n",
+                  tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    rtc::saveSystemTime();
 }
 
 void setup()
@@ -135,6 +156,7 @@ void loop()
             case 'T': home::debugTake(); break;
             case 'R': home::debugRefill(); break;
             case 'W': net::debugScan(); break;       // 開発用：Wi-Fi スキャン
+            case 'C': setTimeFromSerial(); break;    // PC の時計から時刻を設定（tools/settime.py）
             default: break;
             }
         }
