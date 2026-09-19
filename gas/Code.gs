@@ -131,10 +131,12 @@ function sendLowStockMail_(ev, overrideTo) {
   });
 }
 
-// メールソフト互換のため、レイアウトは table + インライン CSS で組む
+// メールソフト互換のため、レイアウトは table + インライン CSS で組む。
+// PC では幅 680px の 2 カラム、幅 600px 未満（スマホ）では縦 1 カラムに切り替える。
 function lowStockHtml_(ev, now, sheetUrl) {
   const left = Number(ev.left);
   const taken = Number(ev.taken);
+  const font = "font-family:'Hiragino Sans','Yu Gothic UI','Yu Gothic',Meiryo,sans-serif;";
 
   // 残り杯数のゲージ（残り=濃いブラウン / 飲まれた分=薄いベージュ）
   let gauge = '';
@@ -142,65 +144,91 @@ function lowStockHtml_(ev, now, sheetUrl) {
     const full = i < left;
     gauge +=
       '<td style="padding:0 3px;">' +
-      '<div style="width:22px;height:22px;border-radius:50%;' +
+      '<div style="width:20px;height:20px;border-radius:50%;' +
       (full ? 'background:#7A4A2A;border:2px solid #C08A5B;'
             : 'background:#EFE6DA;border:2px solid #E0D3C2;') +
       '"></div></td>';
   }
 
+  const row = (label, value) =>
+    '<tr><td style="padding:12px 0;border-bottom:1px solid #EFE6DA;color:#8A7461;">' + label + '</td>' +
+    '<td align="right" style="padding:12px 0;border-bottom:1px solid #EFE6DA;font-weight:bold;color:#3B2A1E;">' +
+    value + '</td></tr>';
+
   return '' +
-  '<div style="margin:0;padding:24px 0;background:#F4EEE6;">' +
-  '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">' +
-  '<tr><td align="center">' +
-  '<table role="presentation" width="480" cellpadding="0" cellspacing="0" border="0" ' +
-  'style="max-width:480px;width:100%;background:#FFFFFF;border-radius:18px;overflow:hidden;' +
-  'font-family:\'Hiragino Sans\',\'Yu Gothic\',Meiryo,sans-serif;color:#3B2A1E;">' +
+  '<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">' +
+  '<style>' +
+  '@media only screen and (max-width:600px){' +
+  '.ct-wrap{width:100% !important;}' +
+  '.ct-col{display:block !important;width:100% !important;box-sizing:border-box;}' +
+  '.ct-left{border-right:0 !important;border-bottom:1px solid #EFE6DA !important;}' +
+  '.ct-pad{padding-left:20px !important;padding-right:20px !important;}' +
+  '}</style></head>' +
+  '<body style="margin:0;padding:0;background:#F4EEE6;">' +
+  '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F4EEE6;">' +
+  '<tr><td align="center" style="padding:32px 12px;">' +
 
-  // ヘッダー
-  '<tr><td style="background:#2B1D14;padding:22px 28px;">' +
+  '<table role="presentation" class="ct-wrap" width="680" cellpadding="0" cellspacing="0" border="0" ' +
+  'style="width:680px;max-width:680px;background:#FFFFFF;border-radius:16px;overflow:hidden;' + font +
+  'color:#3B2A1E;box-shadow:0 4px 18px rgba(59,42,30,0.08);">' +
+
+  // ヘッダー（左: ブランド / 右: 通知時刻）
+  '<tr><td class="ct-pad" style="background:#2B1D14;padding:22px 36px;">' +
+  '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>' +
+  '<td style="' + font + '">' +
   '<div style="font-size:12px;letter-spacing:4px;color:#C08A5B;">COFFEE TIME</div>' +
-  '<div style="font-size:22px;font-weight:bold;color:#F5EDE3;margin-top:4px;">' + SENDER_NAME + '</div>' +
+  '<div style="font-size:24px;font-weight:bold;color:#F5EDE3;margin-top:2px;">' + SENDER_NAME + '</div>' +
+  '</td>' +
+  '<td align="right" style="' + font + 'font-size:13px;color:#C9B7A4;">' + now + '</td>' +
+  '</tr></table></td></tr>' +
+
+  // 見出し帯
+  '<tr><td class="ct-pad" style="background:#FBF1E4;padding:16px 36px;font-size:17px;font-weight:bold;color:#9A5B1E;">' +
+  '☕ コーヒーの残りが少なくなりました' +
   '</td></tr>' +
 
-  // 残り杯数
-  '<tr><td align="center" style="padding:32px 28px 8px;">' +
-  '<div style="font-size:14px;color:#8A7461;">コーヒーの残り</div>' +
-  '<div style="font-size:64px;font-weight:bold;color:#D9822B;line-height:1.1;margin:6px 0;">' +
-  left + '<span style="font-size:22px;color:#8A7461;margin-left:6px;">杯</span></div>' +
-  '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:14px auto 0;"><tr>' +
+  // 2 カラム（左: 残り杯数とゲージ / 右: 本日の状況）
+  '<tr><td style="padding:0;">' +
+  '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>' +
+
+  '<td class="ct-col ct-left" width="50%" align="center" valign="middle" ' +
+  'style="width:50%;padding:32px 24px;border-right:1px solid #EFE6DA;">' +
+  '<div style="font-size:14px;color:#8A7461;">残り</div>' +
+  '<div style="font-size:72px;font-weight:bold;color:#D9822B;line-height:1.1;margin:4px 0;">' +
+  left + '<span style="font-size:24px;color:#8A7461;margin-left:6px;">杯</span></div>' +
+  '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:12px auto 0;"><tr>' +
   gauge + '</tr></table>' +
-  '</td></tr>' +
+  '<div style="font-size:12px;color:#A8927E;margin-top:8px;">' + MAX_CUPS + ' 杯中</div>' +
+  '</td>' +
 
-  // メッセージ
-  '<tr><td style="padding:24px 28px 8px;">' +
-  '<div style="background:#FBF6EF;border-left:4px solid #C08A5B;border-radius:8px;padding:16px 18px;' +
+  '<td class="ct-col" width="50%" valign="middle" style="width:50%;padding:28px 36px;font-size:15px;">' +
+  '<div style="font-size:14px;font-weight:bold;color:#5A4636;margin-bottom:4px;">本日の状況</div>' +
+  '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="font-size:15px;">' +
+  row('飲まれた杯数', taken + ' 杯') +
+  row('残り', left + ' 杯') +
+  row('通知時刻', now) +
+  '</table></td>' +
+
+  '</tr></table></td></tr>' +
+
+  // お願いとボタン
+  '<tr><td class="ct-pad" style="padding:8px 36px 32px;">' +
+  '<div style="background:#FBF6EF;border-left:4px solid #C08A5B;border-radius:8px;padding:16px 20px;' +
   'font-size:15px;line-height:1.8;">' +
   'そろそろ <b>次のコーヒーの準備</b> をお願いします。<br>' +
   '作り終えたら、端末の <b>「LEFT」を長押し</b> すると残り ' + MAX_CUPS + ' 杯に戻ります。' +
+  '</div>' +
+  '<div style="text-align:center;margin-top:24px;">' +
+  '<a href="' + sheetUrl + '" style="display:inline-block;background:#7A4A2A;color:#FFFFFF;' +
+  'text-decoration:none;font-size:15px;font-weight:bold;padding:13px 36px;border-radius:26px;">記録を見る</a>' +
   '</div></td></tr>' +
 
-  // 本日の状況
-  '<tr><td style="padding:16px 28px 8px;">' +
-  '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" ' +
-  'style="font-size:14px;color:#5A4636;">' +
-  '<tr><td style="padding:8px 0;border-bottom:1px solid #EFE6DA;">本日飲まれた杯数</td>' +
-  '<td align="right" style="padding:8px 0;border-bottom:1px solid #EFE6DA;"><b>' + taken + ' 杯</b></td></tr>' +
-  '<tr><td style="padding:8px 0;">通知時刻</td>' +
-  '<td align="right" style="padding:8px 0;">' + now + '</td></tr>' +
-  '</table></td></tr>' +
-
-  // ボタン
-  '<tr><td align="center" style="padding:20px 28px 28px;">' +
-  '<a href="' + sheetUrl + '" style="display:inline-block;background:#7A4A2A;color:#FFFFFF;' +
-  'text-decoration:none;font-size:14px;padding:12px 28px;border-radius:24px;">記録を見る</a>' +
-  '</td></tr>' +
-
   // フッター
-  '<tr><td align="center" style="background:#FBF6EF;padding:14px 28px;font-size:11px;color:#A8927E;">' +
+  '<tr><td class="ct-pad" align="center" style="background:#FBF6EF;padding:16px 36px;font-size:12px;color:#A8927E;">' +
   'Good Coffee, Good Work. ☕ このメールは COFFEE TIME 端末から自動送信されています' +
   '</td></tr>' +
 
-  '</table></td></tr></table></div>';
+  '</table></td></tr></table></body></html>';
 }
 
 function json_(obj) {
