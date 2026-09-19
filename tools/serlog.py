@@ -25,7 +25,9 @@ if reset:
     time.sleep(1.5)
     s.open()
 
-end = time.time() + secs
+start = time.time()
+end = start + secs
+line_start = True
 while time.time() < end:
     try:
         d = s.read(4096)
@@ -38,5 +40,12 @@ while time.time() < end:
             pass
         continue
     if d:
-        sys.stdout.write(d.decode("utf-8", "replace"))
+        # 各行の先頭に PC 側の時刻を付け、操作とログを照合できるようにする
+        for ch in d.decode("utf-8", "replace"):
+            if line_start:
+                sys.stdout.write(time.strftime("%H:%M:%S "))
+                line_start = False
+            sys.stdout.write(ch)
+            if ch == "\n":
+                line_start = True
         sys.stdout.flush()
