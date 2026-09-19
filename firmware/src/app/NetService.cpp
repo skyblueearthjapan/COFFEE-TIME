@@ -31,6 +31,7 @@ struct Report {
     char id[20];        // 再送時の重複防止用 (起動ごとの乱数-連番)
     uint32_t taken;
     uint32_t left;
+    uint32_t prev;      // イベント前の残り杯数
     uint32_t ts;        // 端末時刻 (UNIX 秒)。未同期なら 0
 };
 
@@ -101,7 +102,7 @@ static bool fetchWeather(Weather &out)
     return out.valid;
 }
 
-void reportEvent(const char *event, uint32_t taken, uint32_t left)
+void reportEvent(const char *event, uint32_t taken, uint32_t left, uint32_t prev)
 {
     if (s_reports == nullptr) {
         return;
@@ -111,6 +112,7 @@ void reportEvent(const char *event, uint32_t taken, uint32_t left)
     snprintf(r.id, sizeof(r.id), "%08lx-%lu", (unsigned long)s_boot_id, (unsigned long)++s_report_seq);
     r.taken = taken;
     r.left = left;
+    r.prev = prev;
     r.ts = timeSynced() ? (uint32_t)time(nullptr) : 0;
     if (xQueueSend(s_reports, &r, 0) != pdTRUE) {
         Serial.println("[GAS] queue full, event dropped");
@@ -126,6 +128,7 @@ static bool sendReport(const Report &r)
     doc["id"] = r.id;
     doc["taken"] = r.taken;
     doc["left"] = r.left;
+    doc["prev"] = r.prev;
     doc["rssi"] = WiFi.RSSI();
     if (r.ts != 0) {
         doc["ts"] = r.ts;

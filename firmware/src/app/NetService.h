@@ -21,7 +21,7 @@ bool wifiConnected();
 bool timeSynced();
 
 // 杯数イベントを送信キューに積む（どのタスクからでも呼べる）。
-// event: "take" / "refill" / "newday"
-void reportEvent(const char *event, uint32_t taken, uint32_t left);
+// event: "take" / "refill" / "newday"。prev はイベント前の残り杯数（通知の重複防止に使う）
+void reportEvent(const char *event, uint32_t taken, uint32_t left, uint32_t prev);
 
 }  // namespace net

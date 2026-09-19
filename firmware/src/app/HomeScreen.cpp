@@ -126,8 +126,9 @@ static void showToast(const char *text)
 static void plusOneClickedCb(lv_event_t *e)
 {
     (void)e;
+    const uint32_t prev = cup::remaining();
     cup::takeOne();
-    net::reportEvent("take", cup::taken(), cup::remaining());
+    net::reportEvent("take", cup::taken(), cup::remaining(), prev);
     refreshCups();
     pulse(s_taken);
 }
@@ -142,8 +143,9 @@ static void leftBoxEventCb(lv_event_t *e)
     } else if (code == LV_EVENT_PRESSING) {
         if (!s_refill_fired && lv_tick_elaps(s_left_press_ms) >= kRefillHoldMs) {
             s_refill_fired = true;
+            const uint32_t prev = cup::remaining();
             cup::refill();
-            net::reportEvent("refill", cup::taken(), cup::remaining());
+            net::reportEvent("refill", cup::taken(), cup::remaining(), prev);
             refreshCups();
             pulse(s_left);
             showToast("REFILLED: 10 CUPS");
@@ -164,10 +166,11 @@ static void clockTimerCb(lv_timer_t *t)
         lv_label_set_text_fmt(s_date, "%d月%d日（%s）", tm.tm_mon + 1, tm.tm_mday, kWeekdays[tm.tm_wday]);
 
         const uint32_t ymd = (tm.tm_year + 1900) * 10000 + (tm.tm_mon + 1) * 100 + tm.tm_mday;
-        const uint32_t before = cup::taken() + cup::remaining() * 1000;
+        const uint32_t prev_left = cup::remaining();
+        const uint32_t before = cup::taken() + prev_left * 1000;
         cup::checkNewDay(ymd);
         if (before != cup::taken() + cup::remaining() * 1000) {
-            net::reportEvent("newday", cup::taken(), cup::remaining());
+            net::reportEvent("newday", cup::taken(), cup::remaining(), prev_left);
             refreshCups();
         }
     }
@@ -298,8 +301,9 @@ void debugTake()
 
 void debugRefill()
 {
+    const uint32_t prev = cup::remaining();
     cup::refill();
-    net::reportEvent("refill", cup::taken(), cup::remaining());
+    net::reportEvent("refill", cup::taken(), cup::remaining(), prev);
     refreshCups();
 }
 

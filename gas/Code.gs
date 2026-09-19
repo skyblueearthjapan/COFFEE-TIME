@@ -2,7 +2,7 @@
  * COFFEE TIME — 記録・通知サーバー (Google Apps Script)
  *
  * ESP32 から POST されたイベントを「ログ」シートに記録し、
- * 残り杯数が NOTIFY_AT 杯になったら「設定」シートの宛先へメールを送る。
+ * 残り杯数が NOTIFY_AT 杯になったとき、および 0 杯になったとき（至急）に「設定」シートの宛先へメールを送る。
  *
  * 合言葉 TOKEN は Secret.gs（Git 管理外）に定義し、ESP32 の secrets.h の GAS_TOKEN と同じ値にする。
  * 初回だけ: エディタで setup() を実行してシートを作り、権限を承認する。
@@ -65,7 +65,8 @@ function doPost(e) {
 
   // デザイン確認用：スクリプト所有者だけに見本メールを送る（ログには残さない）
   if (body.event === 'preview') {
-    sendLowStockMail_({ left: NOTIFY_AT, taken: 7 }, [Session.getEffectiveUser().getEmail()]);
+    const left = body.left === undefined ? NOTIFY_AT : Number(body.left);
+    sendLowStockMail_({ left: left, taken: MAX_CUPS - left }, [Session.getEffectiveUser().getEmail()]);
     return json_({ ok: true, preview: true });
   }
 
@@ -84,7 +85,10 @@ function doPost(e) {
     sheet.appendRow([new Date(), deviceTime, body.device || '', body.event || '',
                      body.taken, body.left, body.rssi, body.id || '']);
 
-    if (body.event === 'take' && Number(body.left) === NOTIFY_AT) {
+    // 残りが減って「ちょうどその杯数になった瞬間」だけ通知する（0 杯のまま押され続けても再送しない）
+    const left = Number(body.left);
+    const prev = body.prev === undefined ? left + 1 : Number(body.prev);
+    if (body.event === 'take' && prev > left && (left === NOTIFY_AT || left === 0)) {
       sendLowStockMail_(body);
     }
 
@@ -113,12 +117,17 @@ function sendLowStockMail_(ev, overrideTo) {
 
   const now = Utilities.formatDate(new Date(), TZ, 'M月d日 HH:mm');
   const sheetUrl = SpreadsheetApp.getActiveSpreadsheet().getUrl();
-  const subject = '☕ コーヒーの残りが' + ev.left + '杯になりました';
+  const empty = Number(ev.left) === 0;
+  const subject = empty
+    ? '【至急】コーヒーがなくなりました'
+    : '☕ コーヒーの残りが' + ev.left + '杯になりました';
   const text =
     SENDER_NAME + ' からのお知らせです。\n\n' +
-    'コーヒーの残りが ' + ev.left + ' 杯になりました（' + now + '）。\n' +
+    (empty
+      ? '【至急】コーヒーがなくなりました（' + now + '）。\n'
+      : 'コーヒーの残りが ' + ev.left + ' 杯になりました（' + now + '）。\n') +
     '本日これまでに飲まれた杯数: ' + ev.taken + ' 杯\n\n' +
-    '次のコーヒーの準備をお願いします。\n' +
+    (empty ? '至急、コーヒーの準備をお願いします。\n' : '次のコーヒーの準備をお願いします。\n') +
     '作り終えたら、端末の「LEFT」を長押しすると残り ' + MAX_CUPS + ' 杯に戻ります。\n\n' +
     '記録: ' + sheetUrl + '\n';
 
@@ -136,6 +145,14 @@ function sendLowStockMail_(ev, overrideTo) {
 function lowStockHtml_(ev, now, sheetUrl) {
   const left = Number(ev.left);
   const taken = Number(ev.taken);
+  const empty = left === 0;
+  const accent = empty ? '#C62828' : '#D9822B';        // 大きな数字
+  const bandBg = empty ? '#C62828' : '#FBF1E4';        // 見出し帯
+  const bandFg = empty ? '#FFFFFF' : '#9A5B1E';
+  const headline = empty ? '⚠ 【至急】コーヒーがなくなりました' : '☕ コーヒーの残りが少なくなりました';
+  const request = empty
+    ? '<b>至急、コーヒーの準備</b> をお願いします。'
+    : 'そろそろ <b>次のコーヒーの準備</b> をお願いします。';
   const font = "font-family:'Hiragino Sans','Yu Gothic UI','Yu Gothic',Meiryo,sans-serif;";
 
   // 残り杯数のゲージ（残り=濃いブラウン / 飲まれた分=薄いベージュ）
@@ -183,8 +200,8 @@ function lowStockHtml_(ev, now, sheetUrl) {
   '</tr></table></td></tr>' +
 
   // 見出し帯
-  '<tr><td class="ct-pad" style="background:#FBF1E4;padding:16px 36px;font-size:17px;font-weight:bold;color:#9A5B1E;">' +
-  '☕ コーヒーの残りが少なくなりました' +
+  '<tr><td class="ct-pad" style="background:' + bandBg + ';padding:16px 36px;font-size:17px;font-weight:bold;color:' + bandFg + ';">' +
+  headline +
   '</td></tr>' +
 
   // 2 カラム（左: 残り杯数とゲージ / 右: 本日の状況）
@@ -194,7 +211,7 @@ function lowStockHtml_(ev, now, sheetUrl) {
   '<td class="ct-col ct-left" width="50%" align="center" valign="middle" ' +
   'style="width:50%;padding:32px 24px;border-right:1px solid #EFE6DA;">' +
   '<div style="font-size:14px;color:#8A7461;">残り</div>' +
-  '<div style="font-size:72px;font-weight:bold;color:#D9822B;line-height:1.1;margin:4px 0;">' +
+  '<div style="font-size:72px;font-weight:bold;color:' + accent + ';line-height:1.1;margin:4px 0;">' +
   left + '<span style="font-size:24px;color:#8A7461;margin-left:6px;">杯</span></div>' +
   '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:12px auto 0;"><tr>' +
   gauge + '</tr></table>' +
@@ -213,9 +230,9 @@ function lowStockHtml_(ev, now, sheetUrl) {
 
   // お願いとボタン
   '<tr><td class="ct-pad" style="padding:8px 36px 32px;">' +
-  '<div style="background:#FBF6EF;border-left:4px solid #C08A5B;border-radius:8px;padding:16px 20px;' +
-  'font-size:15px;line-height:1.8;">' +
-  'そろそろ <b>次のコーヒーの準備</b> をお願いします。<br>' +
+  '<div style="background:' + (empty ? '#FDECEA' : '#FBF6EF') + ';border-left:4px solid ' +
+  (empty ? '#C62828' : '#C08A5B') + ';border-radius:8px;padding:16px 20px;font-size:15px;line-height:1.8;">' +
+  request + '<br>' +
   '作り終えたら、端末の <b>「LEFT」を長押し</b> すると残り ' + MAX_CUPS + ' 杯に戻ります。' +
   '</div>' +
   '<div style="text-align:center;margin-top:24px;">' +
