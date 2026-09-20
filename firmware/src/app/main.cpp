@@ -13,6 +13,9 @@
 #include "CupState.h"
 #include "HomeScreen.h"
 #include "NetService.h"
+#include "ui/MainMenu.h"
+#include "ui/ScreenManager.h"
+#include "games/werewolf/WerewolfUI.h"
 #include "RtcClock.h"
 
 using namespace esp_panel::drivers;
@@ -107,6 +110,7 @@ void setup()
         return;
     }
     const bool ui_ok = home::create();
+    ui::begin(lv_scr_act());
     lvgl_port_unlock();
     if (!ui_ok) {
         Serial.println("ERROR: COFFEE TIME UI creation failed");
@@ -156,6 +160,11 @@ void loop()
             case 'T': home::debugTake(); break;
             case 'R': home::debugRefill(); break;
             case 'W': net::debugScan(); break;       // 開発用：Wi-Fi スキャン
+            // 開発用：画面遷移の確認（スクリーンショット用）
+            case '1': ui::push(ui::createMainMenu); break;
+            case '2': ui::push(werewolf::createEntryScreen); break;
+            case '3': ui::push(werewolf::createLobbyScreen); break;
+            case '0': ui::goHome(); break;
             case 'C': setTimeFromSerial(); break;    // PC の時計から時刻を設定（tools/settime.py）
             default: break;
             }

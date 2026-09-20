@@ -5,6 +5,8 @@
 #include <time.h>
 
 #include "Battery.h"
+#include "ui/MainMenu.h"
+#include "ui/ScreenManager.h"
 #include "CupState.h"
 
 LV_FONT_DECLARE(ct_font_time_104);
@@ -155,17 +157,29 @@ static void leftBoxEventCb(lv_event_t *e)
     }
 }
 
+static void openMenuCb(lv_event_t *e)
+{
+    (void)e;
+    ui::push(ui::createMainMenu);
+}
+
 static void clockTimerCb(lv_timer_t *t)
 {
     (void)t;
+    // 日付の切り替わり判定は常に行い、画面の書き換えは HOME 表示中だけにする
+    const bool visible = ui::isHome();
     const time_t now = time(nullptr);
     if (net::timeSynced()) {
         struct tm tm;
         localtime_r(&now, &tm);
-        lv_label_set_text_fmt(s_time, "%02d:%02d", tm.tm_hour, tm.tm_min);
-        updateBackground(tm.tm_hour);
+        if (visible) {
+            lv_label_set_text_fmt(s_time, "%02d:%02d", tm.tm_hour, tm.tm_min);
+            updateBackground(tm.tm_hour);
+        }
+        if (visible) {
         static const char *const kWeekdays[] = {"日", "月", "火", "水", "木", "金", "土"};
         lv_label_set_text_fmt(s_date, "%d月%d日（%s）", tm.tm_mon + 1, tm.tm_mday, kWeekdays[tm.tm_wday]);
+        }
 
         const uint32_t ymd = (tm.tm_year + 1900) * 10000 + (tm.tm_mon + 1) * 100 + tm.tm_mday;
         const uint32_t prev_left = cup::remaining();
@@ -175,6 +189,9 @@ static void clockTimerCb(lv_timer_t *t)
             net::reportEvent("newday", cup::taken(), cup::remaining(), prev_left);
             refreshCups();
         }
+    }
+    if (!visible) {
+        return;
     }
     lv_obj_set_style_text_color(s_wifi, net::wifiConnected() ? COLOR_SUBTEXT : COLOR_DIM, 0);
 
@@ -267,6 +284,21 @@ bool create()
 
     lv_obj_t *btn_label = makeLabel(btn, &lv_font_montserrat_48, COLOR_TEXT, "+1");
     lv_obj_center(btn_label);
+
+    // メニューボタン（時計の下、左寄り。丸画面の内側に収める）
+    lv_obj_t *menu_btn = lv_btn_create(scr);
+    lv_obj_set_size(menu_btn, 52, 52);
+    lv_obj_align(menu_btn, LV_ALIGN_CENTER, -132, 170);
+    lv_obj_set_style_radius(menu_btn, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_color(menu_btn, lv_color_hex(0x241A13), 0);
+    lv_obj_set_style_bg_opa(menu_btn, LV_OPA_70, 0);
+    lv_obj_set_style_bg_color(menu_btn, COLOR_BTN, LV_STATE_PRESSED);
+    lv_obj_set_style_border_color(menu_btn, COLOR_SUBTEXT, 0);
+    lv_obj_set_style_border_width(menu_btn, 1, 0);
+    lv_obj_set_style_shadow_width(menu_btn, 0, 0);
+    lv_obj_add_event_cb(menu_btn, openMenuCb, LV_EVENT_CLICKED, nullptr);
+    lv_obj_t *menu_icon = makeLabel(menu_btn, &lv_font_montserrat_16, COLOR_SUBTEXT, LV_SYMBOL_LIST);
+    lv_obj_center(menu_icon);
 
     // 下部：ロゴと Wi-Fi 状態
     lv_obj_t *logo = makeLabel(scr, &lv_font_montserrat_16, COLOR_SUBTEXT, "COFFEE TIME");

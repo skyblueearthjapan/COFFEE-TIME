@@ -1,7 +1,7 @@
 /*******************************************************************************
  * Size: 22 px
  * Bpp: 4
- * Opts: --bpp 4 --format lvgl --no-compress --size 22 --font Montserrat-Medium.ttf -r 0x20-0x7E,0xB0 --font ZenMaruGothic-Medium.ttf --symbols 月日火水木金土（）晴れ時々くもり霧雨雪にわか雷接続中…取得 -o C:/Users/imaizumi.LINEWORKS-NET/Documents/COFFEE TIME/firmware/src/app/fonts/ct_font_22.c --lv-font-name ct_font_22
+ * Opts: --bpp 4 --format lvgl --no-compress --size 22 --font Montserrat-Medium.ttf -r 0x20-0x7E,0xB0 --font ZenMaruGothic-Medium.ttf --symbols …々かくにもりれわ中取土得接日時晴月木水火続金雨雪雷霧（） -o C:/Users/imaizumi.LINEWORKS-NET/Documents/COFFEE TIME/firmware/src/app/fonts/ct_font_22.c --lv-font-name ct_font_22
  ******************************************************************************/
 
 #ifdef LV_LVGL_H_INCLUDE_SIMPLE

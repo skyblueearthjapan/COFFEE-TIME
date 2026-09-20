@@ -1,0 +1,305 @@
+{
+  "schema_version": "2.0.0",
+  "width": 480,
+  "height": 480,
+  "safe_center": [
+    240,
+    240
+  ],
+  "safe_radius": 228,
+  "font_sizes": {
+    "body": 22,
+    "button": 22,
+    "auxiliary": 20,
+    "role": 40,
+    "timer": 64,
+    "title": 20
+  },
+  "body_limit": {
+    "fullwidth_cells_per_line": 13,
+    "lines_per_page": 4
+  },
+  "rects": {
+    "title": [
+      128,
+      46,
+      224,
+      44
+    ],
+    "cafe": [
+      88,
+      90,
+      80,
+      44
+    ],
+    "help": [
+      312,
+      90,
+      80,
+      44
+    ],
+    "body": [
+      90,
+      144,
+      300,
+      128
+    ],
+    "role_name": [
+      108,
+      136,
+      264,
+      48
+    ],
+    "secret_body": [
+      90,
+      192,
+      300,
+      106
+    ],
+    "hold": [
+      120,
+      310,
+      240,
+      62
+    ],
+    "continue": [
+      150,
+      382,
+      180,
+      50
+    ],
+    "slot0": [
+      76,
+      142,
+      154,
+      64
+    ],
+    "slot1": [
+      250,
+      142,
+      154,
+      64
+    ],
+    "slot2": [
+      76,
+      216,
+      154,
+      64
+    ],
+    "slot3": [
+      250,
+      216,
+      154,
+      64
+    ],
+    "page_prev": [
+      95,
+      292,
+      80,
+      48
+    ],
+    "page_label": [
+      189,
+      292,
+      102,
+      48
+    ],
+    "page_next": [
+      305,
+      292,
+      80,
+      48
+    ],
+    "reserve_a": [
+      97,
+      350,
+      136,
+      54
+    ],
+    "reserve_b": [
+      247,
+      350,
+      136,
+      54
+    ],
+    "peace": [
+      116,
+      350,
+      248,
+      54
+    ],
+    "small_note": [
+      133,
+      413,
+      214,
+      28
+    ],
+    "footer_left": [
+      106,
+      361,
+      124,
+      50
+    ],
+    "footer_right": [
+      250,
+      361,
+      124,
+      50
+    ],
+    "row0": [
+      92,
+      140,
+      296,
+      43
+    ],
+    "row1": [
+      78,
+      187,
+      324,
+      43
+    ],
+    "row2": [
+      78,
+      234,
+      324,
+      43
+    ],
+    "row3": [
+      92,
+      281,
+      296,
+      43
+    ],
+    "count_number": [
+      179,
+      145,
+      122,
+      72
+    ],
+    "count_minus": [
+      80,
+      225,
+      125,
+      58
+    ],
+    "count_plus": [
+      275,
+      225,
+      125,
+      58
+    ],
+    "count_hint": [
+      118,
+      293,
+      244,
+      36
+    ],
+    "large_timer": [
+      114,
+      155,
+      252,
+      86
+    ],
+    "timer_prompt": [
+      95,
+      269,
+      290,
+      44
+    ],
+    "wide_button": [
+      120,
+      338,
+      240,
+      58
+    ],
+    "public_back": [
+      156,
+      398,
+      168,
+      44
+    ]
+  },
+  "seat_page_size": 4,
+  "seat_order": "ascending_actual_seat_id",
+  "never_compact_disabled_seats": true,
+  "reserve_buttons": "persistent_not_in_seat_pages",
+  "peace_button": "persistent_on_vote_pages_even_when_ineligible",
+  "templates": {
+    "private": [
+      "title",
+      "cafe",
+      "help",
+      "role_name",
+      "secret_body",
+      "hold",
+      "continue"
+    ],
+    "body": [
+      "title",
+      "cafe",
+      "help",
+      "body",
+      "footer_left",
+      "footer_right"
+    ],
+    "count": [
+      "title",
+      "cafe",
+      "help",
+      "count_number",
+      "count_minus",
+      "count_plus",
+      "count_hint",
+      "wide_button"
+    ],
+    "night_targets": [
+      "title",
+      "cafe",
+      "help",
+      "slot0",
+      "slot1",
+      "slot2",
+      "slot3",
+      "page_prev",
+      "page_label",
+      "page_next",
+      "reserve_a",
+      "reserve_b",
+      "small_note"
+    ],
+    "vote_targets": [
+      "title",
+      "cafe",
+      "help",
+      "slot0",
+      "slot1",
+      "slot2",
+      "slot3",
+      "page_prev",
+      "page_label",
+      "page_next",
+      "peace",
+      "small_note"
+    ],
+    "public_rows": [
+      "title",
+      "cafe",
+      "help",
+      "row0",
+      "row1",
+      "row2",
+      "row3",
+      "footer_left",
+      "footer_right"
+    ],
+    "discussion": [
+      "title",
+      "cafe",
+      "help",
+      "large_timer",
+      "timer_prompt",
+      "footer_left",
+      "footer_right"
+    ]
+  }
+}

@@ -1,0 +1,246 @@
+{
+  "schema_version": "2.0.0",
+  "game_id": "cafe_werewolf",
+  "menu_slot": 4,
+  "title_ja": "閉店後の人狼会",
+  "title_en": "CAFE WEREWOLF",
+  "world": "喫茶「余白」",
+  "ruleset_id": "shared_reserve_two_v2",
+  "supported_players": [
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+  ],
+  "default_players": 3,
+  "one_app": true,
+  "reserve_count": 2,
+  "pool_formula": {
+    "wolf": 1,
+    "seer": 1,
+    "villager": "N",
+    "total": "N+2"
+  },
+  "player_role_counts_fixed": false,
+  "missing_wolf_allowed": true,
+  "missing_seer_allowed": true,
+  "night_target_domain": "other_actual_seat_or_reserve_A_or_reserve_B",
+  "night_result": "seer_only_binary_wolf_or_not_wolf",
+  "night_actions_per_player": 1,
+  "night_dummy_for_non_seer": true,
+  "role_swap": false,
+  "night_attack": false,
+  "elimination_during_game": false,
+  "ids": {
+    "seat_first": 0,
+    "seat_last_max": 9,
+    "reserve_A": 10,
+    "reserve_B": 11,
+    "peace": 12,
+    "none": -1
+  },
+  "mask_type": "uint16_t",
+  "role_capacity": 12,
+  "vote_capacity": 10,
+  "tally_capacity": 13,
+  "timing_by_players": [
+    {
+      "players": 3,
+      "discussion_s": 120,
+      "runoff_s": 60,
+      "pool_size": 5,
+      "deal_count": 20,
+      "wolf_absent_numerator": 2,
+      "wolf_absent_denominator": 5
+    },
+    {
+      "players": 4,
+      "discussion_s": 150,
+      "runoff_s": 60,
+      "pool_size": 6,
+      "deal_count": 30,
+      "wolf_absent_numerator": 2,
+      "wolf_absent_denominator": 6
+    },
+    {
+      "players": 5,
+      "discussion_s": 180,
+      "runoff_s": 60,
+      "pool_size": 7,
+      "deal_count": 42,
+      "wolf_absent_numerator": 2,
+      "wolf_absent_denominator": 7
+    },
+    {
+      "players": 6,
+      "discussion_s": 210,
+      "runoff_s": 60,
+      "pool_size": 8,
+      "deal_count": 56,
+      "wolf_absent_numerator": 2,
+      "wolf_absent_denominator": 8
+    },
+    {
+      "players": 7,
+      "discussion_s": 240,
+      "runoff_s": 90,
+      "pool_size": 9,
+      "deal_count": 72,
+      "wolf_absent_numerator": 2,
+      "wolf_absent_denominator": 9
+    },
+    {
+      "players": 8,
+      "discussion_s": 270,
+      "runoff_s": 90,
+      "pool_size": 10,
+      "deal_count": 90,
+      "wolf_absent_numerator": 2,
+      "wolf_absent_denominator": 10
+    },
+    {
+      "players": 9,
+      "discussion_s": 300,
+      "runoff_s": 90,
+      "pool_size": 11,
+      "deal_count": 110,
+      "wolf_absent_numerator": 2,
+      "wolf_absent_denominator": 11
+    },
+    {
+      "players": 10,
+      "discussion_s": 330,
+      "runoff_s": 90,
+      "pool_size": 12,
+      "deal_count": 132,
+      "wolf_absent_numerator": 2,
+      "wolf_absent_denominator": 12
+    }
+  ],
+  "discussion_override": {
+    "auto": 0,
+    "min": 90,
+    "max": 600,
+    "step": 30
+  },
+  "discussion_extension_s": 60,
+  "max_extensions": 1,
+  "max_runoffs": 1,
+  "vote_rule": "unique_plurality",
+  "self_vote": false,
+  "skip_vote": false,
+  "peace_vote": true,
+  "peace_is_abstention": false,
+  "all_participants_vote_in_runoff": true,
+  "tie_after_runoff": "draw",
+  "outcomes": [
+    "caught_wolf",
+    "wolf_escaped",
+    "peace_correct",
+    "false_accusation",
+    "draw",
+    "aborted"
+  ],
+  "role_symbols": [
+    "wolf",
+    "seer",
+    "villager"
+  ],
+  "hold_before_reveal_ms": 500,
+  "max_visible_ms": 8000,
+  "touch_stale_ms": 200,
+  "ui_tick_ms": 20,
+  "private_idle_pause_ms": 60000,
+  "result_idle_close_ms": 60000,
+  "absolute_game_limit_ms": 2700000,
+  "privacy_hide_normal_max_ms": 120,
+  "privacy_hide_stale_max_ms": 250,
+  "secret_persistence": "ram_only",
+  "reboot_policy": "void_unfinished_game",
+  "cloud_logging": false,
+  "personal_login": false,
+  "ai_required": false,
+  "sound_default": false,
+  "auto_rotation_in_game": false,
+  "nvs_namespace": "ct_wolf",
+  "nvs_key": "meta",
+  "nvs_record_bytes": 20,
+  "nvs_magic": "CTW2",
+  "page_size": 4,
+  "mandatory_brief_pages": 4,
+  "abort_reasons": [
+    "user",
+    "privacy",
+    "hard_limit",
+    "clock_fault",
+    "reboot",
+    "device_fault",
+    "roster_changed"
+  ],
+  "sounds": {
+    "public_tap": {
+      "hz": 1600,
+      "ms": 30
+    },
+    "public_boundary": {
+      "hz": 1200,
+      "ms": 70
+    }
+  },
+  "seat_symbols": [
+    {
+      "id": 0,
+      "label": "1",
+      "shape": "cup"
+    },
+    {
+      "id": 1,
+      "label": "2",
+      "shape": "bean"
+    },
+    {
+      "id": 2,
+      "label": "3",
+      "shape": "spoon"
+    },
+    {
+      "id": 3,
+      "label": "4",
+      "shape": "pot"
+    },
+    {
+      "id": 4,
+      "label": "5",
+      "shape": "cookie"
+    },
+    {
+      "id": 5,
+      "label": "6",
+      "shape": "star"
+    },
+    {
+      "id": 6,
+      "label": "7",
+      "shape": "leaf"
+    },
+    {
+      "id": 7,
+      "label": "8",
+      "shape": "bell"
+    },
+    {
+      "id": 8,
+      "label": "9",
+      "shape": "book"
+    },
+    {
+      "id": 9,
+      "label": "10",
+      "shape": "moon"
+    }
+  ]
+}

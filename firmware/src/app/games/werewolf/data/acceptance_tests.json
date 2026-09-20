@@ -1,0 +1,944 @@
+{
+  "schema_version": "2.0.0",
+  "tests": [
+    {
+      "id": "W2-001",
+      "category": "人数別正常系",
+      "name": "3人で1局完走",
+      "player_counts": [
+        3
+      ],
+      "steps": "3人を選択。役職確認→夜→議論→全員投票→結果。",
+      "expected": "実参加者だけを順に案内。票総数は人数と一致。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-002",
+      "category": "人数別表示",
+      "name": "3人の対象ページ",
+      "player_counts": [
+        3
+      ],
+      "steps": "3人設定で夜・投票・結果を全ページ確認。",
+      "expected": "全席が一度ずつ表示。自分・無効候補が正しく無効。伏せ札/不在票と混同しない。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-003",
+      "category": "人数別決選",
+      "name": "3人で決選経路",
+      "player_counts": [
+        3
+      ],
+      "steps": "テスト専用シナリオで最多同票を作る。全員が再投票。",
+      "expected": "候補以外に投票不可。全員参加。1択でも自動投票なし。再同票は引分。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-004",
+      "category": "人数別正常系",
+      "name": "4人で1局完走",
+      "player_counts": [
+        4
+      ],
+      "steps": "4人を選択。役職確認→夜→議論→全員投票→結果。",
+      "expected": "実参加者だけを順に案内。票総数は人数と一致。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-005",
+      "category": "人数別表示",
+      "name": "4人の対象ページ",
+      "player_counts": [
+        4
+      ],
+      "steps": "4人設定で夜・投票・結果を全ページ確認。",
+      "expected": "全席が一度ずつ表示。自分・無効候補が正しく無効。伏せ札/不在票と混同しない。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-006",
+      "category": "人数別決選",
+      "name": "4人で決選経路",
+      "player_counts": [
+        4
+      ],
+      "steps": "テスト専用シナリオで最多同票を作る。全員が再投票。",
+      "expected": "候補以外に投票不可。全員参加。1択でも自動投票なし。再同票は引分。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-007",
+      "category": "人数別正常系",
+      "name": "5人で1局完走",
+      "player_counts": [
+        5
+      ],
+      "steps": "5人を選択。役職確認→夜→議論→全員投票→結果。",
+      "expected": "実参加者だけを順に案内。票総数は人数と一致。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-008",
+      "category": "人数別表示",
+      "name": "5人の対象ページ",
+      "player_counts": [
+        5
+      ],
+      "steps": "5人設定で夜・投票・結果を全ページ確認。",
+      "expected": "全席が一度ずつ表示。自分・無効候補が正しく無効。伏せ札/不在票と混同しない。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-009",
+      "category": "人数別決選",
+      "name": "5人で決選経路",
+      "player_counts": [
+        5
+      ],
+      "steps": "テスト専用シナリオで最多同票を作る。全員が再投票。",
+      "expected": "候補以外に投票不可。全員参加。1択でも自動投票なし。再同票は引分。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-010",
+      "category": "人数別正常系",
+      "name": "6人で1局完走",
+      "player_counts": [
+        6
+      ],
+      "steps": "6人を選択。役職確認→夜→議論→全員投票→結果。",
+      "expected": "実参加者だけを順に案内。票総数は人数と一致。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-011",
+      "category": "人数別表示",
+      "name": "6人の対象ページ",
+      "player_counts": [
+        6
+      ],
+      "steps": "6人設定で夜・投票・結果を全ページ確認。",
+      "expected": "全席が一度ずつ表示。自分・無効候補が正しく無効。伏せ札/不在票と混同しない。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-012",
+      "category": "人数別決選",
+      "name": "6人で決選経路",
+      "player_counts": [
+        6
+      ],
+      "steps": "テスト専用シナリオで最多同票を作る。全員が再投票。",
+      "expected": "候補以外に投票不可。全員参加。1択でも自動投票なし。再同票は引分。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-013",
+      "category": "人数別正常系",
+      "name": "7人で1局完走",
+      "player_counts": [
+        7
+      ],
+      "steps": "7人を選択。役職確認→夜→議論→全員投票→結果。",
+      "expected": "実参加者だけを順に案内。票総数は人数と一致。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-014",
+      "category": "人数別表示",
+      "name": "7人の対象ページ",
+      "player_counts": [
+        7
+      ],
+      "steps": "7人設定で夜・投票・結果を全ページ確認。",
+      "expected": "全席が一度ずつ表示。自分・無効候補が正しく無効。伏せ札/不在票と混同しない。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-015",
+      "category": "人数別決選",
+      "name": "7人で決選経路",
+      "player_counts": [
+        7
+      ],
+      "steps": "テスト専用シナリオで最多同票を作る。全員が再投票。",
+      "expected": "候補以外に投票不可。全員参加。1択でも自動投票なし。再同票は引分。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-016",
+      "category": "人数別正常系",
+      "name": "8人で1局完走",
+      "player_counts": [
+        8
+      ],
+      "steps": "8人を選択。役職確認→夜→議論→全員投票→結果。",
+      "expected": "実参加者だけを順に案内。票総数は人数と一致。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-017",
+      "category": "人数別表示",
+      "name": "8人の対象ページ",
+      "player_counts": [
+        8
+      ],
+      "steps": "8人設定で夜・投票・結果を全ページ確認。",
+      "expected": "全席が一度ずつ表示。自分・無効候補が正しく無効。伏せ札/不在票と混同しない。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-018",
+      "category": "人数別決選",
+      "name": "8人で決選経路",
+      "player_counts": [
+        8
+      ],
+      "steps": "テスト専用シナリオで最多同票を作る。全員が再投票。",
+      "expected": "候補以外に投票不可。全員参加。1択でも自動投票なし。再同票は引分。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-019",
+      "category": "人数別正常系",
+      "name": "9人で1局完走",
+      "player_counts": [
+        9
+      ],
+      "steps": "9人を選択。役職確認→夜→議論→全員投票→結果。",
+      "expected": "実参加者だけを順に案内。票総数は人数と一致。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-020",
+      "category": "人数別表示",
+      "name": "9人の対象ページ",
+      "player_counts": [
+        9
+      ],
+      "steps": "9人設定で夜・投票・結果を全ページ確認。",
+      "expected": "全席が一度ずつ表示。自分・無効候補が正しく無効。伏せ札/不在票と混同しない。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-021",
+      "category": "人数別決選",
+      "name": "9人で決選経路",
+      "player_counts": [
+        9
+      ],
+      "steps": "テスト専用シナリオで最多同票を作る。全員が再投票。",
+      "expected": "候補以外に投票不可。全員参加。1択でも自動投票なし。再同票は引分。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-022",
+      "category": "人数別正常系",
+      "name": "10人で1局完走",
+      "player_counts": [
+        10
+      ],
+      "steps": "10人を選択。役職確認→夜→議論→全員投票→結果。",
+      "expected": "実参加者だけを順に案内。票総数は人数と一致。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-023",
+      "category": "人数別表示",
+      "name": "10人の対象ページ",
+      "player_counts": [
+        10
+      ],
+      "steps": "10人設定で夜・投票・結果を全ページ確認。",
+      "expected": "全席が一度ずつ表示。自分・無効候補が正しく無効。伏せ札/不在票と混同しない。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-024",
+      "category": "人数別決選",
+      "name": "10人で決選経路",
+      "player_counts": [
+        10
+      ],
+      "steps": "テスト専用シナリオで最多同票を作る。全員が再投票。",
+      "expected": "候補以外に投票不可。全員参加。1択でも自動投票なし。再同票は引分。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-025",
+      "category": "導入・移行",
+      "name": "単一アプリ",
+      "player_counts": "all",
+      "steps": "ゲームメニューを確認。",
+      "expected": "第4枠は一つだけ。同じgame_id。旧5人専用アプリを残さない。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-026",
+      "category": "導入・移行",
+      "name": "初期人数",
+      "player_counts": "all",
+      "steps": "設定なしで初回起動。",
+      "expected": "3人が初期値。増減で3〜10の8通りだけ選べる。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-027",
+      "category": "導入・移行",
+      "name": "下限",
+      "player_counts": "all",
+      "steps": "人数を3から減らす/不正値2をコアへ試験投入。",
+      "expected": "2人では開始不可。黙って3人へ変換しない。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-028",
+      "category": "導入・移行",
+      "name": "上限",
+      "player_counts": "all",
+      "steps": "人数を10から増やす/11をコアへ試験投入。",
+      "expected": "11人は対象外と説明し開始不可。10人へ切り捨てない。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-029",
+      "category": "導入・移行",
+      "name": "旧設定",
+      "player_counts": "all",
+      "steps": "有効CRCのCTW1を用意し起動。",
+      "expected": "人数5、公開音・時間・flavorを移行し、新ルール確認を表示。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-030",
+      "category": "導入・移行",
+      "name": "旧局未完",
+      "player_counts": "all",
+      "steps": "CTW1 armed=1から更新。",
+      "expected": "前の局は無効。役職/票を復元せずCTW2へ。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-031",
+      "category": "導入・移行",
+      "name": "破損設定",
+      "player_counts": "all",
+      "steps": "CRC不正、未知版、長さ不正で起動。",
+      "expected": "全Flash初期化せず新規ゲーム停止。管理者確認。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-032",
+      "category": "導入・移行",
+      "name": "保存失敗",
+      "player_counts": "all",
+      "steps": "開始マーカー保存/読戻しを失敗させる。",
+      "expected": "役職を配る前に停止し、秘密を表示しない。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-033",
+      "category": "導入・移行",
+      "name": "人数再設定",
+      "player_counts": "all",
+      "steps": "3人終了→10人→4人に変更。",
+      "expected": "全配列・候補mask・page・投票数・タイマーを新人数へ。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-034",
+      "category": "導入・移行",
+      "name": "人数固定",
+      "player_counts": "all",
+      "steps": "役職配布後に人数設定変更を試す。",
+      "expected": "再配布せず拒否。変更するなら無効終了。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-035",
+      "category": "導入・移行",
+      "name": "任意の時間",
+      "player_counts": "all",
+      "steps": "自動、90、600秒を試す。",
+      "expected": "自動は人数別。固定時間は90〜600の30秒刻み。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-036",
+      "category": "導入・移行",
+      "name": "ルール確認",
+      "player_counts": "all",
+      "steps": "開始前4ページを表示。",
+      "expected": "役職総数、伏せ札、不在票、投票と秘密の約束が正しい。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-037",
+      "category": "役職・夜",
+      "name": "伏せ札2枚",
+      "player_counts": "all",
+      "steps": "3人の全20配置をテストビルドで表示。",
+      "expected": "全体に人狼1/占い師1/村人3。実席に0/1人狼と0/1占い師があり得る。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-038",
+      "category": "役職・夜",
+      "name": "追加人なし",
+      "player_counts": "all",
+      "steps": "全員の夜を順送り。",
+      "expected": "伏せ札に受取り/発言/投票の番を作らない。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-039",
+      "category": "役職・夜",
+      "name": "3人陰性",
+      "player_counts": "all",
+      "steps": "1番占い師が3番の陰性を見た例。",
+      "expected": "2番が確定人狼という自動案内を出さない。伏せ札の可能性を残す。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-040",
+      "category": "役職・夜",
+      "name": "伏せ札陽性",
+      "player_counts": "all",
+      "steps": "占い師が人狼入り伏せ札を選ぶ。",
+      "expected": "選んだ1枚の陽性だけ表示。人狼の参加者はいない。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-041",
+      "category": "役職・夜",
+      "name": "伏せ札陰性",
+      "player_counts": "all",
+      "steps": "占い師が非人狼の伏せ札を選ぶ。",
+      "expected": "他方の伏せ札・全席の役職は開示しない。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-042",
+      "category": "役職・夜",
+      "name": "参加者陽性",
+      "player_counts": "all",
+      "steps": "占い師が人狼の人を選ぶ。",
+      "expected": "陽性。真の人狼が分かっても自動勝利しない。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-043",
+      "category": "役職・夜",
+      "name": "追加占い禁止",
+      "player_counts": "all",
+      "steps": "結果確認後に対象変更/二度目の占いを試す。",
+      "expected": "対象固定。別の情報を得られない。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-044",
+      "category": "役職・夜",
+      "name": "占い師不在",
+      "player_counts": "all",
+      "steps": "占い師が伏せ札の局を完走。",
+      "expected": "全員に追加情報なし。結果の占い欄は不在と明記。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-045",
+      "category": "役職・夜",
+      "name": "ダミー選択",
+      "player_counts": "all",
+      "steps": "村人/人狼が人・A・Bを選ぶ。",
+      "expected": "いずれも追加情報なし。役職や票は変わらない。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-046",
+      "category": "役職・夜",
+      "name": "秘密の対象",
+      "player_counts": "all",
+      "steps": "前の人がAを選び、次の人へ。",
+      "expected": "対象ハイライト、ページ、確認文を引き継がない。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-047",
+      "category": "役職・夜",
+      "name": "テスト経路非公開",
+      "player_counts": "all",
+      "steps": "製品ビルドの画面/通信/コマンド確認。",
+      "expected": "deal_indexや任意配役を製品で選べない。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-048",
+      "category": "役職・夜",
+      "name": "オフライン乱数",
+      "player_counts": "all",
+      "steps": "電源投入からWi-Fi未接続で開始。",
+      "expected": "記録済みの正規エントロピー経路で配布。失敗時は停止。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-049",
+      "category": "投票・判定",
+      "name": "不在票の意味",
+      "player_counts": "all",
+      "steps": "「人狼はいない」を選択。",
+      "expected": "棄権扱いではなく有効票。専用確認文。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-050",
+      "category": "投票・判定",
+      "name": "最多票",
+      "player_counts": "all",
+      "steps": "人以外を含む過半数未満の単独最多を作る。",
+      "expected": "絶対多数条件を後付けせずその候補で判定。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-051",
+      "category": "投票・判定",
+      "name": "村勝利",
+      "player_counts": "all",
+      "steps": "人狼がいて、その人を選ぶ。",
+      "expected": "占い師/村人の勝ち。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-052",
+      "category": "投票・判定",
+      "name": "人狼勝利",
+      "player_counts": "all",
+      "steps": "人狼がいて、別の人を選ぶ。",
+      "expected": "人狼の勝ち。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-053",
+      "category": "投票・判定",
+      "name": "不在誤認",
+      "player_counts": "all",
+      "steps": "人狼がいて不在票が単独最多。",
+      "expected": "人狼の勝ち。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-054",
+      "category": "投票・判定",
+      "name": "平和正解",
+      "player_counts": "all",
+      "steps": "人狼不在で不在票が単独最多。",
+      "expected": "全参加者の勝ち。AI/伏せ札が勝者にならない。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-055",
+      "category": "投票・判定",
+      "name": "全員不正解",
+      "player_counts": "all",
+      "steps": "人狼不在で人を選ぶ。",
+      "expected": "全員不正解。存在しない人狼の勝利としない。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-056",
+      "category": "投票・判定",
+      "name": "最終引分",
+      "player_counts": "all",
+      "steps": "決選で再同票を作る。",
+      "expected": "人狼の有無に関係なく引分。再々投票/抽選なし。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-057",
+      "category": "投票・判定",
+      "name": "不在含む決選",
+      "player_counts": "all",
+      "steps": "初回で人と不在票が同数最多。",
+      "expected": "不在票が候補に残り選べる。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-058",
+      "category": "投票・判定",
+      "name": "不在対象外",
+      "player_counts": "all",
+      "steps": "初回で不在票が最多ではない。",
+      "expected": "決選の不在ボタンは無効。後から復活しない。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-059",
+      "category": "投票・判定",
+      "name": "本人候補",
+      "player_counts": "all",
+      "steps": "決選候補になった本人が投票。",
+      "expected": "自分に入れられない。残る1択も自分で確認。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-060",
+      "category": "投票・判定",
+      "name": "票数未満",
+      "player_counts": "all",
+      "steps": "最後の人がまだ投票していない。",
+      "expected": "集計/候補/勝者/役職を一切出さない。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-061",
+      "category": "投票・判定",
+      "name": "最後の人",
+      "player_counts": "all",
+      "steps": "最後の票を確定。",
+      "expected": "中立の中央へ戻す画面。単独で答えが出ない。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-062",
+      "category": "投票・判定",
+      "name": "二重タップ",
+      "player_counts": "all",
+      "steps": "確定ボタンを連打、古いイベントも投入。",
+      "expected": "1票だけ、古いrevision/epochを拒否。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-063",
+      "category": "投票・判定",
+      "name": "ページ戻り",
+      "player_counts": "all",
+      "steps": "仮選択→選び直す→別ページ選択。",
+      "expected": "確定は最終確認した1候補のみ。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-064",
+      "category": "投票・判定",
+      "name": "結果一覧",
+      "player_counts": "all",
+      "steps": "10人+伏せ札2枚の答え合わせ。",
+      "expected": "実席は4行ページ、伏せ札別ページ。未使用要素は表示しない。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-065",
+      "category": "投票・判定",
+      "name": "初回票保持",
+      "player_counts": "all",
+      "steps": "決選を完了し詳細を見る。",
+      "expected": "初回票/決選票を別表示。合算しない。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-066",
+      "category": "秘密画面",
+      "name": "指を離す",
+      "player_counts": "all",
+      "steps": "役職表示中に指を離す。",
+      "expected": "120ms以内を実測目標に暗転/消去。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-067",
+      "category": "秘密画面",
+      "name": "枠外",
+      "player_counts": "all",
+      "steps": "押したまま枠外へ移動。",
+      "expected": "直ちに閉じる。戻しただけで再公開しない。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-068",
+      "category": "秘密画面",
+      "name": "最大表示",
+      "player_counts": "all",
+      "steps": "押しっぱなし8.5秒。",
+      "expected": "表示終了。再表示には一度離す。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-069",
+      "category": "秘密画面",
+      "name": "古い入力",
+      "player_counts": "all",
+      "steps": "GT911の正常更新を止める。",
+      "expected": "最終正常サンプルから250ms以内を実測目標に消去。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-070",
+      "category": "秘密画面",
+      "name": "古い完了通知",
+      "player_counts": "all",
+      "steps": "別epochのフレーム完了を後から到着。",
+      "expected": "バックライトを戻さない。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-071",
+      "category": "秘密画面",
+      "name": "全バッファ",
+      "player_counts": "all",
+      "steps": "複数RGBバッファの切替を記録。",
+      "expected": "中立フレームの完成前にバックライト復帰なし。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-072",
+      "category": "秘密画面",
+      "name": "多点",
+      "player_counts": "all",
+      "steps": "二点タッチやゴースト入力。",
+      "expected": "検出できた多点は閉じる。検出限界を記録。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-073",
+      "category": "秘密画面",
+      "name": "中断復帰",
+      "player_counts": "all",
+      "steps": "役職/結果/票確認中にカフェ→戻る。",
+      "expected": "同じ本人確認後カバー。押し直さない限り秘密なし。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-074",
+      "category": "秘密画面",
+      "name": "受取り長押し",
+      "player_counts": "all",
+      "steps": "受取りで指を押したまま次画面へ。",
+      "expected": "自動で役職表示しない。離す→新規押下必須。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-075",
+      "category": "秘密画面",
+      "name": "画面破棄",
+      "player_counts": "all",
+      "steps": "秘密表示中に画面削除/アプリ切替。",
+      "expected": "即カバー。削除済みオブジェクト参照なし。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-076",
+      "category": "秘密画面",
+      "name": "音・輝度",
+      "player_counts": "all",
+      "steps": "全役職の夜を比較。",
+      "expected": "全員同じ明るさと流れ、秘密操作は無音。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-077",
+      "category": "秘密画面",
+      "name": "画面覗き見",
+      "player_counts": "all",
+      "steps": "斜め/手渡しで実地確認。",
+      "expected": "隠して渡すUIに加えて人の協力が必要と案内。完全防止は宣言しない。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-078",
+      "category": "中断・電源",
+      "name": "議論停止",
+      "player_counts": "all",
+      "steps": "議論中にカフェへ。",
+      "expected": "残時間を凍結。戻って再開。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-079",
+      "category": "中断・電源",
+      "name": "延長",
+      "player_counts": "all",
+      "steps": "初回の延長を2回要求。",
+      "expected": "1回だけ+60秒、決選では延長不可。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-080",
+      "category": "中断・電源",
+      "name": "期限と操作",
+      "player_counts": "all",
+      "steps": "時間満了と投票ボタン押下を同時に。",
+      "expected": "tickで期限処理後に古いコマンド拒否。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-081",
+      "category": "中断・電源",
+      "name": "無操作",
+      "player_counts": "all",
+      "steps": "秘密画面で60秒無操作。",
+      "expected": "覆って一時停止。勝手に次の人へ進めない。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-082",
+      "category": "中断・電源",
+      "name": "絶対期限",
+      "player_counts": "all",
+      "steps": "HOME中のpauseも含め45分。",
+      "expected": "役職を見せず無効終了。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-083",
+      "category": "中断・電源",
+      "name": "再起動",
+      "player_counts": "all",
+      "steps": "各フェーズから電源再投入。",
+      "expected": "中立起動、未完局無効。新しい配役を同局として続けない。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-084",
+      "category": "中断・電源",
+      "name": "時計逆行",
+      "player_counts": "all",
+      "steps": "単調時刻を後退させるテスト。",
+      "expected": "秘密消去してClockFault無効。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-085",
+      "category": "中断・電源",
+      "name": "人数離脱",
+      "player_counts": "all",
+      "steps": "一人退出/一人追加/席替え。",
+      "expected": "全員の同意で無効終了しロビーで人数再指定。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-086",
+      "category": "中断・電源",
+      "name": "結果放置",
+      "player_counts": "all",
+      "steps": "結果画面で60秒無操作。",
+      "expected": "RAMコピーと画面を片付けHOME。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-087",
+      "category": "中断・電源",
+      "name": "保存警告",
+      "player_counts": "all",
+      "steps": "完了時のarmed=0保存に失敗。",
+      "expected": "勝敗を改変せず警告。再起動案内は安全側。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-088",
+      "category": "中断・電源",
+      "name": "充電",
+      "player_counts": "all",
+      "steps": "Bケース/803450で手渡し試験。",
+      "expected": "電池で完走。USB引っ掛かりや端子負荷を避ける。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-089",
+      "category": "既存機能・品質",
+      "name": "カフェ+1",
+      "player_counts": "all",
+      "steps": "秘密→カフェ→2回+1→再開。",
+      "expected": "既存方式で2加算。席/役職を紐付けない。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-090",
+      "category": "既存機能・品質",
+      "name": "他3ゲーム",
+      "player_counts": "all",
+      "steps": "更新前後で各既存ゲームを起動。",
+      "expected": "ID/個人履歴/保存/画面が退行しない。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-091",
+      "category": "既存機能・品質",
+      "name": "Google断",
+      "player_counts": "all",
+      "steps": "Wi-FiとGoogle経路を切る。",
+      "expected": "人狼が全フェーズ完走。新しいAPI依存なし。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-092",
+      "category": "既存機能・品質",
+      "name": "秘密ログ",
+      "player_counts": "all",
+      "steps": "UART/ネット/SD/NVSを開発者検査。",
+      "expected": "役職/票/配布index/seed/画面画像を保存送信しない。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-093",
+      "category": "既存機能・品質",
+      "name": "個人情報",
+      "player_counts": "all",
+      "steps": "DUELログイン中から人狼へ。",
+      "expected": "保存・通常ログアウトを経由。参加者を自動登録しない。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-094",
+      "category": "既存機能・品質",
+      "name": "フォント",
+      "player_counts": "all",
+      "steps": "全文と置換後10番/伏せ札/不在を描画。",
+      "expected": "欠字・円外・重なりがない。必要ならページ化。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-095",
+      "category": "既存機能・品質",
+      "name": "メモリー",
+      "player_counts": "all",
+      "steps": "各人数で連続再開/終了100局。",
+      "expected": "リーク/破損/他局の残存表示なし。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-096",
+      "category": "既存機能・品質",
+      "name": "改版文言",
+      "player_counts": "all",
+      "steps": "画面検索と操作で旧5人限定表示を探す。",
+      "expected": "有効ルールに旧条件・旧最多同票の制限なし。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-097",
+      "category": "既存機能・品質",
+      "name": "3人の遊び心地",
+      "player_counts": "all",
+      "steps": "別の2組で各6局以上。",
+      "expected": "人狼あり/不在、占い師あり/不在を経験。説明の理解と再プレイ意向を記録。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-098",
+      "category": "既存機能・品質",
+      "name": "4人の遊び心地",
+      "player_counts": "all",
+      "steps": "4人で少なくとも6局。",
+      "expected": "票/平和宣言/決選が理解される。少数試験を勝率保証にしない。",
+      "status": "NOT_RUN_ON_DEVICE"
+    },
+    {
+      "id": "W2-099",
+      "category": "既存機能・品質",
+      "name": "多人数の試走",
+      "player_counts": "all",
+      "steps": "5〜10の各人数を操作役で試走し、人が集まれば実プレイ。",
+      "expected": "操作試験と実人数の楽しさ評価を区別する。",
+      "status": "NOT_RUN_ON_DEVICE"
+    }
+  ]
+}

@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CAFE DETECTIVE — 喫茶「余白」・脚本体験版</title>
+<style>
+:root{font-family:system-ui,-apple-system,"Yu Gothic",sans-serif;color:#ede5d9;background:#202927}*{box-sizing:border-box}body{margin:0;padding:28px 16px;display:flex;align-items:center;flex-direction:column;gap:18px}h1{font-size:23px;margin:0;letter-spacing:.08em}.note{max-width:680px;font-size:14px;line-height:1.8;color:#cbc8bd;text-align:center;margin:0}#holder{position:relative;flex:none}#dial{width:480px;height:480px;position:absolute;left:0;top:0;transform-origin:top left;border-radius:50%;overflow:hidden;background:#f4eee4;color:#283e36;box-shadow:0 12px 60px #0005,inset 0 0 0 9px #bcc4b9}#screen{position:absolute;inset:0}button{font:inherit;cursor:pointer;border:1px solid #738778;background:#fffdf6;color:#243b31;border-radius:15px;min-height:48px}button:focus-visible{outline:3px solid #b66c36;outline-offset:3px}button:disabled{opacity:.4;cursor:default}.primary{background:#304f40;color:#fffdf7;border-color:#304f40}.small{font-size:16px}.header{position:absolute;left:86px;top:43px;width:308px;text-align:center;font-size:15px;letter-spacing:.08em;white-space:pre-line}.avatar{position:absolute;left:207px;top:93px;width:66px;height:56px;display:flex;align-items:center;justify-content:center;background:#e2d8bf;border-radius:30% 30% 43% 43%;font-size:13px;border:2px solid #5b6f60;font-weight:700}.avatar[data-id="LATTE"]{border-radius:15px;background:#c6d6c7}.avatar[data-id="MOCHA"]{background:#ead1ac;border-radius:9px}.avatar[data-id="CHAI"]{background:repeating-linear-gradient(0deg,#d4dde0,#d4dde0 11px,#a8b9be 12px,#d4dde0 14px)}.avatar[data-id="COCOA"]{background:#d8cddf;transform:rotate(-3deg)}.name{position:absolute;top:120px;left:80px;width:125px;text-align:right;font-size:16px}.body{position:absolute;left:90px;top:162px;width:300px;height:182px;font-size:22px;line-height:28px;white-space:pre-line;overflow:auto;scrollbar-width:thin}.footer{position:absolute;left:100px;top:438px;width:280px;text-align:center;font-size:12px;color:#627065}.hint{position:absolute;left:178px;top:373px;width:124px;height:48px;font-size:17px}.toast{min-height:20px;max-width:680px;text-align:center;font-size:14px;color:#f0d2a3}#toolbar{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;max-width:700px}#toolbar button{padding:0 17px;background:#34463f;color:#f5eee0;border-color:#819487;font-size:14px}.credit{max-width:680px;text-align:center;color:#acb7ac;font-size:12px;line-height:1.8}
+</style>
+<h1>CAFE DETECTIVE</h1><p class="note">喫茶「余白」— 第一章「つづきは、ここで。」<br>脚本・操作のPC参考版です。Jev・Google・実機の接続はありません。</p>
+<div id="holder"><div id="dial"><div id="screen"></div></div></div>
+<div id="toolbar"><button id="home-btn">作品一覧へ</button><button id="coffee-btn">コーヒー ＋1（デモ）</button><button id="hint-btn">ヒント</button><button id="giveup-btn">答えを見て物語を続ける</button></div>
+<div id="toast" class="toast" role="status"></div><p class="credit">記号の人物表示は代替UIです。完成美術・実機フォントの見え方を保証するものではありません。<br>正解と結末を含むオフライン版です。個人戦績は保存しません。再読は復習として扱います。</p>
+<script>
+/* Original reference domain core. Pure JS: usable in Node tests or GAS V8.
+ * Does NOT provide network authentication, durable transactions or a board driver. */
+var DetectiveCore = (function () {
+  'use strict';
+  class DomainError extends Error { constructor(code) { super(code); this.code = code; } }
+  const fail = c => { throw new DomainError(c); };
+  const copy = x => JSON.parse(JSON.stringify(x));
+  function require_(ok, code) { if (!ok) fail(code); }
+  function canonical(x) {
+    if (x === null || typeof x === 'boolean' || typeof x === 'string') return JSON.stringify(x);
+    if (typeof x === 'number') { require_(Number.isFinite(x), 'NON_FINITE'); return JSON.stringify(x); }
+    if (Array.isArray(x)) return '[' + x.map(canonical).join(',') + ']';
+    require_(typeof x === 'object' && (Object.getPrototypeOf(x) === Object.prototype || Object.getPrototypeOf(x) === null), 'BAD_OBJECT');
+    return '{' + Object.keys(x).sort().map(k => JSON.stringify(k) + ':' + canonical(x[k])).join(',') + '}';
+  }
+  function evalExpr(e, world, depth = 0) {
+    require_(e && typeof e === 'object' && depth <= 32, 'BAD_EXPR');
+    if (Object.prototype.hasOwnProperty.call(e, 'lit')) return e.lit;
+    if (Object.prototype.hasOwnProperty.call(e, 'var')) { require_(Object.prototype.hasOwnProperty.call(world, e.var), 'BAD_VAR'); return world[e.var]; }
+    const rec = v => evalExpr(v, world, depth + 1);
+    switch (e.op) {
+      case 'eq': return rec(e.a) === rec(e.b);
+      case 'lt': { const a=rec(e.a), b=rec(e.b); require_(typeof a==='number'&&typeof b==='number', 'BAD_LT'); return a < b; }
+      case 'not': { const b=rec(e.x); require_(typeof b==='boolean','BAD_BOOL'); return !b; }
+      case 'and': require_(Array.isArray(e.xs)&&e.xs.length>0,'BAD_AND'); return e.xs.every(v => { const b=rec(v); require_(typeof b==='boolean','BAD_BOOL'); return b; });
+      case 'exactly_false': require_(Array.isArray(e.xs)&&Number.isInteger(e.n)&&e.n>=0,'BAD_COUNT'); return e.xs.filter(v=>{const b=rec(v);require_(typeof b==='boolean','BAD_BOOL');return !b;}).length === e.n;
+      default: fail('UNKNOWN_OP');
+    }
+  }
+  function enumerate(spec) {
+    const keys = Object.keys(spec.domains); let total = 1;
+    for (const k of keys) { const d=spec.domains[k]; require_(Array.isArray(d)&&d.length>0&&new Set(d).size===d.length,'BAD_DOMAIN'); total*=d.length; }
+    require_(total<=100000,'DOMAIN_TOO_LARGE');
+    const out=[];
+    function walk(i,w) {
+      if(i===keys.length) {
+        const legal=spec.all_different.every(group => new Set(group.map(k => {require_(k in w,'BAD_VAR');return w[k];})).size===group.length);
+        if(legal) out.push(copy(w)); return;
+      }
+      for(const v of spec.domains[keys[i]]) {w[keys[i]]=v;walk(i+1,w);}
+    }
+    walk(0,{}); return {raw_count:total,worlds:out};
+  }
+  function answerFor(spec,w) {
+    if(spec.answer.kind==='variable') {require_(spec.answer.var in w,'BAD_VAR');return w[spec.answer.var];}
+    require_(spec.answer.kind==='owner_of_value','BAD_ANSWER_KIND');
+    const target=evalExpr(spec.answer.target,w);
+    const owners=Object.entries(spec.answer.vars).filter(([id,k])=>w[k]===target).map(([id])=>id);
+    require_(owners.length===1,'BAD_OWNER');return owners[0];
+  }
+  function solve(ep, omitClue = null) {
+    const spec=ep.private.solver, all=enumerate(spec), cs=spec.constraints.filter(c=>c.clue_id!==omitClue);
+    const solutions=all.worlds.filter(w=>cs.every(c=>evalExpr(c.expr,w)===true));
+    return {raw_count:all.raw_count,legal_count:all.worlds.length,solutions,answer_ids:[...new Set(solutions.map(w=>answerFor(spec,w)))].sort()};
+  }
+  function publicCase(ep) {
+    const p=ep.public;
+    // Allowlist, not deletion of a few known secret fields.
+    return copy({case_id:ep.case_id,question_version:ep.question_version,order:ep.order,
+      title:p.title,short_title:p.short_title,chapter:p.chapter,difficulty:p.difficulty,estimated_minutes:p.estimated_minutes,
+      intro:p.intro,premises:p.premises,question:p.question,options:p.options,clues:p.clues,ambient:p.ambient,menu_teaser:p.menu_teaser});
+  }
+  function modelRequest(ep, model) {
+    require_(typeof model==='string'&&model.length>0,'BAD_MODEL');
+    const p=publicCase(ep);
+    return {
+      model,
+      state:{game:'cafe_detective',language:'ja-JP',title:p.title,
+        intro:p.intro.map(x=>({speaker:x.speaker,text:x.text})),
+        rules:p.premises.map(x=>x.text),
+        evidence:p.clues.map(x=>({label:x.label,speaker:x.speaker,pages:x.pages.map(y=>y.text),summary:x.summary})),
+        question:p.question},
+      questions:{answer:{type:'choice',
+        instructions:'Solve the short fictional mystery using ONLY the supplied rules and evidence. Select the single character who satisfies the conditions. Do not infer guilt from names, personality, tone, or previous stories. Some statements may be false ONLY when the stated puzzle rule allows it. Ignore motives revealed after the solution; they are not part of this question.',
+        criteria:Object.fromEntries(p.options.map(o=>[o.id,o.label+' is the character asked for in the question.']))}}
+    };
+  }
+  function normalizePrediction(raw, ids) {
+    const a=raw && raw.answers && raw.answers.answer;
+    require_(a&&a.type==='choice'&&typeof raw.model==='string','PROVIDER_INVALID');
+    require_(a.probabilities&&typeof a.probabilities==='object'&&!Array.isArray(a.probabilities),'PROVIDER_INVALID');
+    require_(canonical(Object.keys(a.probabilities).sort())===canonical(ids.slice().sort()),'PROVIDER_INVALID');
+    require_(ids.includes(a.choice),'PROVIDER_INVALID');
+    let sum=0;for(const id of ids) {const p=a.probabilities[id];require_(typeof p==='number'&&Number.isFinite(p)&&p>=0&&p<=1,'PROVIDER_INVALID');sum+=p;}
+    require_(Math.abs(sum-1)<=0.001 && sum>0,'PROVIDER_INVALID');
+    require_(typeof a.confidence==='number'&&Number.isFinite(a.confidence)&&a.confidence>=0&&a.confidence<=1,'PROVIDER_INVALID');
+    const probs=Object.fromEntries(ids.map(id=>[id,a.probabilities[id]/sum]));
+    require_(Math.max(...Object.values(probs))-probs[a.choice]<=1e-6,'PROVIDER_INVALID');
+    const usage={input_tokens:null,output_tokens:null};
+    for(const k of Object.keys(usage)) {const n=raw.usage && raw.usage[k];if(n!==undefined){require_(Number.isInteger(n)&&n>=0,'PROVIDER_INVALID');usage[k]=n;}}
+    return {choice:a.choice,probabilities:probs,confidence:a.confidence,model:raw.model,usage};
+  }
+  function begin(ep, meta) {
+    require_(['jev','solo'].includes(meta.mode),'BAD_MODE');
+    return {attempt_id:meta.attempt_id,actor_id:meta.actor_id,device_id:meta.device_id,case_id:ep.case_id,question_version:ep.question_version,
+      public_hash:meta.public_hash,phase:'investigating',paused:false,revision:0,seen_ids:[],hint_level:0,
+      practice:Boolean(meta.practice),mode_requested:meta.mode,mode_effective:null,prediction:null,
+      generation:0,lease_until_ms:null,commit_hash:null,nonce_hex:null,prepared_at_ms:null,
+      started_at_ms:meta.now_ms,expires_at_ms:meta.now_ms+86400000,result:null};
+  }
+  function check(a,now){require_(!['resolved','abandoned','expired'].includes(a.phase),'ATTEMPT_CLOSED');require_(now<a.expires_at_ms,'ATTEMPT_EXPIRED');}
+  function progress(a,ep,ids,now) {
+    check(a,now);require_(!a.paused,'ATTEMPT_PAUSED');
+    const valid=ep.public.clues.map(c=>c.id);require_(Array.isArray(ids)&&ids.every(id=>valid.includes(id)),'BAD_EVIDENCE_ID');
+    const n=copy(a);n.seen_ids=[...new Set([...a.seen_ids,...ids])].sort();n.revision++;return n;
+  }
+  function hint(a,level,now) {
+    check(a,now);require_(!a.paused,'ATTEMPT_PAUSED');require_([1,2].includes(level),'BAD_HINT');
+    require_(level<=a.hint_level+1,'HINT_ORDER');const n=copy(a);n.hint_level=Math.max(a.hint_level,level);n.revision++;return n;
+  }
+  function prepare(a,ep,now) {
+    check(a,now);require_(!a.paused,'ATTEMPT_PAUSED');
+    if(['ready','preparing'].includes(a.phase)) return copy(a);
+    require_(a.phase==='investigating','BAD_PHASE');
+    require_(ep.public.clues.every(c=>a.seen_ids.includes(c.id)),'EVIDENCE_REQUIRED');
+    const n=copy(a);n.revision++;n.generation++;
+    if(n.mode_requested==='solo') {n.phase='ready';n.mode_effective='solo';n.prepared_at_ms=now;}
+    else {n.phase='preparing';n.lease_until_ms=now+20000;}
+    return n;
+  }
+  function commit(a,prediction,generation,now,nonce,hashFn) {
+    if(a.phase!=='preparing'||a.generation!==generation||now>=a.lease_until_ms||now>=a.expires_at_ms) return {state:copy(a),applied:false};
+    require_(/^[a-f0-9]{64}$/.test(nonce),'BAD_NONCE');
+    const n=copy(a);n.phase='ready';n.mode_effective='jev';n.prediction=copy(prediction);n.prepared_at_ms=now;n.nonce_hex=nonce;n.revision++;
+    n.commit_payload=commitText(n);n.commit_hash=hashFn(n.commit_payload);return {state:n,applied:true};
+  }
+  function commitText(a) {
+    require_(a.prediction&&a.nonce_hex,'COMMIT_NOT_READY');
+    // ASCII IDs + canonical UTF-8 JSON, one single LF separator, no trailing LF.
+    return 'CAFE_DETECTIVE_COMMIT_V1\n'+canonical({attempt_id:a.attempt_id,case_id:a.case_id,question_version:a.question_version,
+      public_hash:a.public_hash,generation:a.generation,model:a.prediction.model,choice:a.prediction.choice,
+      probabilities:a.prediction.probabilities,confidence:a.prediction.confidence,nonce_hex:a.nonce_hex});
+  }
+  function fallback(a,now,reason) {
+    check(a,now);require_(['investigating','preparing','ready'].includes(a.phase),'BAD_PHASE');
+    if(a.phase==='ready'&&a.mode_effective==='jev')fail('COMMIT_FROZEN');
+    const n=copy(a);n.generation++;n.phase='ready';n.mode_effective='solo';n.prediction=null;n.prepared_at_ms=now;n.commit_hash=null;n.nonce_hex=null;n.fallback_reason=reason;n.revision++;return n;
+  }
+  function outcome(ep,chosen,pred,ctx) {
+    require_(chosen===null||ep.public.options.some(o=>o.id===chosen),'BAD_CHOICE');
+    const correct=chosen===ep.private.answer_id;
+    const aiCorrect=pred ? pred.choice===ep.private.answer_id : null;
+    let comparison='not_compared';
+    if(pred && chosen!==null && !ctx.practice && ctx.hint_level===0) {
+      comparison=correct?(aiCorrect?'both_correct':'human_win'):(aiCorrect?'ai_win':'both_incorrect');
+    }
+    return {human_choice:chosen,correct_answer:ep.private.answer_id,human_correct:correct,ai_correct:aiCorrect,
+      comparison,points:correct?(ctx.hint_level?1:2):0,assisted:ctx.hint_level>0,practice:ctx.practice,gave_up:chosen===null};
+  }
+  function resolve(a,ep,chosen,now) {
+    if(a.phase==='resolved'){require_(a.result.human_choice===chosen,'ANSWER_ALREADY_LOCKED');return copy(a);}
+    check(a,now);require_(!a.paused,'ATTEMPT_PAUSED');
+    if(chosen!==null){require_(a.phase==='ready','NOT_READY');require_(ep.public.clues.every(c=>a.seen_ids.includes(c.id)),'EVIDENCE_REQUIRED');}
+    const n=copy(a);n.result=outcome(ep,chosen,a.prediction,{practice:a.practice,hint_level:a.hint_level});
+    n.phase='resolved';n.resolved_at_ms=now;n.revision++;n.generation++;return n;
+  }
+  function pause(a,now) {check(a,now);const n=copy(a);n.paused=true;n.revision++;return n;}
+  function resume(a,now) {check(a,now);const n=copy(a);n.paused=false;n.revision++;return n;}
+  function abandon(a,now) {if(a.phase==='abandoned')return copy(a);check(a,now);const n=copy(a);n.phase='abandoned';n.generation++;n.revision++;return n;}
+  function publicAttempt(a) {
+    const out={attempt_id:a.attempt_id,case_id:a.case_id,question_version:a.question_version,public_hash:a.public_hash,phase:a.phase,paused:a.paused,
+      revision:a.revision,seen_ids:a.seen_ids,hint_level:a.hint_level,practice:a.practice,mode_requested:a.mode_requested,mode_effective:a.mode_effective,
+      commit_hash:a.commit_hash,expires_at_ms:a.expires_at_ms};
+    if(a.phase==='resolved') {out.result=a.result;out.ai_reveal=a.prediction?{prediction:a.prediction,nonce_hex:a.nonce_hex,committed_generation:a.generation-1,commit_payload:a.commit_payload}:null;}
+    return copy(out);
+  }
+  function glyphs(pack,uiStrings) {
+    const set=new Set();
+    const add=t=>{for(const c of t)if(c!=='\n'&&c!=='\r'&&c!=='\t')set.add(c);};
+    function rec(x){if(typeof x==='string')add(x);else if(Array.isArray(x))x.forEach(rec);else if(x&&typeof x==='object')Object.values(x).forEach(rec);}
+    rec(pack);rec(uiStrings);return [...set].sort().join('');
+  }
+  return {DomainError,canonical,evalExpr,enumerate,answerFor,solve,publicCase,modelRequest,normalizePrediction,begin,progress,hint,prepare,commit,commitText,fallback,outcome,resolve,pause,resume,abandon,publicAttempt,glyphs};
+})();
+if (typeof module !== 'undefined' && module.exports) module.exports = DetectiveCore;
+
+const PACK={"schema_version":"1.0.0","pack_id":"YOHAKU_CH01","content_version":"1.0.0","language":"ja-JP","title":"喫茶「余白」第一章 — つづきは、ここで。","characters":[{"id":"NARRATOR","name":"手帳","role":"プレイヤーの観察を整理する語り","voice":"淡々と、短く。答えや動機を先に断定しない。","motif":"NOTE","color":"#445164"},{"id":"LATTE","name":"ラテ","role":"喫茶「余白」の店主","voice":"落ち着いた短文。相手の間違いを責めず、最後に少しだけ冗談。","motif":"ROUND_GLASSES","color":"#596B57"},{"id":"MOCHA","name":"モカ","role":"新人スタッフ","voice":"丁寧で快活。メモとラベルが好き。失敗役に固定しない。","motif":"SQUARE_APRON","color":"#BA784C"},{"id":"CHAI","name":"チャイ","role":"窓際に座る常連","voice":"言葉は少なめ。物の細部に気づくが、自分の記憶も疑える。","motif":"STRIPED_SCARF","color":"#64798F"},{"id":"COCOA","name":"ココア","role":"旅先の仕事から戻る挿絵描き。第3話の結末のみ登場","voice":"軽やかで親しみがある。事情説明を独白で長く語らない。","motif":"LEAF_BROOCH","color":"#96738D"}],"episodes":[{"case_id":"CD001","question_version":1,"order":1,"logic_family":"time_order","public":{"title":"いつもの席に、二つのカップ","short_title":"二つのカップ","chapter":"第1話","difficulty":"ひと息","estimated_minutes":"2〜3分（目標）","intro":[{"speaker":"NARRATOR","emotion":"neutral","text":"閉店前の喫茶「余白」。\n窓際の席に、白いカップと\n青いカップが並んでいた。"},{"speaker":"MOCHA","emotion":"puzzled","text":"注文は一杯だけです。\nあれ、ぼくが二つ\n用意したんでしたっけ？"},{"speaker":"LATTE","emotion":"neutral","text":"慌てなくていいよ。\n青い方を置いたのが誰か、\n順番に確かめてみよう。"},{"speaker":"CHAI","emotion":"puzzled","text":"……椅子も、二つとも\n引いてあるね。"}],"premises":[{"speaker":"NARRATOR","emotion":"neutral","text":"今日、3人は窓際の席へ\n一度ずつ行った。\n時刻は17:40、17:45、17:50。"},{"speaker":"NARRATOR","emotion":"neutral","text":"同じ時刻に行った人は\nいない。青いカップは、\n誰かがその訪問中に置いた。"},{"speaker":"NARRATOR","emotion":"neutral","text":"その間、ほかの人は\n席に触れていない。\n置いた後も動かしていない。"}],"question":"青いカップを置いたのは？","options":[{"id":"LATTE","label":"ラテ"},{"id":"MOCHA","label":"モカ"},{"id":"CHAI","label":"チャイ"}],"clues":[{"id":"E1","label":"窓際の観察メモ","speaker":"NARRATOR","pages":[{"speaker":"NARRATOR","emotion":"neutral","text":"17:48、窓際には\n白いカップが一つ。"},{"speaker":"NARRATOR","emotion":"neutral","text":"17:52、同じ席には\n白と青のカップが一つずつ。"}],"summary":["17:48には白1つ、17:52には白と青。","青いカップは17:48より後、17:52までに置かれた。"]},{"id":"E2","label":"店主の片づけ","speaker":"LATTE","pages":[{"speaker":"LATTE","emotion":"neutral","text":"窓際に行ったのは、\n私が最後ではないよ。"},{"speaker":"LATTE","emotion":"neutral","text":"そのあとカウンターで\n布巾を洗っていたんだ。\n時計は見ていなかったけど。"}],"summary":["ラテは3人のうち最後ではない。"]},{"id":"E3","label":"新人の順番","speaker":"MOCHA","pages":[{"speaker":"MOCHA","emotion":"neutral","text":"ぼくが窓際から戻った後に、\nラテさんがそちらへ\n行ったのは覚えています。"},{"speaker":"MOCHA","emotion":"neutral","text":"椅子の向きを直していたら、\nちょっと緊張してしまって。"}],"summary":["モカはラテより先に窓際へ行った。"]}],"hints":[{"level":1,"pages":[{"speaker":"NARRATOR","emotion":"neutral","text":"青いカップが増えた時間に、\n訪問できるのは\n3つの時刻のうちどれ？"}]},{"level":2,"pages":[{"speaker":"NARRATOR","emotion":"neutral","text":"青いカップは17:50。\nラテは最後ではなく、\nモカはラテより先。"},{"speaker":"NARRATOR","emotion":"neutral","text":"モカ→ラテの順で、\n二人とも最後になれない。\n残る人を考えよう。"}]}],"ambient":[{"id":"A1","label":"窓際の椅子","pages":[{"speaker":"NARRATOR","emotion":"neutral","text":"普段は片方だけ\n引いてある椅子。\n今日は少し、にぎやかだ。"}]}],"menu_teaser":"注文は一杯なのに、窓際には二つ。\n順番をたどって確かめよう。"},"private":{"solver":{"domains":{"t_LATTE":[0,1,2],"t_MOCHA":[0,1,2],"t_CHAI":[0,1,2],"cup_slot":[0,1,2]},"all_different":[["t_LATTE","t_MOCHA","t_CHAI"]],"constraints":[{"clue_id":"E1","expr":{"op":"eq","a":{"var":"cup_slot"},"b":{"lit":2}}},{"clue_id":"E2","expr":{"op":"not","x":{"op":"eq","a":{"var":"t_LATTE"},"b":{"lit":2}}}},{"clue_id":"E3","expr":{"op":"lt","a":{"var":"t_MOCHA"},"b":{"var":"t_LATTE"}}}],"answer":{"kind":"owner_of_value","vars":{"LATTE":"t_LATTE","MOCHA":"t_MOCHA","CHAI":"t_CHAI"},"target":{"var":"cup_slot"}},"expected_legal_worlds":18,"expected_solutions":1},"answer_id":"CHAI","explanation":[{"speaker":"NARRATOR","emotion":"neutral","text":"正解はチャイ。\n青いカップが増えた間の\n訪問時刻は17:50だけ。"},{"speaker":"NARRATOR","emotion":"neutral","text":"モカはラテより先。\nラテは最後ではないので、\nモカ→ラテ→チャイとなる。"},{"speaker":"NARRATOR","emotion":"neutral","text":"17:40がモカ、17:45がラテ、\n17:50がチャイ。\nだから、置いたのはチャイ。"}],"wrong_feedback":{"LATTE":"ラテは最後ではない。カップが増えた時間と比べよう。","MOCHA":"モカはラテより先なので、最後の訪問にはならない。"},"hint_conclusion":"人柄ではなく、時刻と順番から決められる。","epilogue":[{"speaker":"CHAI","emotion":"soft","text":"うん。置いたのは僕。\n会えるかはまだ\n分からないんだけど。"},{"speaker":"LATTE","emotion":"soft","text":"それでも、二人分？"},{"speaker":"CHAI","emotion":"soft","text":"前にここで本を貸して\nくれた人が、街へ戻るって。\nその人、青い方を使ってた。"},{"speaker":"MOCHA","emotion":"smile","text":"じゃあ、青いカップは\nしまわないでおきます。\n今日は、席の予約だけ。"},{"speaker":"LATTE","emotion":"smile","text":"そのカップは片づけよう。\n空けておくのは、\n明日の時間にしようか。"},{"speaker":"NARRATOR","emotion":"neutral","text":"窓際の二脚は、そのまま。\n帰り道の足音が、\n少し軽く聞こえた。"}],"recap":[{"speaker":"NARRATOR","emotion":"neutral","text":"チャイが二つ目のカップを\n置いた。街へ戻る友人を\n迎えるつもりだった。"}],"collectible":{"id":"MEM_BLUE_CUP","label":"青いカップ","text":"来るか分からなくても、空けておきたい席がある。"},"author_note":"最終動機は採点対象ではない。ココアの名前はまだ出さない。白カップの持ち主は問わない。"}},{"case_id":"CD002","question_version":1,"order":2,"logic_family":"matching","public":{"title":"砂糖缶に届いた青い封筒","short_title":"青い封筒","chapter":"第2話","difficulty":"ひと考え","estimated_minutes":"2〜3分（目標）","intro":[{"speaker":"NARRATOR","emotion":"neutral","text":"翌日の夕方。\n伝言入れに使う空の砂糖缶に、\n青いリボンの封筒が入っていた。"},{"speaker":"MOCHA","emotion":"puzzled","text":"この缶、今はお砂糖じゃなく\nお手紙入れなんです。\nでも、差出人の名前がない。"},{"speaker":"LATTE","emotion":"neutral","text":"今日、みんなで作った\n封筒の一つだね。\n開ける前に持ち主を探そう。"},{"speaker":"CHAI","emotion":"puzzled","text":"リボンの色と、小さな印。\n見覚えはあるんだけど。"}],"premises":[{"speaker":"NARRATOR","emotion":"neutral","text":"3人は一人一つずつ\n封筒を作った。\n色は青・金・赤を一つずつ。"},{"speaker":"NARRATOR","emotion":"neutral","text":"印も、本・カップ・葉を\n一つずつ使った。\n同じ色や印は重ならない。"},{"speaker":"NARRATOR","emotion":"neutral","text":"作った後にリボンや印を\n替えた人はいない。\n話と作業メモはすべて正確。"}],"question":"青い封筒を作ったのは？","options":[{"id":"LATTE","label":"ラテ"},{"id":"MOCHA","label":"モカ"},{"id":"CHAI","label":"チャイ"}],"clues":[{"id":"E1","label":"モカの作業メモ","speaker":"MOCHA","pages":[{"speaker":"MOCHA","emotion":"neutral","text":"ぼくは金色のリボンを\n使いました。\n作業メモにも書いてあります。"},{"speaker":"MOCHA","emotion":"neutral","text":"名前を書く欄だけ\n作り忘れてしまいました。\n次は、欄を増やします。"}],"summary":["モカのリボンは金色。"]},{"id":"E2","label":"リボンと印の見本","speaker":"NARRATOR","pages":[{"speaker":"NARRATOR","emotion":"neutral","text":"完成した3つを並べて\n作った見本メモ。\n「カップの印は金色」"},{"speaker":"NARRATOR","emotion":"neutral","text":"もう一行ある。\n「本の印は青色」\nどちらも実物と一致する。"}],"summary":["カップ印の封筒は金色のリボン。","本印の封筒は青色のリボン。"]},{"id":"E3","label":"チャイの印","speaker":"CHAI","pages":[{"speaker":"CHAI","emotion":"neutral","text":"僕が貼ったのは葉の印。\n本の印と迷ったけど、\n最後は葉にしたよ。"},{"speaker":"CHAI","emotion":"neutral","text":"小さな葉っぱなら、\n風に乗って届きそうで。"}],"summary":["チャイの印は葉。"]}],"hints":[{"level":1,"pages":[{"speaker":"NARRATOR","emotion":"neutral","text":"色と印を、別々に\n推理しないでみよう。\n見本メモで結び付けられる。"}]},{"level":2,"pages":[{"speaker":"NARRATOR","emotion":"neutral","text":"金色のモカはカップ印。\nチャイは葉の印。\n本の印は、残る一人。"},{"speaker":"NARRATOR","emotion":"neutral","text":"本の印の封筒が青色。\n誰に当たるかな？"}]}],"ambient":[{"id":"A1","label":"伝言入れ","pages":[{"speaker":"NARRATOR","emotion":"neutral","text":"砂糖缶には、小さく\n「食べられないお知らせ」と\nモカのラベルが貼ってある。"}]}],"menu_teaser":"差出人のない小さな封筒。\n色と印を組み合わせよう。"},"private":{"solver":{"domains":{"r_LATTE":["BLUE","GOLD","RED"],"r_MOCHA":["BLUE","GOLD","RED"],"r_CHAI":["BLUE","GOLD","RED"],"s_LATTE":["BOOK","CUP","LEAF"],"s_MOCHA":["BOOK","CUP","LEAF"],"s_CHAI":["BOOK","CUP","LEAF"]},"all_different":[["r_LATTE","r_MOCHA","r_CHAI"],["s_LATTE","s_MOCHA","s_CHAI"]],"constraints":[{"clue_id":"E1","expr":{"op":"eq","a":{"var":"r_MOCHA"},"b":{"lit":"GOLD"}}},{"clue_id":"E2","expr":{"op":"and","xs":[{"op":"eq","a":{"op":"eq","a":{"var":"s_LATTE"},"b":{"lit":"CUP"}},"b":{"op":"eq","a":{"var":"r_LATTE"},"b":{"lit":"GOLD"}}},{"op":"eq","a":{"op":"eq","a":{"var":"s_LATTE"},"b":{"lit":"BOOK"}},"b":{"op":"eq","a":{"var":"r_LATTE"},"b":{"lit":"BLUE"}}},{"op":"eq","a":{"op":"eq","a":{"var":"s_MOCHA"},"b":{"lit":"CUP"}},"b":{"op":"eq","a":{"var":"r_MOCHA"},"b":{"lit":"GOLD"}}},{"op":"eq","a":{"op":"eq","a":{"var":"s_MOCHA"},"b":{"lit":"BOOK"}},"b":{"op":"eq","a":{"var":"r_MOCHA"},"b":{"lit":"BLUE"}}},{"op":"eq","a":{"op":"eq","a":{"var":"s_CHAI"},"b":{"lit":"CUP"}},"b":{"op":"eq","a":{"var":"r_CHAI"},"b":{"lit":"GOLD"}}},{"op":"eq","a":{"op":"eq","a":{"var":"s_CHAI"},"b":{"lit":"BOOK"}},"b":{"op":"eq","a":{"var":"r_CHAI"},"b":{"lit":"BLUE"}}}]}},{"clue_id":"E3","expr":{"op":"eq","a":{"var":"s_CHAI"},"b":{"lit":"LEAF"}}}],"answer":{"kind":"owner_of_value","vars":{"LATTE":"r_LATTE","MOCHA":"r_MOCHA","CHAI":"r_CHAI"},"target":{"lit":"BLUE"}},"expected_legal_worlds":36,"expected_solutions":1},"answer_id":"LATTE","explanation":[{"speaker":"NARRATOR","emotion":"neutral","text":"正解はラテ。\n金色のモカは、\n見本メモからカップ印。"},{"speaker":"NARRATOR","emotion":"neutral","text":"チャイは葉の印。\n本の印が残るのは\nラテだけになる。"},{"speaker":"NARRATOR","emotion":"neutral","text":"本の印は青色。\nだから、青い封筒を\n作ったのはラテ。"}],"wrong_feedback":{"MOCHA":"モカは金色のリボンを使ったと記録されている。","CHAI":"チャイは葉の印。本の印の青い封筒とは一致しない。"},"hint_conclusion":"色と印をつなげれば、名前がなくてもたどり着ける。","epilogue":[{"speaker":"LATTE","emotion":"soft","text":"私からチャイへの手紙。\n差出人を書かなかったのは、\n少し照れくさくてね。"},{"speaker":"CHAI","emotion":"soft","text":"「明日16時、窓際にて。\n一冊と、一人分の\nおかえりを持ち寄ること」"},{"speaker":"MOCHA","emotion":"smile","text":"あ、ぼくの金色は\nラテさんへの招待状です。\n同じことを考えてました。"},{"speaker":"CHAI","emotion":"smile","text":"僕の赤い封筒は、\n戻ってくる友人へ。\n店の住所だけ、もう一度。"},{"speaker":"LATTE","emotion":"smile","text":"誰も主催者のつもりじゃ\nないのに、会ができたね。\n名前は「余白の一ページ」。"},{"speaker":"NARRATOR","emotion":"neutral","text":"三つの封筒が、\n同じ明日の窓際へ\nつながっていた。"}],"recap":[{"speaker":"NARRATOR","emotion":"neutral","text":"青い封筒はラテの招待状。\n3人の手紙から、明日の\n「余白の一ページ」が生まれた。"}],"collectible":{"id":"MEM_BLUE_LETTER","label":"青い招待状","text":"別々に書いた手紙が、同じ場所へ向かう日もある。"},"author_note":"封筒の色/印/持ち主は全て異なる。リボンの材質や色覚は推理条件にしない。ラベルでも色を読める。"}},{"case_id":"CD003","question_version":1,"order":3,"logic_family":"testimony","public":{"title":"雨上がりのしおり","short_title":"雨上がりのしおり","chapter":"第3話","difficulty":"ひと考え","estimated_minutes":"2〜4分（目標）","intro":[{"speaker":"NARRATOR","emotion":"neutral","text":"「余白の一ページ」の当日。\n雨が上がると、青いカップの横に\n銀色のしおりが置かれていた。"},{"speaker":"CHAI","emotion":"puzzled","text":"このしおり、見覚えがある。\nでも、結んだ糸が\n新しくなってるね。"},{"speaker":"MOCHA","emotion":"neutral","text":"誰が置いたか確かめてから、\nちゃんと渡したいですね。"},{"speaker":"LATTE","emotion":"soft","text":"三人の記憶を並べてみよう。\n責めるためじゃなく、\nお礼を言う相手を探すんだ。"}],"premises":[{"speaker":"NARRATOR","emotion":"neutral","text":"しおりを置いたのは\nラテ・モカ・チャイの\nうち一人だけ。"},{"speaker":"NARRATOR","emotion":"neutral","text":"これから読む三つの発言で、\n事実と違うのは\nちょうど一つ。"},{"speaker":"NARRATOR","emotion":"neutral","text":"置いた本人の発言が\n間違いとは限らない。\n表情や口調は手掛かりにしない。"}],"question":"しおりを置いたのは？","options":[{"id":"LATTE","label":"ラテ"},{"id":"MOCHA","label":"モカ"},{"id":"CHAI","label":"チャイ"}],"clues":[{"id":"E1","label":"ラテの記憶","speaker":"LATTE","pages":[{"speaker":"LATTE","emotion":"neutral","text":"置いたのはモカだよ。\nそう覚えている。"}],"summary":["ラテの発言：置いたのはモカ。"]},{"id":"E2","label":"モカの記憶","speaker":"MOCHA","pages":[{"speaker":"MOCHA","emotion":"neutral","text":"置いたのは\nチャイさんではありません。"}],"summary":["モカの発言：置いたのはチャイではない。"]},{"id":"E3","label":"チャイの記憶","speaker":"CHAI","pages":[{"speaker":"CHAI","emotion":"neutral","text":"置いたのは僕だ。\n……そうだったはず。"}],"summary":["チャイの発言：置いたのはチャイ。"]}],"hints":[{"level":1,"pages":[{"speaker":"NARRATOR","emotion":"neutral","text":"誰か一人が置いたと仮定し、\n発言がそれぞれ\n正しいか確かめよう。"}]},{"level":2,"pages":[{"speaker":"NARRATOR","emotion":"neutral","text":"モカとチャイの発言は\n反対の内容なので、\nどちらか一方だけが間違い。"},{"speaker":"NARRATOR","emotion":"neutral","text":"それだけで間違いは一つ。\nラテの発言まで間違いだと、\n二つになってしまう。"}]}],"ambient":[{"id":"A1","label":"しおりを眺める","pages":[{"speaker":"NARRATOR","emotion":"neutral","text":"銀色のしおりに、\n新しい青い糸。\n持ち主の名前は書かれていない。"}]}],"menu_teaser":"誰かが結び直した、小さな糸。\n三人の記憶を並べてみよう。"},"private":{"solver":{"domains":{"giver":["LATTE","MOCHA","CHAI"]},"all_different":[],"constraints":[{"clue_id":"RULE_TESTIMONY","expr":{"op":"exactly_false","n":1,"xs":[{"op":"eq","a":{"var":"giver"},"b":{"lit":"MOCHA"}},{"op":"not","x":{"op":"eq","a":{"var":"giver"},"b":{"lit":"CHAI"}}},{"op":"eq","a":{"var":"giver"},"b":{"lit":"CHAI"}}]}}],"statements":[{"clue_id":"E1","expr":{"op":"eq","a":{"var":"giver"},"b":{"lit":"MOCHA"}}},{"clue_id":"E2","expr":{"op":"not","x":{"op":"eq","a":{"var":"giver"},"b":{"lit":"CHAI"}}}},{"clue_id":"E3","expr":{"op":"eq","a":{"var":"giver"},"b":{"lit":"CHAI"}}}],"answer":{"kind":"variable","var":"giver"},"expected_legal_worlds":3,"expected_solutions":1},"answer_id":"MOCHA","explanation":[{"speaker":"NARRATOR","emotion":"neutral","text":"正解はモカ。\nモカが置いたなら、\nラテの発言は正しい。"},{"speaker":"NARRATOR","emotion":"neutral","text":"モカの「チャイではない」も\n正しい。間違うのは\nチャイの発言一つだけ。"},{"speaker":"NARRATOR","emotion":"neutral","text":"ラテが置いた場合も、\nチャイが置いた場合も、\n間違いが二つになってしまう。"}],"wrong_feedback":{"LATTE":"ラテが置いたとすると、ラテとチャイの発言が間違いになる。","CHAI":"チャイが置いたとすると、ラテとモカの発言が間違いになる。"},"hint_conclusion":"思い込みではなく、条件に合う発言の組合せで確かめられた。","epilogue":[{"speaker":"MOCHA","emotion":"soft","text":"糸がほどけかけていたので、\n結び直してから置きました。\n中の文字は、そのままです。"},{"speaker":"CHAI","emotion":"soft","text":"昨日、僕が取り出したから\nそのまま置いた気になってた。\n直してくれたんだね。"},{"speaker":"LATTE","emotion":"soft","text":"間違えた記憶にも、\n理由があったんだね。"},{"speaker":"NARRATOR","emotion":"neutral","text":"入口のベルが鳴る。\n傘を閉じた人が、\n窓際の青いカップを見つけた。"},{"speaker":"COCOA","emotion":"smile","text":"ただいま。\n……まだ、このカップ\n残してくれてたんだ。"},{"speaker":"CHAI","emotion":"smile","text":"おかえり、ココア。\n借りた本と、しおり。\nずいぶん長く預かった。"},{"speaker":"COCOA","emotion":"soft","text":"しおりの裏、覚えてる？\n「つづきは、ここで」って\n書いたんだったね。"},{"speaker":"MOCHA","emotion":"smile","text":"じゃあ、一ページ目から\nじゃなくて、つづきから。\nコーヒーは何杯にします？"},{"speaker":"LATTE","emotion":"smile","text":"今日は、みんなの分。\nゆっくり淹れよう。"},{"speaker":"NARRATOR","emotion":"neutral","text":"三つの小さな謎が、\n一つの「おかえり」になった。\n喫茶「余白」は、今日も営業中。"}],"recap":[{"speaker":"NARRATOR","emotion":"neutral","text":"モカがしおりの糸を直した。\n戻ったココアを迎えて、\n「余白の一ページ」が始まった。"}],"collectible":{"id":"MEM_SILVER_BOOKMARK","label":"銀色のしおり","text":"つづきは、ここで。"},"author_note":"誤った記憶＝嘘つきの性格ではない。糸の修理者と置いた人が同じなのは結末の情報で、採点に不要。"}}]};
+const C=DetectiveCore;
+let ep=null,a=null,pages=[],pageIndex=0,afterPages=null,pageTitle='',pageReturn=null,coffee=0;
+let seenCases=new Set(),screenName='home',lastHomeResume=null;
+const root=document.getElementById('screen');const toast=document.getElementById('toast');
+function text(tag,cls,value){const e=document.createElement(tag);if(cls)e.className=cls;e.textContent=value;return e;}
+function clear(name){root.replaceChildren();screenName=name;const cannot=!a||a.phase==='resolved'||['home','cover'].includes(name);document.getElementById('hint-btn').disabled=cannot;document.getElementById('giveup-btn').disabled=cannot;}
+function header(s){root.append(text('div','header',s));}
+function btn(label,x,y,w,h,click,primary=false,disabled=false){const b=text('button',primary?'primary':'',label);Object.assign(b.style,{position:'absolute',left:x+'px',top:y+'px',width:w+'px',height:h+'px',fontSize:'19px'});b.onclick=click;b.disabled=disabled;root.append(b);return b;}
+function footer(s){root.append(text('div','footer',s));}
+function speak(t,who='NARRATOR',emotion='neutral'){return {speaker:who,text:t,emotion};}
+function sequence(title,ps,done,back){pages=ps;pageIndex=0;afterPages=done;pageTitle=title;pageReturn=back;drawPage();}
+function drawPage(){clear('page');header(pageTitle);const p=pages[pageIndex];const ch=PACK.characters.find(x=>x.id===p.speaker);const av=text('div','avatar',p.speaker==='NARRATOR'?'手帳':p.speaker);av.dataset.id=p.speaker;root.append(av);root.append(text('div','name',ch?ch.name:p.speaker));root.append(text('div','body',p.text));btn('戻る',108,373,112,49,()=>{if(pageIndex>0){pageIndex--;drawPage();}else if(pageReturn)pageReturn();},false,pageIndex===0&&!pageReturn);btn(pageIndex===pages.length-1?'つづける':'次へ',260,373,112,49,()=>{if(++pageIndex<pages.length)drawPage();else afterPages();},true);footer(`${pageIndex+1} / ${pages.length}　｜　ひとり推理・PC参考版`);}
+function home(){clear('home');header('COFFEE TIME\n喫茶「余白」の小さな謎');PACK.episodes.forEach((e,i)=>btn(`第${i+1}話  ${e.public.short_title}`,86,142+i*73,308,59,()=>cover(e),i===0));if(a&&a.phase!=='resolved')btn('中断した話へ',154,370,172,49,()=>hub());footer('3話すべて収録／初めてなら第1話から');}
+function cover(e){clear('cover');ep=e;header('第'+e.order+'話');root.append(text('div','body',e.public.title+'\n\n'+e.public.menu_teaser));btn('一覧',106,373,112,49,home);btn(seenCases.has(e.case_id)?'読み直す':'はじめる',258,373,116,49,()=>start(e),true);footer('回答後には全員が結末まで読めます');}
+function start(e){ep=e;a=C.begin(e,{attempt_id:Array.from(crypto.getRandomValues(new Uint8Array(16)),n=>n.toString(16).padStart(2,'0')).join(''),actor_id:'PC_GUEST',device_id:'PC_PREVIEW',public_hash:'0'.repeat(64),mode:'solo',now_ms:Date.now(),practice:true});seenCases.add(ep.case_id);sequence(ep.public.short_title,[...ep.public.intro,...ep.public.premises],hub,home);}
+function hub(){if(!a)return home();ep=PACK.episodes.find(e=>e.case_id===a.case_id);clear('hub');header(ep.public.short_title+'\n証拠・証言を確かめよう');ep.public.clues.forEach((c,i)=>btn((a.seen_ids.includes(c.id)?'✓ ':'')+c.label,86,125+i*65,308,55,()=>sequence(c.label,c.pages,()=>{a=C.progress(a,ep,[c.id],Date.now());hub();},hub)));btn('手帳まとめ',85,330,145,49,notebook);btn('店の様子',250,330,145,49,ambient);btn('推理する',152,392,176,49,()=>{a=C.prepare(a,ep,Date.now());choice();},true,a.seen_ids.length!==3);footer('すべての証拠を読んでから推理できます');}
+function notebook(){const ps=ep.public.clues.filter(c=>a.seen_ids.includes(c.id)).map(c=>speak(c.summary.join('\n')));sequence('手帳まとめ',ps.length?ps:[speak('まだ証拠がありません。\n人物や品物をタッチしましょう。')],hub,hub);}
+function ambient(){sequence('店の様子',ep.public.ambient.flatMap(x=>x.pages),hub,hub);}
+function hints(){if(!a||a.phase==='resolved')return;if(a.hint_level<2)a=C.hint(a,a.hint_level+1,Date.now());const h=ep.public.hints[a.hint_level-1];sequence('ヒント '+a.hint_level,h.pages,hub,hub);}
+function choice(){clear('choice');header(ep.public.question);ep.public.options.forEach((o,i)=>btn(o.label,136,142+i*68,208,55,()=>confirmChoice(o),i===0));btn('証拠へ戻る',152,371,176,49,hub);footer('人物を選んだ後、もう一度確認します');}
+function confirmChoice(o){sequence('推理の確認',[speak(o.label+'で、決定しますか？\n確定した回答は変更できません。')],()=>answer(o.id),choice);const b=root.querySelectorAll('button');b[b.length-1].textContent='決定';}
+function answer(id){a=C.resolve(a,ep,id,Date.now());result();}
+function result(){clear('result');header('答え合わせ');const r=a.result,label=ep.public.options.find(x=>x.id===r.correct_answer).label;root.append(text('div','body',(r.gave_up?'答えを確認しましょう。':r.human_correct?'謎がつながりました！':'もう一度、手掛かりを。')+'\n\n正解：'+label+'\nひとり推理／復習'));btn('理由と物語へ',136,373,208,49,explanation,true);footer('勝敗よりも、最後の会話を楽しんでください');}
+function explanation(){let pre=[];if(a.result.human_choice&&!a.result.human_correct)pre=[speak(ep.private.wrong_feedback[a.result.human_choice])];sequence('手帳の答え合わせ',[...pre,...ep.private.explanation],ending,result);}
+function ending(){sequence('喫茶「余白」の、その後',ep.private.epilogue,collect,explanation);}
+function collect(){clear('collect');header('手帳に残ったもの');root.append(text('div','body',ep.private.collectible.label+'\n\n'+ep.private.collectible.text));btn('作品一覧へ',136,373,208,49,()=>{a=null;home();},true);footer('この物語を読んだ記念です');}
+document.getElementById('home-btn').onclick=home;
+document.getElementById('coffee-btn').onclick=()=>{coffee++;toast.textContent=`コーヒー ${coffee}杯（PC内のデモ値。実際の記録は送りません）`;};
+document.getElementById('hint-btn').onclick=hints;
+document.getElementById('giveup-btn').onclick=()=>{if(a&&a.phase!=='resolved'){sequence('答えを確認しますか？',[speak('解説と結末へ進みます。\n途中の謎解きへは戻りません。')],()=>answer(null),hub);}};
+function resize(){const s=Math.min(1,(window.innerWidth-32)/480);const h=document.getElementById('holder');h.style.width=480*s+'px';h.style.height=480*s+'px';document.getElementById('dial').style.transform=`scale(${s})`;}
+window.addEventListener('resize',resize);resize();home();
+window.CafePreview={pack:PACK,getState:()=>({screen:screenName,case_id:ep&&ep.case_id,phase:a&&a.phase,coffee}),start,hub,choice,answer,sequence};
+</script></html>

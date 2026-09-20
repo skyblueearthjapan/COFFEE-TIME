@@ -1,7 +1,7 @@
 /*******************************************************************************
  * Size: 104 px
  * Bpp: 4
- * Opts: --font Montserrat-Light.ttf --size 104 --bpp 4 --format lvgl --no-compress -r 0x20,0x2D,0x30-0x3A -o C:/Users/imaizumi.LINEWORKS-NET/Documents/COFFEE TIME/firmware/src/app/fonts/ct_font_time_104.c --lv-font-name ct_font_time_104
+ * Opts: --bpp 4 --format lvgl --no-compress --size 104 --font Montserrat-Light.ttf -r 0x20,0x2D,0x30-0x3A -o C:/Users/imaizumi.LINEWORKS-NET/Documents/COFFEE TIME/firmware/src/app/fonts/ct_font_time_104.c --lv-font-name ct_font_time_104
  ******************************************************************************/
 
 #ifdef LV_LVGL_H_INCLUDE_SIMPLE
