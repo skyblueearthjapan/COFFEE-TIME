@@ -3,8 +3,20 @@
 - 作成: 2026-09-21。設計書（`参考データ/ゲーム4部作/COFFEE_TIME_AI_ESPER_Design_v1.0.md`・`…AI_DUEL_Design_v1.0.md`）を読み取り専用で整理したもの。
   実装前に必ず設計書の該当章を読み直すこと
 - 前提（ユーザー決定）: **探偵に Jev は入れない。AI（TypeSafe Jev）が必須なのはこの 2 作**。着手順は エスパー → AI DUEL
-- **Jev の API は一度も実際に呼んでいない**（設計書も「未試験」と明記）。すべての作業の前に疎通試験が要る。
-  API キーは端末・Git・チャットに出さず、GAS のスクリプト プロパティに置く
+- **Jev の API は 2026-09-21 夜に疎通確認済み**（下の「疎通試験の結果」）。API キーは GAS のスクリプト プロパティ `JEV_API_KEY` にだけある
+  （ユーザー本人が貼った。端末・Git・チャットには出していない）
+
+## 疎通試験の結果（2026-09-21）
+
+- 経路: PC または端末 → GAS（`gas/Jev.gs` の `jevChoice_`、doPost の `event: "jevtest"`）→ `POST https://api.typesafe.ai/v1/systemone`
+- **設計書の記述どおりに動いた**: 要求 `{model, state, questions:{answer:{type:"choice", instructions, criteria}}}`、
+  応答 `{model, answers:{answer:{type, choice, confidence, probabilities}}, usage:{input_tokens, output_tokens}}`。モデル `jev-1.13.0` が使えた
+- 3 択 1 問（「青いのはどれ？」）: 正解を選び、確率 1.0 / 0 / 0、confidence 1。使用量は入力 436・出力 43 トークン
+- **速さ**: Jev 単体 0.2〜0.55 秒。PC から GAS を通した往復は 1.6〜3.3 秒（ほとんどが GAS の起動と転送）。13 回中、結果を確認した 11 回はすべて成功
+- 実行方法: `python tools/gas_call.py jevtest`（URL・合言葉・キーは表示されない）。GAS の生存確認は `python tools/gas_call.py ping-unauthorized`
+- GAS に外部接続の権限（`script.external_request`）を足した。**権限を足すときは、デプロイを更新する前にユーザーがエディタで
+  `jevAuthorize()` を実行して承認すること**（承認前に更新すると、コーヒーの記録を含む doPost 全体が止まる）
+- まだ測っていないもの: 端末（テザリング）からの往復時間、候補が多いとき（128 個）の要求の大きさと所要時間、1 日あたりの契約上の上限
 
 ## エスパー対決（AI ESPER）— 次に作る
 

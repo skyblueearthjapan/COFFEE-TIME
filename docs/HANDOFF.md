@@ -55,8 +55,8 @@
 | 5 | 省電力・LiPo 1500mAh・3D プリント筐体 | 未着手 |
 | 6 | 遊び要素（達成アニメ・季節テーマ等） | 未着手 |
 
-**次の作業: ① 人狼（通常ルール・ワンナイト）の「指での確認」の結果反映 ③ 探偵の第 2・3 話の通し確認 ④ Jev API の疎通試験 → エスパー対決（[AI_GAMES_DIGEST.md](AI_GAMES_DIGEST.md)）。**
-**GAS は反映済み（2026-09-21 夜・デプロイ @5、URL は不変）**: メールのゲージは端末から届く `max` に連動、文面は「残り」の数字を長押し。見本メールは `python tools/gas_preview.py 3 12`（所有者だけに届く）。`clasp` が `invalid_grant (invalid_rapt)` で失敗したら、Workspace の再ログインが必要 → ユーザーに `! clasp -u work login` を実行してもらう。
+**次の作業: ① 人狼（通常ルール・ワンナイト）の「指での確認」の結果反映 ③ 探偵の第 2・3 話の通し確認 ④ エスパー対決（Jev API の疎通は 2026-09-21 に確認済み。[AI_GAMES_DIGEST.md](AI_GAMES_DIGEST.md)）。**
+**GAS は反映済み（2026-09-21 夜・デプロイ @6、URL は不変）**: メールのゲージは端末から届く `max` に連動、文面は「残り」の数字を長押し。見本メールは `python tools/gas_preview.py 3 12`（所有者だけに届く）。`clasp` が `invalid_grant (invalid_rapt)` で失敗したら、Workspace の再ログインが必要 → ユーザーに `! clasp -u work login` を実行してもらう。
 探偵の段階 B は 2026-09-21 に実装済み（`firmware/src/app/games/detective/`、脚本データは同 `data/`、変換は `tools/gen_detective_data.py`、進み具合は NVS `ct_det/prog`）。
 段階 C（Google 連携）・D（Jev 対戦）は、共通の本人確認と GAS の大きな作り込みが前提なので後回し。人狼 W2 の「指での確認」はユーザーが並行して実施中。
 タグ `stage3` は 0 杯通知の前（`3786174`）。0 杯通知を含む最新は `main` の先頭。
@@ -209,7 +209,7 @@ python -m platformio run -e sdtest -t upload --upload-port COM8   # microSD の�
   clasp -u work list-deployments            # バージョン付き（@数字）のデプロイ ID を使う。@HEAD ではない
   clasp -u work update-deployment <ID> --description "..."
   ```
-  `create-deployment` は URL が変わり、ESP32 の `secrets.h` 更新と再書き込みが必要になるので避ける。現在のデプロイは @5
+  `create-deployment` は URL が変わり、ESP32 の `secrets.h` 更新と再書き込みが必要になるので避ける。現在のデプロイは @6
 - 見本メール: 正しい TOKEN で `{"event":"preview","left":3}`（または `0`）を POST すると**スクリプト所有者だけ**に届く（ログに残らない）
 - メール HTML の確認: `lowStockHtml_` を node で呼んで HTML を書き出し、headless Edge でスクショ（スマホ幅は 375px の iframe に入れて描画）
 
@@ -240,7 +240,7 @@ python -m platformio run -e sdtest -t upload --upload-port COM8   # microSD の�
 
 ユーザーの回答待ち:
 - [x] 人狼の人数の初期値 → 前回の人数を覚える方式で実装（初回 3 人）
-- [ ] Jev API キーの受け渡し方法（ユーザーは入手済み。端末には置かずサーバー側へ）
+- [x] Jev API キー → ユーザー本人が GAS のスクリプト プロパティ `JEV_API_KEY` に設定済み（2026-09-21）
 - [ ] 最初の clasp の手違いで Drive にできた**空のスプレッドシート「COFFEE TIME 記録」（ID `1jht7j0…`）**の削除可否
 - [x] 日付が変わったときの LEFT → **0 杯で確定**（2026-09-21）
 - [ ] 通知先の残り 2 人の登録（ユーザーが「設定」シートに入力）

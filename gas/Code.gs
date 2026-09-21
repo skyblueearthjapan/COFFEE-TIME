@@ -63,6 +63,11 @@ function doPost(e) {
     return json_({ ok: false, error: 'unauthorized' });
   }
 
+  // Jev（AI）への疎通試験。合言葉が合っているときだけ動く。シートにもメールにも何も残さない
+  if (body.event === 'jevtest') {
+    return json_(jevPing_(body));
+  }
+
   // デザイン確認用：スクリプト所有者だけに見本メールを送る（ログには残さない）
   if (body.event === 'preview') {
     const left = body.left === undefined ? NOTIFY_AT : Number(body.left);
