@@ -37,9 +37,12 @@ python ..\tools\serlog.py COM8 30                               # ログを 30 �
 ## 開発段階
 
 1. ✅ 段階0: 実機の動作確認
-2. ✅ 段階1: +1 カウンター（再起動で 0 に戻る） — [試験記録](docs/TEST_RECORD_stage1.md)
+2. ✅ 段階1: +1 カウンター（現在は杯数を保存し、再起動しても残る） — [試験記録](docs/TEST_RECORD_stage1.md)
 3. ✅ 段階2: 時刻・天気・残り杯数・時間帯別の背景・日本語表示
-4. ✅ 段階3: Google Apps Script へ記録・残り 3 杯でメール通知（`gas/`）
+4. ✅ 段階3: Google Apps Script へ記録・残り 3 杯 / 0 杯でメール通知（`gas/`）、電池電圧・RTC・microSD への操作ログ
 5. 段階4: 画面追加（今日の状況・メニュー・設定など）
 6. 段階5: 省電力・筐体
 7. 段階6: 遊び要素
+8. 🚧 ゲーム: 人狼（実装済み・実機確認中）→ 探偵 → エスパー → AI DUEL（`docs/WEREWOLF_TODO.md`）
+
+保存場所（フラッシュ / microSD）の取り決めは [docs/STORAGE_POLICY.md](docs/STORAGE_POLICY.md)。
