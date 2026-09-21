@@ -110,14 +110,20 @@ bool load()
         if (length == 0) {
             continue;       // その席はまだ誰も使っていない
         }
-        if (length != core::kBlobBytes ||
-            prefs.getBytes(profileKey(i), blob, core::kBlobBytes) != core::kBlobBytes ||
-            !core::decodeStats(blob, s_profiles[i])) {
-            // 版数違い・長さ違い・CRC 違い。その人だけ空の統計として始める
+        // 版 1（488B）と版 2（512B）のどちらでも読む。**古い記録を消さない**ことが第一
+        const bool known = (length == core::kBlobBytes || length == core::kBlobBytesV1);
+        if (!known || prefs.getBytes(profileKey(i), blob, length) != length ||
+            !core::decodeStats(blob, length, s_profiles[i])) {
+            // 知らない版・長さ違い・CRC 違い。その人だけ空の統計として始める
             // （消しはしない。次の保存で新しい形式に置き換わる）
             s_profiles[i] = core::Stats{};
-            Serial.printf("[DUEL] p%u stats blob is broken or old; starting over\n", (unsigned)i);
+            Serial.printf("[DUEL] p%u stats blob is broken or unknown; starting over\n",
+                          (unsigned)i);
             all_ok = false;
+        } else if (length == core::kBlobBytesV1) {
+            // 相手ごとの勝敗が無かったころの記録。0 から数え直しになるが、ほかは全部残る
+            Serial.printf("[DUEL] p%u stats are v1; saved as v2 on the next round\n",
+                          (unsigned)i);
         }
     }
     const size_t meta_length = prefs.getBytesLength(kMetaKey);

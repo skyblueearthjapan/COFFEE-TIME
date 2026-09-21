@@ -209,7 +209,8 @@ void loop()
         // 明るさ・自動暗転の面倒を見る（透明な板の出し入れで LVGL を触るのでロックの中）
         display::poll();
         while (Serial.available() > 0) {
-            switch (Serial.read()) {
+            const int cmd = Serial.read();
+            switch (cmd) {
             case 'S': if (!blockedBySecret()) { sendSnapshot(); } break;
             // 開発用：背景の時間帯を固定 M=朝 N=昼 E=夕方 A=自動
             case 'M': home::debugForceHour(8); break;
@@ -252,6 +253,11 @@ void loop()
             case 'P': tapFromSerial(); break;        // 開発用：P<x>,<y> でタップ
             case 'L': dump_log = true; break;        // 開発用：SD の操作ログの末尾を表示
             default: break;
+            }
+            // 画面を切り替える命令には受領の返事を返す。tools/uiwalk.py はこれを待ってから次のタップを送る
+            // （起動直後など loop が止まっている間に「切替 → タップ」が続けて処理され、タップが前の画面に当たるのを防ぐ）
+            if (cmd > 0 && strchr("0123456789BFI", cmd) != nullptr) {
+                Serial.printf("[KEY] %c\n", (char)cmd);
             }
         }
         lvgl_port_unlock();

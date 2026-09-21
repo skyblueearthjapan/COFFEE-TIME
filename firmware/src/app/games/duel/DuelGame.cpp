@@ -74,10 +74,12 @@ constexpr Rect kGuestBtn   {140, 296, 200, 46};
 constexpr Rect kPlayersBack{150, 350, 180, 44};
 
 // --- profile ----------------------------------------------------------------
-constexpr Rect kProfIcon   {200,  62, 80, 62};
-constexpr Rect kProfLine1  { 84, 126, 312, 26};
-constexpr Rect kProfLine2  { 84, 154, 312, 26};
-constexpr Rect kProfLevel  { 84, 182, 312, 26};
+// 相手ごとの勝敗（2 行）を足したぶん、見出しの行をアイコンと名前の 1 行にまとめて
+// 本文を 5 行ぶん空けた。**4 つのボタンの位置は変えていない**（自動操作の台本のため）
+constexpr Rect kProfIcon   {148,  36,  60, 56};
+constexpr Rect kProfName   {212,  36, 120, 56};
+constexpr Rect kProfLine[5] = {{84,  94, 312, 24}, {84, 118, 312, 24}, {84, 142, 312, 24},
+                               {84, 166, 312, 24}, {84, 190, 312, 24}};
 constexpr Rect kProfPlay   {130, 216, 220, 54};
 constexpr Rect kProfHabits {130, 276, 220, 46};
 constexpr Rect kProfErase  {130, 328, 220, 44};
@@ -113,9 +115,9 @@ constexpr Rect kResCafe    {128, 380, 102, 44};
 constexpr Rect kResQuit    {250, 380, 102, 44};
 
 // --- summary ----------------------------------------------------------------
-constexpr Rect kSumVerdict { 84,  66, 312, 50};
-constexpr Rect kSumTally   { 84, 124, 312, 30};
-constexpr Rect kSumBreak   { 84, 158, 312, 48};
+constexpr Rect kSumVerdict { 84,  64, 312, 46};
+constexpr Rect kSumTally   { 84, 112, 312, 26};
+constexpr Rect kSumBreak   { 84, 140, 312, 70};   // 相手ごとの 2 行 ＋ 的中の 1 行
 constexpr Rect kSumNote    { 84, 208, 312, 46};
 constexpr Rect kSumAgain   {130, 258, 220, 50};
 constexpr Rect kSumHabits  {130, 314, 220, 46};
@@ -240,6 +242,7 @@ uint8_t s_resolved = 0;                 // この対戦で確定したラウン�
 uint8_t s_score[3] = {0, 0, 0};         // human_win / ai_win / draw
 uint8_t s_provider_rounds[2] = {0, 0};  // jev / stats で戦った回数
 uint8_t s_provider_hits[2] = {0, 0};    // そのうち予測が当たった回数
+uint8_t s_provider_outcome[2][3] = {};  // この対戦だけの相手別の勝敗（人勝 / AI 勝 / あいこ）
 bool s_counted = false;                 // gamePlayed をもう数えたか
 
 // この回の予測と AI の手
@@ -809,6 +812,7 @@ void startMatch()
     s_score[0] = s_score[1] = s_score[2] = 0;
     s_provider_rounds[0] = s_provider_rounds[1] = 0;
     s_provider_hits[0] = s_provider_hits[1] = 0;
+    memset(s_provider_outcome, 0, sizeof(s_provider_outcome));
     s_counted = false;
     s_last = RoundView{};
 }
@@ -892,6 +896,7 @@ void playHand(Hand h)
     s_last.predicted = (Hand)top;
     s_last.percent = (uint8_t)(s_used.p[top] * 100.0 + 0.5);
     ++s_provider_rounds[(size_t)s_provider];
+    ++s_provider_outcome[(size_t)s_provider][(size_t)result];
     if ((Hand)top == h) {
         ++s_provider_hits[(size_t)s_provider];
     }
@@ -998,31 +1003,39 @@ void buildPlayers()
 void buildProfile()
 {
     const core::Stats &st = activeStats();
-    if (isGuest()) {
-        makeTitle("ゲスト");
-        iconLabel(layout::kProfIcon, &ct_font_icons_54, CT_COLOR_SUBTEXT, kGuestGlyph);
-    } else {
-        makeTitle(kAvatars[s_slot].name);
-        iconLabel(layout::kProfIcon, &ct_font_icons_54, CT_COLOR_ACCENT_HI,
-                  kAvatars[s_slot].glyph);
-    }
+    // 見出しはアイコンと名前の 1 行（ここが makeTitle の代わり）
+    iconLabel(layout::kProfIcon, &ct_font_icons_54,
+              isGuest() ? CT_COLOR_SUBTEXT : CT_COLOR_ACCENT_HI,
+              isGuest() ? kGuestGlyph : kAvatars[s_slot].glyph);
+    rectLabel(layout::kProfName, &ct_font_jp_20, CT_COLOR_TEXT,
+              isGuest() ? "ゲスト" : kAvatars[s_slot].name);
 
-    char line1[80];
-    std::snprintf(line1, sizeof(line1), "対戦 %lu 回（勝 %lu ・ 負 %lu ・ 分 %lu）",
+    char line[80];
+    std::snprintf(line, sizeof(line), "対戦 %lu 回（勝 %lu ・ 負 %lu ・ 分 %lu）",
                   (unsigned long)st.match_counts.completed,
                   (unsigned long)st.match_counts.human_win,
                   (unsigned long)st.match_counts.ai_win,
                   (unsigned long)st.match_counts.draw);
-    rectLabel(layout::kProfLine1, &ct_font_jp_20, CT_COLOR_TEXT, line1);
+    rectLabel(layout::kProfLine[0], &ct_font_jp_20, CT_COLOR_TEXT, line);
 
-    char line2[64];
-    std::snprintf(line2, sizeof(line2), "ラウンド %lu 回 ・ 途中終了 %lu 回",
+    std::snprintf(line, sizeof(line), "ラウンド %lu 回 ・ 途中終了 %lu 回",
                   (unsigned long)st.rounds, (unsigned long)st.match_counts.aborted);
-    rectLabel(layout::kProfLine2, &ct_font_jp_20, CT_COLOR_SUBTEXT, line2);
+    rectLabel(layout::kProfLine[1], &ct_font_jp_20, CT_COLOR_SUBTEXT, line);
 
-    char level[64];
-    std::snprintf(level, sizeof(level), "記録：%s", kLevelName[core::recordLevel(st.rounds)]);
-    rectLabel(layout::kProfLevel, &ct_font_jp_20, CT_COLOR_ACCENT_HI, level);
+    // 相手ごとの勝敗（ラウンド単位。勝＝あなたの勝ち）。0 回でもそのまま 0 と出す
+    for (size_t p = 0; p < core::kProviderCount; ++p) {
+        const uint32_t *o = st.outcome_by_provider[p];
+        std::snprintf(line, sizeof(line), "対 %s　%lu 勝 ・ %lu 敗 ・ %lu 分",
+                      providerName((Provider)p),
+                      (unsigned long)o[(size_t)Result::HumanWin],
+                      (unsigned long)o[(size_t)Result::AiWin],
+                      (unsigned long)o[(size_t)Result::Draw]);
+        rectLabel(layout::kProfLine[2 + p], &ct_font_jp_20,
+                  p == (size_t)Provider::Jev ? CT_COLOR_ACCENT_HI : CT_COLOR_TEXT, line);
+    }
+
+    std::snprintf(line, sizeof(line), "記録：%s", kLevelName[core::recordLevel(st.rounds)]);
+    rectLabel(layout::kProfLine[4], &ct_font_jp_20, CT_COLOR_DIM, line);
 
     rectButton(layout::kProfPlay, "対戦する", Act::ProfPlay, true, true);
     rectButton(layout::kProfHabits, "癖を見る", Act::ProfHabits);
@@ -1154,12 +1167,15 @@ void buildSummary()
 
     const Result winner = core::matchWinner(s_score[(size_t)Result::HumanWin],
                                             s_score[(size_t)Result::AiWin]);
-    // 10 回戦の勝者名は、その対戦で多く戦った相手の名前で呼ぶ
+    // 10 回戦の勝者名: 全部 Jev / 全部 統計AI ならその名前。混ざった対戦は「相手の勝ち！」
+    // （5 回ずつなのに片方の名前で呼ぶと、どちらに負けたのか誤解する。内訳は下の 2 行に出ている）
+    const bool mixed = s_provider_rounds[(size_t)Provider::Jev] > 0 &&
+                       s_provider_rounds[(size_t)Provider::Stats] > 0;
     const Provider main_provider =
-        s_provider_rounds[(size_t)Provider::Jev] > s_provider_rounds[(size_t)Provider::Stats]
-            ? Provider::Jev : Provider::Stats;
+        s_provider_rounds[(size_t)Provider::Jev] > 0 ? Provider::Jev : Provider::Stats;
     const char *verdict = winner == Result::Draw ? "今回は引き分け"
-                                                 : verdictText(winner, main_provider);
+                        : (winner == Result::AiWin && mixed) ? "相手の勝ち！"
+                                                             : verdictText(winner, main_provider);
     rectLabel(layout::kSumVerdict, bigFont(verdict, (int16_t)(layout::kSumVerdict.w - 8)),
               winner == Result::HumanWin ? CT_COLOR_ACCENT_HI : CT_COLOR_TEXT, verdict);
 
@@ -1168,12 +1184,23 @@ void buildSummary()
                   (unsigned)s_score[0], (unsigned)s_score[1], (unsigned)s_score[2]);
     rectLabel(layout::kSumTally, &ct_font_jp_22, CT_COLOR_TEXT, tally);
 
-    char breakdown[128];
-    std::snprintf(breakdown, sizeof(breakdown),
-                  "Jev %u 回 / 統計AI %u 回\n予測の的中 %u 回 / 10 回",
-                  (unsigned)s_provider_rounds[(size_t)Provider::Jev],
-                  (unsigned)s_provider_rounds[(size_t)Provider::Stats],
-                  (unsigned)(s_provider_hits[0] + s_provider_hits[1]));
+    // 相手ごとの内訳（この対戦だけ）。1 回も戦っていない相手の行は出さない
+    char breakdown[192];
+    size_t at = 0;
+    for (size_t p = 0; p < core::kProviderCount; ++p) {
+        if (s_provider_rounds[p] == 0) {
+            continue;
+        }
+        at += (size_t)std::snprintf(breakdown + at, sizeof(breakdown) - at,
+                                    "対 %s %u 回：%u 勝 %u 敗 %u 分\n",
+                                    providerName((Provider)p), (unsigned)s_provider_rounds[p],
+                                    (unsigned)s_provider_outcome[p][(size_t)Result::HumanWin],
+                                    (unsigned)s_provider_outcome[p][(size_t)Result::AiWin],
+                                    (unsigned)s_provider_outcome[p][(size_t)Result::Draw]);
+    }
+    std::snprintf(breakdown + at, sizeof(breakdown) - at, "予測の的中 %u 回 / %u 回",
+                  (unsigned)(s_provider_hits[0] + s_provider_hits[1]),
+                  (unsigned)core::kRoundsPerMatch);
     rectLabel(layout::kSumBreak, &ct_font_jp_20, CT_COLOR_SUBTEXT, breakdown);
 
     rectLabel(layout::kSumNote, &ct_font_jp_20, CT_COLOR_DIM,
@@ -1607,6 +1634,7 @@ lv_obj_t *createGameScreen()
     s_score[0] = s_score[1] = s_score[2] = 0;
     s_provider_rounds[0] = s_provider_rounds[1] = 0;
     s_provider_hits[0] = s_provider_hits[1] = 0;
+    memset(s_provider_outcome, 0, sizeof(s_provider_outcome));
     s_counted = false;
     s_used = Probs::uniform();
     s_provider = Provider::Stats;
@@ -1641,14 +1669,22 @@ void debugPrintPublicState()
     // AI の手は、もう画面で公開されている場面（結果・10 回のけっか）でだけ出す
     const bool revealed = s_screen != nullptr &&
                           (s_view == View::RoundEnd || s_view == View::Summary);
+    // 相手ごとの通算（そのプロフィール／ゲストの RAM）。**行の末尾に足す**ので、
+    // これまでの expect: の部分一致はそのまま通る
+    const core::Stats &st = activeStats();
+    const uint32_t *jev = st.outcome_by_provider[(size_t)Provider::Jev];
+    const uint32_t *sta = st.outcome_by_provider[(size_t)Provider::Stats];
     Serial.printf("[DUEL] view=%s slot=%s match=%u round=%u/%u score=%u-%u-%u "
-                  "provider=%s fixed=%u pending=%u ai=%s rounds=%lu\n",
+                  "provider=%s fixed=%u pending=%u ai=%s rounds=%lu "
+                  "vsjev=%lu-%lu-%lu vsstats=%lu-%lu-%lu\n",
                   s_screen != nullptr ? viewName(s_view) : "-", slot,
                   (unsigned)s_match_id, (unsigned)s_round, (unsigned)core::kRoundsPerMatch,
                   (unsigned)s_score[0], (unsigned)s_score[1], (unsigned)s_score[2],
                   providerId(s_provider), s_ai_fixed ? 1u : 0u, s_req_pending ? 1u : 0u,
                   revealed ? kHandName[(size_t)s_last.ai] : "-",
-                  s_screen != nullptr ? (unsigned long)activeStats().rounds : 0ul);
+                  (unsigned long)st.rounds,
+                  (unsigned long)jev[0], (unsigned long)jev[1], (unsigned long)jev[2],
+                  (unsigned long)sta[0], (unsigned long)sta[1], (unsigned long)sta[2]);
 }
 
 }  // namespace duel

@@ -73,6 +73,11 @@ function doPost(e) {
     return json_(duelHandle_(body));
   }
 
+  // JEV REVERSI: 棋譜から局面を再計算して Jev に 1 手を選ばせる / 終わった対局の記録（gas/Reversi.gs）
+  if (body.event === 'reversi') {
+    return json_(reversiHandle_(body));
+  }
+
   // デザイン確認用：スクリプト所有者だけに見本メールを送る（ログには残さない）
   if (body.event === 'preview') {
     const left = body.left === undefined ? NOTIFY_AT : Number(body.left);

@@ -209,6 +209,11 @@ struct Stats {
     uint32_t rounds = 0;
     uint32_t hand_counts[kHandCount] = {0, 0, 0};
     uint32_t outcome_counts[kResultCount] = {0, 0, 0};
+    // 相手（Jev / 統計 AI）ごとの勝敗。所有者の要望（2026-09-22）で画面に出す。
+    // **数える単位はラウンド。** 1 対戦の中でも回ごとに相手が変わりうるので、
+    // 「対戦単位の provider 別勝敗」というものは存在しない。
+    // 設計書の項目ではないので、Python 参考実装との突き合わせの対象にもしない
+    uint32_t outcome_by_provider[kProviderCount][kResultCount] = {};
     uint32_t first_hand_counts[kHandCount] = {0, 0, 0};
     uint32_t transition_by_hand[kHandCount][kHandCount] = {};
     uint32_t transition_by_hand_result[kHandCount][kResultCount][kHandCount] = {};
@@ -283,7 +288,10 @@ inline bool appendResolved(Stats &s, const ResolvedRound &r)
         ++s.repeat_after_result[pri][hi == pi ? 0 : 1];
     }
 
-    // 設計書 5.5：予測の良さは provider_used 別に測る
+    // 設計書 5.5：予測の良さは provider_used 別に測る。
+    // 画面に出す「対 Jev / 対 統計AI の勝敗」も同じ provider_used から数える
+    // （合計は必ず prediction[provider].n と一致する）
+    ++s.outcome_by_provider[(size_t)r.provider_used][ri];
     PredictionMetrics &m = s.prediction[(size_t)r.provider_used];
     ++m.n;
     double top = p.p[0];
@@ -692,7 +700,12 @@ inline void buildJevState(const Stats &s, uint16_t match_id, uint8_t round_no,
 }
 
 // ---------------------------------------------------------------------------
-// NVS へ入れる塊（版数つき・固定長 488 バイト）
+// NVS へ入れる塊（版数つき・固定長）
+//
+// 版 1 = 488 バイト（最初の実装）。版 2 = 512 バイトで、末尾に
+// outcome_by_provider[2][3] の 24 バイトを足しただけ。**先頭 484 バイトの並びは同じ。**
+// そのため、すでに端末に入っている版 1 の記録はそのまま読めて（新しい数は 0 から始まる）、
+// 次の保存で版 2 に置き換わる。**記録を消すことは絶対にしない。**
 //
 // 並び（数値はリトルエンディアン。double は IEEE-754 の 64bit をそのまま）:
 //
@@ -713,13 +726,17 @@ inline void buildJevState(const Stats &s, uint16_t match_id, uint8_t round_no,
 //  264..283 : match_counts { completed, human_win, ai_win, draw, aborted }
 //  284..483 : tail[50] × { match_id(uint16), round_no, packed }
 //             packed = player_hand | ai_hand<<2 | player_result<<4
-//  484..487 : crc32（0..483 バイトに対する CRC-32/ISO-HDLC）
+//  ---- ここまでが版 1 と共通。版 1 はこの次が crc32（484..487・合計 488 バイト）----
+//  484..507 : outcome_by_provider[2][3]（版 2 で追加）
+//  508..511 : crc32（0..507 バイトに対する CRC-32/ISO-HDLC）
 //
-// 版番号・長さ・CRC・値の妥当性のどれかが合わなければ「記録なし」として扱う。
+// 版番号と長さの組み合わせが知らないもの、CRC 違い、値がおかしいときは「記録なし」。
 // CRC は破損検出用で、署名や改ざん対策ではない。
 // ---------------------------------------------------------------------------
-constexpr uint8_t kBlobVersion = 1;
-constexpr size_t kBlobBytes = 488;
+constexpr uint8_t kBlobVersion = 2;
+constexpr size_t kBlobBytesV1 = 488;    // 版 1（outcome_by_provider が無い）
+constexpr size_t kBlobBytes = 512;      // 版 2。書き出しは必ずこちら
+constexpr size_t kBlobCommonBytes = 484;    // 版 1 と版 2 で並びが同じところ
 
 namespace detail {
 
@@ -834,15 +851,30 @@ inline void encodeStats(const Stats &s, uint8_t *out)
         out[at + 3] = (uint8_t)((uint8_t)t.player_hand | ((uint8_t)t.ai_hand << 2) |
                                 ((uint8_t)t.player_result << 4));
     }
+    // 版 2 で足した分
+    for (size_t p = 0; p < kProviderCount; ++p) {
+        for (size_t i = 0; i < kResultCount; ++i, at += 4) {
+            detail::put32(out + at, s.outcome_by_provider[p][i]);
+        }
+    }
     detail::put32(out + (kBlobBytes - 4), detail::crc32(out, kBlobBytes - 4));
 }
 
-inline bool decodeStats(const uint8_t *in, Stats &s)
+// length は NVS から読んだ実際の長さ。版 1（488）も版 2（512）も受け付ける
+inline bool decodeStats(const uint8_t *in, size_t length, Stats &s)
 {
-    if (in[0] != kBlobVersion || in[1] > kTailCapacity) {
-        return false;   // 版が違う・長さが変。移行はしない（次の保存で新形式になる）
+    size_t crc_at = 0;
+    if (in[0] == 1 && length == kBlobBytesV1) {
+        crc_at = kBlobBytesV1 - 4;
+    } else if (in[0] == kBlobVersion && length == kBlobBytes) {
+        crc_at = kBlobBytes - 4;
+    } else {
+        return false;   // 知らない版・長さ。移行はしない（次の保存で新形式になる）
     }
-    if (detail::get32(in + (kBlobBytes - 4)) != detail::crc32(in, kBlobBytes - 4)) {
+    if (in[1] > kTailCapacity) {
+        return false;
+    }
+    if (detail::get32(in + crc_at) != detail::crc32(in, crc_at)) {
         return false;
     }
     s = Stats{};
@@ -910,6 +942,14 @@ inline bool decodeStats(const uint8_t *in, Stats &s)
         t.player_hand = (Hand)hand;
         t.ai_hand = (Hand)ai;
         t.player_result = (Result)res;
+    }
+    // 版 2 だけにある数。版 1 の記録はここが 0 のまま始まる（過去の勝敗は復元できない）
+    if (in[0] >= 2) {
+        for (size_t p = 0; p < kProviderCount; ++p) {
+            for (size_t i = 0; i < kResultCount; ++i, at += 4) {
+                s.outcome_by_provider[p][i] = detail::get32(in + at);
+            }
+        }
     }
     // 統計の意味が壊れていないかだけ軽く確かめる（数え間違いの取り込みを防ぐ）
     if (s.hand_counts[0] + s.hand_counts[1] + s.hand_counts[2] != s.rounds ||

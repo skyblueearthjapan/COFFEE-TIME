@@ -9,7 +9,8 @@
 //      greedy_counterexample）を、期待得点差の 1 ビットまで再現すること
 //   3. **参考実装 duel_reference.py が作った正解データと 1e-9 以内で一致**
 //      （各ラウンド前の統計 AI の確率・最善手の集合・1 局ぶんの統計まるごと）
-//   4. NVS へ入れる塊の書き出し／読み戻しが完全に往復すること（壊すと弾くこと）
+//   4. NVS へ入れる塊の書き出し／読み戻しが完全に往復すること（壊すと弾くこと）と、
+//      版 1（488B・相手ごとの勝敗が無い）の記録が消えずに版 2（512B）へ引き継がれること
 //   5. 癖のカード（設計書 4.5）の境目 19/20 件・59%/60%、優先順・最大 3 枚・重複除去
 //   6. Jev へ渡す状態の組み立て（直近 12 件・対戦の境目・連続回数・条件つき集計）
 #include <cmath>
@@ -346,6 +347,8 @@ static bool sameStatsExact(const Stats &a, const Stats &b)
     if (std::memcmp(&a.rounds, &b.rounds, sizeof(a.rounds)) != 0) return false;
     if (std::memcmp(a.hand_counts, b.hand_counts, sizeof(a.hand_counts)) != 0) return false;
     if (std::memcmp(a.outcome_counts, b.outcome_counts, sizeof(a.outcome_counts)) != 0) return false;
+    if (std::memcmp(a.outcome_by_provider, b.outcome_by_provider,
+                    sizeof(a.outcome_by_provider)) != 0) return false;
     if (std::memcmp(a.first_hand_counts, b.first_hand_counts, sizeof(a.first_hand_counts)) != 0) return false;
     if (std::memcmp(a.transition_by_hand, b.transition_by_hand, sizeof(a.transition_by_hand)) != 0) return false;
     if (std::memcmp(a.transition_by_hand_result, b.transition_by_hand_result,
@@ -372,22 +375,36 @@ static bool sameStatsExact(const Stats &a, const Stats &b)
     return true;
 }
 
+// 版 2 の塊から、同じ中身の版 1 の塊（末尾の相手別勝敗が無いもの）を作る。
+// 先頭 484 バイトの並びが同じなので、版番号と CRC を入れ直すだけでよい
+static void makeV1Blob(const Stats &s, uint8_t *out)
+{
+    uint8_t v2[d::kBlobBytes];
+    d::encodeStats(s, v2);
+    std::memcpy(out, v2, d::kBlobCommonBytes);
+    out[0] = 1;
+    d::detail::put32(out + d::kBlobCommonBytes,
+                     d::detail::crc32(out, d::kBlobCommonBytes));
+}
+
 static void checkSerialization()
 {
-    std::printf("[4] NVS へ入れる塊（%u バイト）の往復\n", (unsigned)d::kBlobBytes);
+    std::printf("[4] NVS へ入れる塊（版 2 = %u バイト / 版 1 = %u バイト）の往復と引き継ぎ\n",
+                (unsigned)d::kBlobBytes, (unsigned)d::kBlobBytesV1);
 
     uint8_t blob[d::kBlobBytes];
     // 空の統計
     Stats empty;
     d::encodeStats(empty, blob);
     Stats back;
-    CHECK(d::decodeStats(blob, back));
+    CHECK(blob[0] == 2);                // 書き出しは必ず版 2
+    CHECK(d::decodeStats(blob, d::kBlobBytes, back));
     CHECK(sameStatsExact(empty, back));
 
     for (int ci = 0; ci < kGoldenCaseCount; ++ci) {
         d::encodeStats(g_final[ci], blob);
         Stats out;
-        CHECK(d::decodeStats(blob, out));
+        CHECK(d::decodeStats(blob, d::kBlobBytes, out));
         if (!sameStatsExact(g_final[ci], out)) {
             note("局 %d の塊が往復しない\n", ci);
             ++g_fail;
@@ -401,22 +418,123 @@ static void checkSerialization()
         }
     }
 
+    // --- 版 1 → 版 2 の引き継ぎ（**記録を消さない**ことがいちばん大事） ---------
+    int migrated = 0;
+    for (int ci = 0; ci < kGoldenCaseCount; ++ci) {
+        uint8_t v1[d::kBlobBytesV1];
+        makeV1Blob(g_final[ci], v1);
+        CHECK(v1[0] == 1);
+
+        Stats old;
+        CHECK(d::decodeStats(v1, d::kBlobBytesV1, old));
+        // 相手ごとの勝敗だけが 0 で、ほかは 1 ビットまで同じであること
+        Stats want = g_final[ci];
+        std::memset(want.outcome_by_provider, 0, sizeof(want.outcome_by_provider));
+        if (!sameStatsExact(want, old)) {
+            note("局 %d の版 1 の引き継ぎで古い項目が変わってしまう\n", ci);
+            ++g_fail;
+        }
+        uint32_t sum = 0;
+        for (size_t p = 0; p < 2; ++p) {
+            for (size_t i = 0; i < 3; ++i) {
+                sum += old.outcome_by_provider[p][i];
+            }
+        }
+        CHECK(sum == 0);
+        CHECK(old.rounds == g_final[ci].rounds);    // ラウンド数は消えない
+
+        // 次の保存で版 2 になり、そのあとは完全に往復する
+        uint8_t v2[d::kBlobBytes];
+        d::encodeStats(old, v2);
+        CHECK(v2[0] == 2);
+        Stats again;
+        CHECK(d::decodeStats(v2, d::kBlobBytes, again));
+        CHECK(sameStatsExact(old, again));
+        ++migrated;
+    }
+
     // 壊したら弾く
     d::encodeStats(g_final[0], blob);
     blob[20] = (uint8_t)(blob[20] ^ 0xFFu);
     Stats broken;
-    CHECK(!d::decodeStats(blob, broken));
+    CHECK(!d::decodeStats(blob, d::kBlobBytes, broken));
+
+    d::encodeStats(g_final[0], blob);
+    blob[486] = (uint8_t)(blob[486] ^ 0xFFu);    // 版 2 で足した場所
+    CHECK(!d::decodeStats(blob, d::kBlobBytes, broken));
 
     d::encodeStats(g_final[0], blob);
     blob[0] = 99;                       // 知らない版
-    CHECK(!d::decodeStats(blob, broken));
+    CHECK(!d::decodeStats(blob, d::kBlobBytes, broken));
+
+    d::encodeStats(g_final[0], blob);
+    CHECK(!d::decodeStats(blob, d::kBlobBytesV1, broken));   // 版 2 を版 1 の長さで読まない
+
+    uint8_t v1[d::kBlobBytesV1];
+    makeV1Blob(g_final[0], v1);
+    CHECK(!d::decodeStats(v1, d::kBlobBytes, broken));        // その逆も
+    v1[30] = (uint8_t)(v1[30] ^ 0xFFu);
+    CHECK(!d::decodeStats(v1, d::kBlobBytesV1, broken));      // 版 1 の CRC も見ている
 
     d::encodeStats(g_final[0], blob);
     blob[1] = 200;                      // ありえない tail の数
-    CHECK(!d::decodeStats(blob, broken));
+    CHECK(!d::decodeStats(blob, d::kBlobBytes, broken));
 
-    std::printf("  空・%d 局ぶんが 1 ビットまで往復し、版違い・CRC 違い・長さ違いを弾く\n",
-                kGoldenCaseCount);
+    std::printf("  空・%d 局ぶんが 1 ビットまで往復し、版 1 の %d 局ぶんも中身を保ったまま"
+                "版 2 になる\n", kGoldenCaseCount, migrated);
+    std::printf("  版違い・長さ違い・CRC 違い（版 1 / 版 2 とも）を弾く\n");
+}
+
+// 相手ごとの勝敗は、provider 別の予測回数と必ずつじつまが合う
+static void checkProviderOutcomes()
+{
+    std::printf("[4b] 相手（Jev / 統計AI）ごとの勝敗の数え方\n");
+
+    for (int ci = 0; ci < kGoldenCaseCount; ++ci) {
+        const Stats &s = g_final[ci];
+        uint32_t total = 0;
+        for (size_t p = 0; p < 2; ++p) {
+            uint32_t sum = 0;
+            for (size_t i = 0; i < 3; ++i) {
+                sum += s.outcome_by_provider[p][i];
+            }
+            // 1 ラウンド確定するたびに provider 別の n と同時に 1 だけ増えるので必ず一致する
+            CHECK(sum == s.prediction[p].n);
+            total += sum;
+        }
+        CHECK(total == s.rounds);
+        // 勝ち / 負け / あいこの内訳も、相手をまたいで足せば全体と一致する
+        for (size_t i = 0; i < 3; ++i) {
+            CHECK(s.outcome_by_provider[0][i] + s.outcome_by_provider[1][i] ==
+                  s.outcome_counts[i]);
+        }
+    }
+
+    // 受け付けられなかったラウンドでは増えないこと
+    Stats s;
+    d::ResolvedRound r;
+    r.match_id = 1;
+    r.round_no = 1;
+    r.player_hand = Hand::Rock;
+    r.ai_hand = Hand::Scissors;
+    r.player_result = Result::HumanWin;
+    r.provider_used = Provider::Jev;
+    r.probabilities = Probs::uniform();
+    CHECK(d::appendResolved(s, r));
+    CHECK(s.outcome_by_provider[(size_t)Provider::Jev][(size_t)Result::HumanWin] == 1);
+    CHECK(!d::appendResolved(s, r));    // 同じ回は二度数えない
+    CHECK(s.outcome_by_provider[(size_t)Provider::Jev][(size_t)Result::HumanWin] == 1);
+
+    r.round_no = 2;
+    r.player_hand = Hand::Paper;
+    r.ai_hand = Hand::Scissors;
+    r.player_result = Result::AiWin;
+    r.provider_used = Provider::Stats;
+    CHECK(d::appendResolved(s, r));
+    CHECK(s.outcome_by_provider[(size_t)Provider::Stats][(size_t)Result::AiWin] == 1);
+    CHECK(s.outcome_by_provider[(size_t)Provider::Jev][(size_t)Result::AiWin] == 0);
+
+    std::printf("  相手別の勝敗の合計が predictor 別の回数・全体の内訳と一致する\n");
 }
 
 // ---------------------------------------------------------------------------
@@ -689,6 +807,8 @@ int main()
     checkAppendGuards();
     std::printf("\n");
     checkSerialization();
+    std::printf("\n");
+    checkProviderOutcomes();
     std::printf("\n");
     checkHabits();
     std::printf("\n");

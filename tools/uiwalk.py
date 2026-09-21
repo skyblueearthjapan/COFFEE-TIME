@@ -61,8 +61,20 @@ shots = []
 for step in steps:
     kind, _, arg = step.partition(":")
     if kind == "key":
+        s.reset_input_buffer()
         s.write(arg.encode())
-        time.sleep(0.3)
+        if arg and arg in "0123456789BFI":
+            # 画面を切り替える命令は受領の返事 [KEY] を待つ。待たずにタップを送ると、端末が忙しい間に
+            # 「切替 → タップ」が続けて処理され、タップが作りかけの画面や前の画面（HOME の ＋1）に当たる
+            deadline = time.time() + 45
+            while time.time() < deadline:
+                if s.readline().startswith(b"[KEY]"):
+                    break
+            else:
+                sys.exit(f"no key ack: {arg}（古いファームには [KEY] の返事が無い）")
+            time.sleep(0.8)     # 画面を作って最初の描画が終わるまで
+        else:
+            time.sleep(0.3)
     elif kind == "tap":
         # 端末はメインループが数秒止まることがある（Wi-Fi の再接続）。受領の返事を待ってから次へ進む
         s.reset_input_buffer()
