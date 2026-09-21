@@ -50,7 +50,9 @@ constexpr Rect kTitleWide  {134,  34, 212, 26};
 
 // --- G10 むずかしさ選び -----------------------------------------------------
 constexpr Rect kModeLead   { 94,  64, 292, 56};
-constexpr Rect kModeBtn[3] = {{88, 130, 304, 62}, {88, 200, 304, 62}, {88, 270, 304, 62}};
+// 遊び用の 4 モード（ミニ / レギュラー / フル / 超難関）。2 行の文字（20px × 2）が入る高さにする
+constexpr Rect kModeBtn[4] = {{88, 114, 304, 52}, {88, 170, 304, 52}, {88, 226, 304, 52},
+                              {88, 282, 304, 52}};
 constexpr Rect kModeCafe   { 96, 344, 120, 46};
 constexpr Rect kModeStats  {230, 344, 120, 46};
 constexpr Rect kModeBack   {160, 396, 160, 44};
@@ -91,6 +93,9 @@ constexpr Rect kQProgress  {140,  66, 200, 26};
 constexpr Rect kQText      { 94,  96, 292, 96};
 constexpr Rect kQRemain    {110, 194, 260, 26};
 constexpr Rect kQGuide     { 94, 222, 292, 52};
+constexpr Rect kQMemo     { 94, 226, 292,  44};   // メモがあるときは案内文の場所にこのボタンを出す
+constexpr Rect kMemoNote   { 94, 244, 292,  52};
+constexpr Rect kMemoBack   {130, 306, 220,  46};
 constexpr Rect kQYes       { 86, 278, 144, 72};
 constexpr Rect kQNo        {250, 278, 144, 72};
 constexpr Rect kQBack      {108, 356, 116, 42};
@@ -139,8 +144,9 @@ constexpr Rect kRevNext    {292, 296,  92, 42};
 constexpr Rect kRevDone    {110, 346, 260, 48};
 
 // --- G80 きろく -------------------------------------------------------------
-constexpr Rect kStatRow[3] = {{84, 72, 312, 48}, {84, 128, 312, 48}, {84, 184, 312, 48}};
-constexpr Rect kStatNote   { 94, 244, 292, 104};
+constexpr Rect kStatRow[4] = {{84, 68, 312, 44}, {84, 118, 312, 44}, {84, 168, 312, 44},
+                              {84, 218, 312, 44}};
+constexpr Rect kStatNote   { 94, 270, 292, 80};
 constexpr Rect kStatBack   {140, 356, 200, 46};
 
 // --- カフェ / ひと休み（探偵ゲームと同じ並び） ------------------------------
@@ -172,6 +178,7 @@ enum class View : uint8_t {
     Error,       // G90 データ不一致
     Cafe,        // 共通カフェパネル
     Paused,      // 無操作でひと休み（状態は残したまま）
+    Memo,        // 自分が選んだもののメモ（名前と特徴を読み返す。AI には渡さない）
 };
 
 // 押した内容。lv_event の user_data に入れて 1 つのコールバックで処理する
@@ -190,6 +197,7 @@ enum class Act : int {
     ErrorAgain, ErrorHome,
     Cafe, CafeCoffee, CafeBack, CafeHome,
     PausedResume, PausedQuit,
+    QMemo, MemoBack,
 };
 
 // 次の tick で行う重い計算（「考えています」を先に描いてから動かす）
@@ -212,10 +220,22 @@ View s_cafe_return = View::Mode;
 View s_paused_return = View::Mode;
 bool s_dirty = true;
 
-uint8_t s_mode = 0;              // 選んだむずかしさ（0..2）
+uint8_t s_mode = 0;              // 選んだ遊び用モード（0..3 = ミニ / レギュラー / フル / 超難関）
 uint8_t s_group = 0;             // 一覧のタブ（0..3）
 uint8_t s_page = 0;              // 一覧のページ
 uint16_t s_card = core::kNoItem; // 開いているカード
+// 選んだもののメモ（ユーザー要望 2026-09-21:「特徴を忘れないよう、選んだものをどこかで見られるように」）。
+// **画面に出すためだけの値**。推論コア（s_engine）にも Advisor にも渡さない。第 2 段階で Jev につなぐときも
+// サーバーへ送ってはいけない（送ると「心を読む」遊びが成り立たなくなる）。
+// カードを開いて「決めた」を押したときだけ入る。一覧の「決めた」から始めたときはメモなし
+uint16_t s_memo = core::kNoItem;
+
+// いま選んでいる遊び用モードの定義（表の中では設計書の 3 モードの後ろにある）
+const c::Mode &playMode()
+{
+    const uint8_t i = s_mode < c::kPlayModeCount ? s_mode : 0;
+    return c::kModes[c::kPlayModeFirst + i];
+}
 
 Pending s_pending = Pending::None;
 uint32_t s_view_ms = 0;          // この画面を作った時刻。指が触れたままの誤回答を防ぐ
@@ -386,7 +406,7 @@ const core::Session &session()
 
 core::Mask modeItems()
 {
-    return core::Mask::from(c::kModes[s_mode].items);
+    return core::Mask::from(playMode().items);
 }
 
 // 一覧に出す集合。本当の答えを選ぶときだけ全 128 候補から選べるようにする
@@ -443,8 +463,8 @@ void buildMode()
     makeTitle(layout::kTitleWide, "エスパー対決");
     rectLabel(layout::kModeLead, &ct_font_jp_20, CT_COLOR_TEXT, text("mode_lead"));
 
-    for (uint8_t i = 0; i < c::kModeCount && i < 3; ++i) {
-        const c::Mode &m = c::kModes[i];
+    for (uint8_t i = 0; i < c::kPlayModeCount && i < 4; ++i) {
+        const c::Mode &m = c::kModes[c::kPlayModeFirst + i];
         char label[80];
         std::snprintf(label, sizeof(label), "%s  %s\n%u こ / %u 問まで",
                       m.label, m.name_ja, (unsigned)m.item_count, (unsigned)m.max_questions);
@@ -523,10 +543,24 @@ void buildCard()
     rectButton(layout::kCardCafe, "カフェ", Act::Cafe);
 }
 
+// 選んだもののメモ。カードと同じ見た目で、名前と特徴を読み返せる
+void buildMemo()
+{
+    const c::Item &it = c::kItems[s_memo < c::kItemCount ? s_memo : 0];
+    makeTitle(layout::kTitleWide, "えらんだもの（メモ）");
+    rectLabel(layout::kCardName, nameFont(it.name, (int16_t)(layout::kCardName.w - 8)),
+              CT_COLOR_TEXT, it.name);
+    rectLabel(layout::kCardDef, &ct_font_jp_22, CT_COLOR_SUBTEXT, it.definition);
+    rectLabel(layout::kMemoNote, &ct_font_jp_20, CT_COLOR_DIM,
+              "このメモは画面に出すだけ。\nAI の推理には使いません。");
+    rectButton(layout::kMemoBack, "質問へもどる", Act::MemoBack, true, true);
+    rectButton(layout::kCardCafe, "カフェ", Act::Cafe);
+}
+
 void buildReady()
 {
     char title[48];
-    std::snprintf(title, sizeof(title), "じゅんび ・ %s", c::kModes[s_mode].label);
+    std::snprintf(title, sizeof(title), "じゅんび ・ %s", playMode().label);
     makeTitle(layout::kTitleWide, title);
     // 設計書 1.1 の固定文をそのまま出す（ここがいちばん大事な説明）
     rectLabel(layout::kReadyBody, &ct_font_jp_22, CT_COLOR_TEXT, text("ready_notice"));
@@ -564,7 +598,14 @@ void buildQuestion()
     std::snprintf(remain, sizeof(remain), "のこり %u こ", (unsigned)s.remainingCount());
     rectLabel(layout::kQRemain, &ct_font_jp_20, CT_COLOR_ACCENT_HI, remain);
 
-    rectLabel(layout::kQGuide, &ct_font_jp_20, CT_COLOR_TEXT, text("question_guide"));
+    if (s_memo < c::kItemCount) {
+        // 選んだものをいつでも見られるようにする。押すと名前と特徴を読み返せる
+        char memo[96];
+        std::snprintf(memo, sizeof(memo), "メモ：%s", c::kItems[s_memo].name);
+        rectButton(layout::kQMemo, memo, Act::QMemo);
+    } else {
+        rectLabel(layout::kQGuide, &ct_font_jp_20, CT_COLOR_TEXT, text("question_guide"));
+    }
 
     rectButton(layout::kQYes, "はい\nYES", Act::AnsYes, true, true);
     rectButton(layout::kQNo, "いいえ\nNO", Act::AnsNo, true, true);
@@ -634,7 +675,7 @@ void buildResult()
 
     char detail[96];
     std::snprintf(detail, sizeof(detail), "%s  %s\n聞いた質問 %u 問\nわからない %u 回",
-                  c::kModes[s_mode].label, c::kModes[s_mode].name_ja,
+                  playMode().label, playMode().name_ja,
                   (unsigned)s.asked, (unsigned)s.skip_count);
     rectLabel(layout::kResDetail, &ct_font_jp_20, CT_COLOR_SUBTEXT, detail);
 
@@ -712,12 +753,12 @@ void buildRevealCard()
 void buildStats()
 {
     makeTitle(layout::kTitleWide, "きろく");
-    for (uint8_t m = 0; m < c::kModeCount && m < 3; ++m) {
+    for (uint8_t m = 0; m < c::kPlayModeCount && m < 4; ++m) {
         const ModeStats &st = stats(m);
         makePanelBox(layout::kStatRow[m]);
         const Rect &r = layout::kStatRow[m];
         rectLabel(Rect{(int16_t)(r.x + 10), r.y, 96, r.h}, &ct_font_jp_20, CT_COLOR_TEXT,
-                  c::kModes[m].label);
+                  c::kModes[c::kPlayModeFirst + m].label);
         char body[48];
         if (st.best_questions > 0) {
             std::snprintf(body, sizeof(body), "AI %u / 人 %u ・ 最少 %u 問",
@@ -786,6 +827,7 @@ void rebuild()
     case View::Error:      buildError(); break;
     case View::Cafe:       buildCafe(); break;
     case View::Paused:     buildPaused(); break;
+    case View::Memo:       buildMemo(); break;
     }
 }
 
@@ -830,7 +872,8 @@ void runPending()
     }
     switch (what) {
     case Pending::Start:
-        s_engine->start(s_mode, esp_random());
+        // 推論コアの表では、遊び用のモードは設計書の 3 モードの後ろに並んでいる
+    s_engine->start((uint8_t)(c::kPlayModeFirst + s_mode), esp_random());
         s_recorded = false;
         s_reveal = core::kNoItem;
         s_contra_count = 0;
@@ -862,7 +905,7 @@ void finishGame(bool ai_win)
         }
         // 数えるのは回数だけ。モード・問数・当たり外れ以外は残さない（答えは持っていない）
         char note[40];
-        std::snprintf(note, sizeof(note), "esper %s q=%u ok=%u", c::kModes[s_mode].id,
+        std::snprintf(note, sizeof(note), "esper %s q=%u ok=%u", playMode().id,
                       (unsigned)s.asked, ai_win ? 1u : 0u);
         cup::stats::gamePlayed(cup::GameId::Esper, note);
     }
@@ -874,6 +917,7 @@ void resetToMode()
 {
     s_page = 0;
     s_card = core::kNoItem;
+    s_memo = core::kNoItem;
     s_reveal = core::kNoItem;
     s_contra_count = 0;
     s_contra_at = 0;
@@ -887,7 +931,7 @@ void resetToMode()
 void modeCb(lv_event_t *e)
 {
     const int index = (int)(intptr_t)lv_event_get_user_data(e);
-    if (index < 0 || index >= (int)c::kModeCount) {
+    if (index < 0 || index >= (int)c::kPlayModeCount) {
         return;
     }
     s_mode = (uint8_t)index;
@@ -953,6 +997,7 @@ void actionCb(lv_event_t *e)
         setView(View::Mode);
         break;
     case Act::CatDecide:
+        s_memo = core::kNoItem;     // カードを開かずに決めた = メモなしで遊ぶ
         setView(View::Ready);
         break;
     case Act::CatGiveUp:       // 本当の答えを言わずに終わる
@@ -963,6 +1008,7 @@ void actionCb(lv_event_t *e)
         setView(View::Catalog);
         break;
     case Act::CardDecide:
+        s_memo = s_card;            // 画面表示用のメモ。推論には使わない
         setView(View::Ready);
         break;
 
@@ -971,6 +1017,13 @@ void actionCb(lv_event_t *e)
         break;
     case Act::ReadyBack:
         setView(View::Catalog);
+        break;
+
+    case Act::QMemo:
+        setView(View::Memo);
+        break;
+    case Act::MemoBack:
+        setView(View::Question);
         break;
 
     case Act::AnsYes:
@@ -1177,6 +1230,7 @@ void screenDeletedCb(lv_event_t *e)
     s_paused_return = View::Mode;
     s_page = 0;
     s_card = core::kNoItem;
+    s_memo = core::kNoItem;
     s_reveal = core::kNoItem;
     s_contra_count = 0;
     s_contra_at = 0;
@@ -1220,6 +1274,7 @@ lv_obj_t *createGameScreen()
     s_group = 0;
     s_page = 0;
     s_card = core::kNoItem;
+    s_memo = core::kNoItem;
     s_reveal = core::kNoItem;
     s_contra_count = 0;
     s_contra_at = 0;
@@ -1242,7 +1297,7 @@ void debugPrintPublicState()
     Serial.printf("[ESP] view=%u mode=%s phase=%u q=%s asked=%u/%u skip=%u undo=%u "
                   "remain=%u guess=%s reason=%u verdict=%u engine=%s\n",
                   (unsigned)s_view,
-                  s_engine != nullptr ? c::kModes[s_mode].id : "-",
+                  s_engine != nullptr ? playMode().id : "-",
                   (unsigned)s.phase,
                   s.current_question < c::kQuestionCount
                       ? c::kQuestions[s.current_question].id : "-",

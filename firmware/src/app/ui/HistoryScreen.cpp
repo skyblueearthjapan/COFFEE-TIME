@@ -59,10 +59,11 @@ struct GameRow {
     cup::GameId id;
     const char *name;
 };
+// 並び順はゲーム一覧と同じ（ユーザー指定: AI DUEL → エスパー → 探偵 → 人狼）
 const GameRow kGameRows[] = {
-    {cup::GameId::Werewolf, "人狼会"},
-    {cup::GameId::Detective, "事件簿"},
     {cup::GameId::Esper, "エスパー"},
+    {cup::GameId::Detective, "事件簿"},
+    {cup::GameId::Werewolf, "人狼会"},
 };
 constexpr int kGameRowCount = (int)(sizeof(kGameRows) / sizeof(kGameRows[0]));
 

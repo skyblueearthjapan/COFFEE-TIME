@@ -67,7 +67,11 @@ struct Mode {
     uint8_t max_skips;         // 「わからない」の上限
 };
 extern const Mode kModes[];
-constexpr uint8_t kModeCount = 3;
+// 0〜2 番 = 設計書のモード（手本データの照合用）。3 番から = 端末で遊ぶモード
+constexpr uint8_t kRefModeCount = 3;
+constexpr uint8_t kPlayModeFirst = 3;
+constexpr uint8_t kPlayModeCount = 4;
+constexpr uint8_t kModeCount = 7;
 
 // 画面の本文（折り返し済み）。1 行で済むボタンの見出しは EsperGame.cpp 側に直接ある
 struct TextEntry { const char *key; const char *value; };

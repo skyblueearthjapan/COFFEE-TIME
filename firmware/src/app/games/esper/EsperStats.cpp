@@ -11,7 +11,7 @@ namespace {
 constexpr const char *kNvsNamespace = "ct_esp";
 constexpr const char *kNvsKey = "stat";
 constexpr uint8_t kFormatVersion = 1;
-constexpr size_t kBlobBytes = 32;
+constexpr size_t kBlobBytes = 40;     // 4 + 8 × 4 モード + CRC 4
 constexpr size_t kHeaderBytes = 4;
 constexpr size_t kRecordBytes = 8;
 

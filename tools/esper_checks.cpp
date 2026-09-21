@@ -109,7 +109,9 @@ static void checkContent()
     std::printf("[1] 生成データ（EsperContent）の検査\n");
     CHECK(ct::kItemCount == 128);
     CHECK(ct::kQuestionCount == 146);
-    CHECK(ct::kModeCount == 3);
+    CHECK(ct::kRefModeCount == 3);
+    CHECK(ct::kPlayModeFirst == 3);
+    CHECK(ct::kModeCount == ct::kRefModeCount + ct::kPlayModeCount);
 
     uint16_t per_group[ct::kGroupCount] = {0, 0, 0, 0};
     for (uint16_t i = 0; i < ct::kItemCount; ++i) {
@@ -317,7 +319,7 @@ static void checkExhaustive()
 {
     std::printf("[3] 各モードの全候補を正直な回答で最後まで（基準ルート）\n");
     g_engine.setAdvisor(&g_local);
-    for (uint8_t m = 0; m < ct::kModeCount; ++m) {
+    for (uint8_t m = 0; m < ct::kRefModeCount; ++m) {
         const Mask items = Mask::from(ct::kModes[m].items);
         Tally t;
         for (uint16_t i = 0; i < ct::kItemCount; ++i) {
@@ -332,12 +334,53 @@ static void checkExhaustive()
     }
 }
 
+// 遊び用のモード: 質問数を絞っているので「必ず当たる」ではなく、AI の勝率が狙いの範囲に入ることを確かめる。
+// 同点の質問や最後の予想は乱数の種で変わるので、種を変えて何度も回した平均で見る
+static void checkPlayModes()
+{
+    const int kSeeds = 40;
+    std::printf("[3b] 遊び用のモード: 全候補 × %d 通りの種・正直な回答（AI の勝率）\n", kSeeds);
+    g_engine.setAdvisor(&g_local);
+    // 狙い: ミニ 80% 以上 / レギュラー 70% 以上 / フル 50% 前後 / 超難関 25% 前後（2026-09-21 ユーザー指定）
+    static const double kLow[4] = {0.78, 0.68, 0.42, 0.18};
+    static const double kHigh[4] = {1.00, 0.92, 0.58, 0.32};
+    for (uint8_t i = 0; i < ct::kPlayModeCount; ++i) {
+        const uint8_t m = (uint8_t)(ct::kPlayModeFirst + i);
+        const Mask items = Mask::from(ct::kModes[m].items);
+        uint32_t games = 0, solved = 0, left_sum = 0;
+        for (int seed = 0; seed < kSeeds; ++seed) {
+            for (uint16_t k = 0; k < ct::kItemCount; ++k) {
+                if (!items.test(k)) continue;
+                g_engine.start(m, (uint32_t)k * 2654435761u + (uint32_t)seed * 40503u + 17u);
+                uint32_t guard = 0;
+                while (g_engine.session().phase == Phase::Question) {
+                    g_engine.answer(truthful(g_engine.session().current_question, k));
+                    if (++guard > 64) { CHECK(false); break; }
+                }
+                const es::Session &ss = g_engine.session();
+                CHECK(ss.phase == Phase::Guess);
+                CHECK(ss.asked <= ss.maxQuestions());
+                CHECK(ss.candidates.test(k));
+                ++games;
+                left_sum += ss.remainingCount();
+                if (ss.guess == k) ++solved;
+            }
+        }
+        const double rate = (double)solved / (double)(games ? games : 1);
+        if (i < 4) CHECK(rate >= kLow[i] && rate <= kHigh[i]);
+        std::printf("  %-8s %3u こ / %u 問まで / %5u 局 / AI の勝率 %.1f%% / 最後に残る候補 平均 %.2f こ\n",
+                    ct::kModes[m].id, (unsigned)ct::kModes[m].item_count,
+                    (unsigned)ct::kModes[m].max_questions, games, rate * 100.0,
+                    (double)left_sum / (double)(games ? games : 1));
+    }
+}
+
 static void checkRandomSafe()
 {
     std::printf("[4] 安全な質問から乱数で選ぶ（%d seed × 全候補。設計書 16 章と同じ条件）\n",
                 ESPER_RANDOM_SEEDS);
     uint32_t total = 0;
-    for (uint8_t m = 0; m < ct::kModeCount; ++m) {
+    for (uint8_t m = 0; m < ct::kRefModeCount; ++m) {
         const Mask items = Mask::from(ct::kModes[m].items);
         Tally t;
         for (int seed = 0; seed < ESPER_RANDOM_SEEDS; ++seed) {
@@ -377,7 +420,7 @@ static void checkSkipUndoFuzz()
     uint32_t games = 0, skips = 0, undos = 0, solved = 0, unsolved = 0;
 
     for (uint32_t trial = 0; trial < 4000; ++trial) {
-        const uint8_t mode = (uint8_t)rng.below(ct::kModeCount);
+        const uint8_t mode = (uint8_t)rng.below(ct::kRefModeCount);
         const Mask items = Mask::from(ct::kModes[mode].items);
         const uint16_t target = items.nth(rng.below(items.count()));
 
@@ -536,6 +579,8 @@ int main()
     checkExhaustive();
     std::printf("  覚え書き: 当たり %u / 外れ %u / 再帰の最大の深さ %u 段\n",
                 g_engine.memoHits(), g_engine.memoMisses(), g_engine.maxDepth());
+    std::printf("\n");
+    checkPlayModes();
     std::printf("\n");
     checkRandomSafe();
     std::printf("\n");

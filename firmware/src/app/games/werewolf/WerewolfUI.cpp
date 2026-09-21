@@ -38,9 +38,12 @@ lv_obj_t *createEntryScreen()
     lv_obj_t *scr = makeScreen();
     makeTitle(scr, "ゲーム");
 
-    makeMenuItem(scr, "閉店後の人狼会", openWerewolfCb, nullptr, -60, true);
-    makeMenuItem(scr, "喫茶「余白」の事件簿", openDetectiveCb, nullptr, 10, true);
-    makeMenuItem(scr, "エスパー対決", openEsperCb, nullptr, 80, true);
+    // 並び順はユーザー指定（2026-09-21）: AI DUEL → エスパー → 探偵 → 人狼。
+    // AI DUEL は未実装なので「準備中」で先頭に置く（メニュー画面と同じ 4 段の配置）
+    makeMenuItem(scr, "AI DUEL", nullptr, nullptr, -104, false);
+    makeMenuItem(scr, "エスパー対決", openEsperCb, nullptr, -34, true);
+    makeMenuItem(scr, "喫茶「余白」の事件簿", openDetectiveCb, nullptr, 36, true);
+    makeMenuItem(scr, "閉店後の人狼会", openWerewolfCb, nullptr, 106, true);
 
     makeBackButton(scr);
     return scr;

@@ -32,7 +32,7 @@
  */
 namespace esper {
 
-constexpr size_t kModeSlots = 3;
+constexpr size_t kModeSlots = 4;      // 遊び用の 4 モード
 
 struct ModeStats {
     uint16_t ai_win;

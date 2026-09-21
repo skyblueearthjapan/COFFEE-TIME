@@ -120,6 +120,36 @@ MODE_LABEL = {"easy": "ミニ", "normal": "レギュラー", "hard": "フル"}
 MODE_NAME_JA = {"easy": "AIにやさしい", "normal": "いい勝負", "hard": "AIに手ごわい"}
 MODE_TIME_JA = {"easy": "20〜45 秒", "normal": "30〜60 秒", "hard": "45〜90 秒"}
 
+# 遊び用のモード（2026-09-21 ユーザー決定）。設計書の 5 / 7 / 10 問では正直に答えると AI が必ず当てるので、
+# 質問数を絞り、候補の数で AI の勝率を決める（勝率 ≒ 2^問数 ÷ 候補数。実際の値は tools/run_esper_checks.py が測る）。
+#   ミニ 3 問・10 こ = 約 80% / レギュラー 4 問・20 こ = 約 70% / フル 5 問・64 こ = 約 50% / 超難関 5 問・128 こ = 約 25%
+# per_group は「各分野の先頭から何こ採るか」。base は設計書のモードの組をそのまま土台にする指定
+PLAY_MODES = [
+    {"id": "mini", "label": "ミニ", "name": "AI 80%", "time": "20〜40 秒",
+     "base": "easy", "extra": {"D": 2}, "max_questions": 3, "max_skips": 2},
+    {"id": "regular", "label": "レギュラー", "name": "AI 70%", "time": "30〜50 秒",
+     "per_group": 5, "max_questions": 4, "max_skips": 2},
+    {"id": "full", "label": "フル", "name": "AI 50%", "time": "40〜60 秒",
+     "per_group": 16, "max_questions": 5, "max_skips": 2},
+    {"id": "ultra", "label": "超難関", "name": "AI 25%", "time": "40〜60 秒",
+     "per_group": 32, "max_questions": 5, "max_skips": 2},
+]
+
+
+def play_mode_members(catalog, spec):
+    """遊び用モードの候補 ID の並び（カタログの順を保つ）。"""
+    order = [it["id"] for it in catalog["items"]]
+    chosen = set()
+    if "base" in spec:
+        chosen |= set(catalog["modes"][spec["base"]]["item_ids"])
+        for group, extra in spec.get("extra", {}).items():
+            pool = [i for i in order if i[0] == group and i not in chosen]
+            chosen |= set(pool[:extra])
+    else:
+        for group in sorted({i[0] for i in order}):
+            chosen |= set([i for i in order if i[0] == group][:spec["per_group"]])
+    return [i for i in order if i in chosen]
+
 # ---------------------------------------------------------------------------
 # 画面の本文（生成時に全角 13 文字で折り返してから C++ へ埋め込む）
 #
@@ -136,7 +166,7 @@ UI_TEXTS = {
         "一覧の中から1つだけ、\n頭の中で決めてください。\n答えは入力しません。\n"
         "説明にある温度や材料も、\nそのまま思い浮かべて\nください。\n"
         "途中で別のものに変えず、\n質問に正直に\n答えてください。", 9),
-    "mode_lead": ("AI に当てさせる数を\nえらんでください。", 2),
+    "mode_lead": ("当てさせる数をえらぶ\n％は AI が当てる見込み", 2),
     "catalog_hint": ("名前を押すと 説明が出ます", 1),
     "reveal_hint": ("決めていたものを えらぶ", 1),
     "card_lead": ("これに決めるなら\n「決めた」を押します。", 2),
@@ -207,10 +237,28 @@ def atomize(text: str) -> list:
                 j += 1
             atoms.append(text[i:j])
             i = j
+        elif is_katakana(text[i]):
+            # カタカナ語（コーヒー・エスプレッソ など）は途中で切らない。
+            # 長すぎる語（9 文字以上）だけは 1 文字ずつに戻して、行に収まらなくなるのを防ぐ
+            j = i
+            while j < n and is_katakana(text[j]):
+                j += 1
+            if j - i <= KATAKANA_WORD_MAX:
+                atoms.append(text[i:j])
+            else:
+                atoms.extend(text[i:j])
+            i = j
         else:
             atoms.append(text[i])
             i += 1
     return atoms
+
+
+KATAKANA_WORD_MAX = 8
+
+
+def is_katakana(ch: str) -> bool:
+    return "ァ" <= ch <= "ヺ" or ch == "ー"
 
 
 def breakable(atoms: list, k: int) -> bool:
@@ -495,7 +543,12 @@ def gen_header(catalog: dict, info: dict) -> str:
     a("    uint8_t max_skips;         // 「わからない」の上限")
     a("};")
     a("extern const Mode kModes[];")
-    a("constexpr uint8_t kModeCount = %d;" % len(MODE_ORDER))
+    a("// 0〜%d 番 = 設計書のモード（手本データの照合用）。%d 番から = 端末で遊ぶモード"
+      % (len(MODE_ORDER) - 1, len(MODE_ORDER)))
+    a("constexpr uint8_t kRefModeCount = %d;" % len(MODE_ORDER))
+    a("constexpr uint8_t kPlayModeFirst = %d;" % len(MODE_ORDER))
+    a("constexpr uint8_t kPlayModeCount = %d;" % len(PLAY_MODES))
+    a("constexpr uint8_t kModeCount = %d;" % (len(MODE_ORDER) + len(PLAY_MODES)))
     a("")
     a("// 画面の本文（折り返し済み）。1 行で済むボタンの見出しは EsperGame.cpp 側に直接ある")
     a("struct TextEntry { const char *key; const char *value; };")
@@ -605,6 +658,23 @@ def gen_source(catalog: dict, info: dict) -> tuple:
         a("     %s, %d, %d, %d},"
           % (mask_lit(m), len(member), int(cfg["max_questions"]), int(cfg["max_skips"])))
         mode_report.append((name, len(member), int(cfg["max_questions"]), int(cfg["max_skips"])))
+    # 遊び用のモード（設計書のモードの後ろに並べる）
+    for spec in PLAY_MODES:
+        member = play_mode_members(catalog, spec)
+        m = mask_of(index_of[x] for x in member)
+        used_groups = [g for g, _s, _n in GROUPS if any(x[0] == g for x in member)]
+        if len(used_groups) == 1:
+            scope_ja = dict((g, n) for g, _s, n in GROUPS)[used_groups[0]]
+        else:
+            scope_ja = "%d 分野ぜんぶ" % len(used_groups)
+        summary = wrapped("%s から %d こ。質問は %d 問まで。目安 %s。"
+                          % (scope_ja, len(member), spec["max_questions"], spec["time"]))
+        check_lines("%s/summary" % spec["id"], summary, SUMMARY_MAX_LINES)
+        a("    {%s, %s, %s," % (lit(spec["id"]), lit(spec["label"]), lit(spec["name"])))
+        a("     %s," % lit(summary))
+        a("     %s, %d, %d, %d},"
+          % (mask_lit(m), len(member), spec["max_questions"], spec["max_skips"]))
+        mode_report.append((spec["id"], len(member), spec["max_questions"], spec["max_skips"]))
     a("};")
     a("")
 
