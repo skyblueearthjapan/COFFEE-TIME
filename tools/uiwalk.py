@@ -64,7 +64,7 @@ for step in steps:
         # 端末はメインループが数秒止まることがある（Wi-Fi の再接続）。受領の返事を待ってから次へ進む
         s.reset_input_buffer()
         s.write(f"P{arg}\n".encode())
-        deadline = time.time() + 12
+        deadline = time.time() + 45     # 通信（GAS への送信など）でメインループが数十秒止まることがある
         while time.time() < deadline:
             if s.readline().startswith(b"[TAP]"):
                 break

@@ -55,4 +55,27 @@ $CONV --size 44 --font weathericons.ttf \
     -r 0xF00D,0xF002,0xF013,0xF014,0xF01C,0xF019,0xF01B,0xF01A,0xF01E,0xF02E,0xF086 \
     -o "$OUT/ct_font_weather_44.c" --lv-font-name ct_font_weather_44
 
+# 人狼ゲームのマーク（Material Icons Round by Google, Apache License 2.0）。
+# 使う 17 個だけを収録する。符号位置は同じフォルダーの
+# MaterialIconsRound-Regular.codepoints で確認済み（2026-09-21）。
+#   席のキャラクター（公開情報 / data/content.local.ja.json の characters）:
+#     EFEF coffee(カップ)  EA53 bakery_dining(パン) F00C flatware(スプーン)
+#     EFF0 coffee_maker(ポット) EAAC cookie(クッキー) E838 star(ほし)
+#     EA35 eco(はっぱ)     E7F4 notifications(ベル)  EA19 menu_book(ほん)
+#     E51C dark_mode(つき)
+#   役職（秘密。表示の出し入れは WerewolfGame.cpp が制御する）:
+#     E91D pets(人狼)      E8F4 visibility(占い師)   E88A home(村人)
+#   世界観のお話（story）:
+#     EF5E nightlight_round  F233 groups  E666 auto_stories  E541 local_cafe
+# 日本語フォント（ct_font_jp_*）には絶対に混ぜない（リンクエラーの原因になる）。
+dl MaterialIconsRound-Regular.otf \
+    https://github.com/google/material-design-icons/raw/master/font/MaterialIconsRound-Regular.otf
+ICONS="0xE51C,0xE541,0xE666,0xE7F4,0xE838,0xE88A,0xE8F4,0xE91D,0xEA19,0xEA35,0xEA53,0xEAAC,0xEF5E,0xEFEF,0xEFF0,0xF00C,0xF233"
+# lv_font_conv が OTF を読めない場合は同じフォルダーの MaterialIcons-Regular.ttf に差し替える
+ICON_FONT=MaterialIconsRound-Regular.otf
+for sz in 36 88; do
+    $CONV --size $sz --font "$ICON_FONT" -r "$ICONS" \
+        -o "$OUT/ct_font_icons_$sz.c" --lv-font-name ct_font_icons_$sz
+done
+
 echo "fonts written to $OUT"

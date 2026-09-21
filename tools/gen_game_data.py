@@ -9,6 +9,9 @@
   --content : data/content.ja.json （schema_version 2.0.0 / 文言・チュートリアル等）
   --rules   : data/rules.json      （schema_version 2.0.0 / タイミング・定数）
   --layout  : data/layout.json     （schema_version 2.0.0 / 部品の絶対座標）
+  --local   : data/content.local.ja.json（設計書に無い追加分。無ければ空として扱う）
+              席のキャラクター・世界観のお話・追加文言。strings は同じ鍵で正本を上書きする
+              （findString がこちらを先に見る）。正本の 3 ファイルは改変しない。
 
 出力:
   <out-dir>/WerewolfContent.h
@@ -20,6 +23,10 @@
   - content.intro_variants   -> coffee::wolf::content::kIntroVariants[]
   - content.ending_variants  -> coffee::wolf::content::kEndingVariants[]
   - content.mandatory_brief  -> coffee::wolf::content::kMandatoryBrief[]
+  - local.strings            -> coffee::wolf::content::kLocalStrings[]（findString が優先）
+  - local.characters         -> coffee::wolf::content::kSeatCharacters[]
+  - local.story              -> coffee::wolf::content::kStory[]
+  - local.role_icons         -> coffee::wolf::content::kIconWolf / kIconSeer / kIconVillager
   - rules.timing_by_players  -> coffee::wolf::rules::kTimingByPlayers[]
   - rules の各種 ms/秒/ページ定数 -> coffee::wolf::rules 名前空間の constexpr
   - layout.rects             -> coffee::wolf::layout::kXxx （Rect{x,y,w,h} の constexpr）
@@ -40,6 +47,7 @@ GAME_DATA = (pathlib.Path(__file__).resolve().parent.parent / "firmware" / "src"
 DEFAULT_CONTENT = str(GAME_DATA / "content.ja.json")
 DEFAULT_RULES = str(GAME_DATA / "rules.json")
 DEFAULT_LAYOUT = str(GAME_DATA / "layout.json")
+DEFAULT_LOCAL = str(GAME_DATA / "content.local.ja.json")
 DEFAULT_OUT_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "firmware", "src", "app", "games", "werewolf",
@@ -72,6 +80,18 @@ def esc(s: str) -> str:
 
 def lit(s: str) -> str:
     return '"' + esc(s) + '"'
+
+
+def icon_lit(code_hex) -> str:
+    """アイコンの符号位置（16進の文字列 or 整数）を C++ の \\x エスケープ列にする。
+
+    アイコンは Material Icons Round の私用領域にあり、日本語フォントには入っていない。
+    そのまま UTF-8 で書くと tools/collect_ui_chars.py が日本語の一覧へ拾ってしまうので、
+    必ずエスケープ（= ASCII だけ）で出力する。全バイトがエスケープなので、C++ の
+    16進エスケープが後続文字を飲み込む問題も起きない。
+    """
+    cp = int(str(code_hex), 16)
+    return '"' + "".join("\\x%02X" % b for b in chr(cp).encode("utf-8")) + '"'
 
 
 def load_json(path: str) -> dict:
@@ -121,7 +141,7 @@ def gen_layout(layout: dict) -> list:
     return lines
 
 
-def gen_header(content: dict, rules: dict, layout: dict) -> str:
+def gen_header(content: dict, rules: dict, layout: dict, local: dict) -> str:
     lines = []
     a = lines.append
     a("// AUTO-GENERATED FILE — DO NOT EDIT BY HAND.")
@@ -129,6 +149,7 @@ def gen_header(content: dict, rules: dict, layout: dict) -> str:
     a(f"//   content: content.ja.json (schema_version {content.get('schema_version')})")
     a(f"//   rules:   rules.json (schema_version {rules.get('schema_version')})")
     a(f"//   layout:  layout.json (schema_version {layout.get('schema_version')})")
+    a(f"//   local:   content.local.ja.json (schema_version {local.get('schema_version')})")
     a("// Re-run: python tools/gen_game_data.py")
     a("#pragma once")
     a("")
@@ -140,7 +161,10 @@ def gen_header(content: dict, rules: dict, layout: dict) -> str:
     a("struct StringEntry { const char *key; const char *value; };")
     a("extern const StringEntry kStrings[];")
     a("extern const size_t kStringCount;")
-    a("// 線形検索。見つからなければ nullptr を返す。")
+    a("// content.local.ja.json の重ね書き。同じ鍵があればこちらが勝つ。")
+    a("extern const StringEntry kLocalStrings[];")
+    a("extern const size_t kLocalStringCount;")
+    a("// 線形検索。kLocalStrings を先に見る。見つからなければ nullptr を返す。")
     a("const char *findString(const char *key);")
     a("")
     a("// id/title/body の3項目を持つページ（tutorial, mandatory_brief で共用）。")
@@ -160,6 +184,26 @@ def gen_header(content: dict, rules: dict, layout: dict) -> str:
     a("")
     a("extern const PagedEntry kMandatoryBrief[];")
     a("extern const size_t kMandatoryBriefCount;")
+    a("")
+    a("// --- content.local.ja.json（設計書に無い追加分）----------------------------")
+    a("")
+    a("// 席のキャラクター（公開情報）。icon は Material Icons Round の 1 文字（UTF-8）。")
+    a("// 文字は日本語フォントには無く、ct_font_icons_36 / ct_font_icons_88 でのみ描ける。")
+    a("struct SeatCharacter { const char *name; const char *icon; };")
+    a("extern const SeatCharacter kSeatCharacters[];")
+    a("extern const size_t kSeatCharacterCount;")
+    a("// seat は 0 起点。範囲外なら nullptr。")
+    a("const SeatCharacter *findSeatCharacter(int seat);")
+    a("")
+    a("// 世界観のお話（遊び方の先頭ページにも使う）。icon はアイコンフォントの 1 文字。")
+    a("struct StoryPage { const char *id; const char *title; const char *body; const char *icon; };")
+    a("extern const StoryPage kStory[];")
+    a("extern const size_t kStoryCount;")
+    a("")
+    a("// 役職のマーク（秘密の画面でのみ使う。表示の制御はファーム側の責任）。")
+    a("extern const char *const kIconWolf;")
+    a("extern const char *const kIconSeer;")
+    a("extern const char *const kIconVillager;")
     a("")
     a("}}} // namespace coffee::wolf::content")
     a("")
@@ -223,7 +267,7 @@ def gen_header(content: dict, rules: dict, layout: dict) -> str:
     return "\n".join(lines)
 
 
-def gen_source(content: dict) -> str:
+def gen_source(content: dict, local: dict) -> str:
     lines = []
     a = lines.append
     a(f'#include "{HEADER_NAME}"')
@@ -238,7 +282,21 @@ def gen_source(content: dict) -> str:
     a("};")
     a("const size_t kStringCount = sizeof(kStrings) / sizeof(kStrings[0]);")
     a("")
+    a("const StringEntry kLocalStrings[] = {")
+    local_strings = local.get("strings", {})
+    if not local_strings:
+        # 要素 0 の配列は C++ では書けないので、引かれることのない空の鍵を 1 つ置く
+        a('    {"", ""},')
+    for key, value in local_strings.items():
+        a(f"    {{{lit(key)}, {lit(value)}}},")
+    a("};")
+    a("const size_t kLocalStringCount = sizeof(kLocalStrings) / sizeof(kLocalStrings[0]);")
+    a("")
     a("const char *findString(const char *key) {")
+    a("    // 重ね書き（content.local.ja.json）を先に見る。設計書の正本は無改変のまま。")
+    a("    for (size_t i = 0; i < kLocalStringCount; ++i) {")
+    a("        if (std::strcmp(kLocalStrings[i].key, key) == 0) return kLocalStrings[i].value;")
+    a("    }")
     a("    for (size_t i = 0; i < kStringCount; ++i) {")
     a("        if (std::strcmp(kStrings[i].key, key) == 0) return kStrings[i].value;")
     a("    }")
@@ -290,6 +348,44 @@ def gen_source(content: dict) -> str:
         "const size_t kMandatoryBriefCount = "
         "sizeof(kMandatoryBrief) / sizeof(kMandatoryBrief[0]);"
     )
+    a("")
+    a("const SeatCharacter kSeatCharacters[] = {")
+    characters = local.get("characters", [])
+    if not characters:
+        a('    {"", ""},')
+    for entry in characters:
+        a(f"    {{{lit(entry['name'])}, {icon_lit(entry['icon'])}}},   // "
+          f"{entry.get('seat', '?')} {entry.get('icon_name', '')}")
+    a("};")
+    a(
+        "const size_t kSeatCharacterCount = "
+        "sizeof(kSeatCharacters) / sizeof(kSeatCharacters[0]);"
+    )
+    a("")
+    a("const SeatCharacter *findSeatCharacter(int seat) {")
+    a("    if (seat < 0 || (size_t)seat >= kSeatCharacterCount) return nullptr;")
+    a("    return &kSeatCharacters[seat];")
+    a("}")
+    a("")
+    a("const StoryPage kStory[] = {")
+    story = local.get("story", [])
+    if not story:
+        a('    {"", "", "", ""},')
+    for entry in story:
+        a(
+            f"    {{{lit(entry['id'])}, {lit(entry['title'])}, {lit(entry['body'])}, "
+            f"{icon_lit(entry['icon'])}}},   // {entry.get('icon_name', '')}"
+        )
+    a("};")
+    a("const size_t kStoryCount = sizeof(kStory) / sizeof(kStory[0]);")
+    a("")
+    role_icons = local.get("role_icons", {})
+    for cpp_name, json_key in (("kIconWolf", "wolf"), ("kIconSeer", "seer"),
+                               ("kIconVillager", "villager")):
+        spec = role_icons.get(json_key)
+        value = icon_lit(spec["icon"]) if spec else '""'
+        comment = f"   // {spec['icon_name']}" if spec and spec.get("icon_name") else ""
+        a(f"const char *const {cpp_name} = {value};{comment}")
     a("")
     a("}}} // namespace coffee::wolf::content")
     a("")
@@ -348,17 +444,19 @@ def main():
     ap.add_argument("--content", default=DEFAULT_CONTENT)
     ap.add_argument("--rules", default=DEFAULT_RULES)
     ap.add_argument("--layout", default=DEFAULT_LAYOUT)
+    ap.add_argument("--local", default=DEFAULT_LOCAL)
     ap.add_argument("--out-dir", default=DEFAULT_OUT_DIR)
     args = ap.parse_args()
 
     content = load_json(args.content)
     rules = load_json(args.rules)
     layout = load_json(args.layout)
+    local = load_json(args.local) if os.path.exists(args.local) else {}
 
     os.makedirs(args.out_dir, exist_ok=True)
 
-    header_text = gen_header(content, rules, layout)
-    source_text = gen_source(content) + gen_source_rules_tail(rules)
+    header_text = gen_header(content, rules, layout, local)
+    source_text = gen_source(content, local) + gen_source_rules_tail(rules)
 
     header_path = os.path.join(args.out_dir, HEADER_NAME)
     source_path = os.path.join(args.out_dir, SOURCE_NAME)
@@ -381,6 +479,9 @@ def main():
     print(f"intro_variants: {intro_count} entries")
     print(f"ending_variants: {ending_count} lines across {len(content['ending_variants'])} outcomes")
     print(f"mandatory_brief: {brief_count} entries")
+    print(f"local strings (overrides+new): {len(local.get('strings', {}))} entries")
+    print(f"seat characters: {len(local.get('characters', []))} entries")
+    print(f"story pages: {len(local.get('story', []))} entries")
     print(f"layout rects: {len(layout['rects'])} entries")
     print(f"total C string literals emitted (approx): {total_strings}")
     print(f"source file size: {os.path.getsize(source_path)} bytes")

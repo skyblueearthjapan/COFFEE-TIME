@@ -15,6 +15,7 @@
 #include "NetService.h"
 #include "ui/MainMenu.h"
 #include "ui/ScreenManager.h"
+#include "games/detective/DetectiveGame.h"
 #include "games/werewolf/WerewolfGame.h"
 #include "games/werewolf/WerewolfPort.h"
 #include "games/werewolf/WerewolfUI.h"
@@ -221,9 +222,14 @@ void loop()
             case '1': if (!blockedBySecret()) { ui::push(ui::createMainMenu); } break;
             case '2': if (!blockedBySecret()) { ui::push(werewolf::createEntryScreen); } break;
             case '3': if (!blockedBySecret()) { ui::push(werewolf::createGameScreen); } break;
+            case '4': if (!blockedBySecret()) { ui::push(detective::createGameScreen); } break;
             case '0': if (!blockedBySecret()) { ui::goHome(); } break;
             // 開発用：人狼の今の場面を表示（公開情報のみ。役職や投票先は出さない）
             case 'G': werewolf::debugPrintPublicState(); break;
+            // 開発用：探偵の今の場面を表示（画面・話・ページ・既読・ヒント段階）
+            case 'D': detective::debugPrintPublicState(); break;
+            // 開発用：探偵の記録を消す（試験で「初回の結果」を使い切らないため）
+            case 'X': detective::debugResetProgress(); break;
             case 'C': setTimeFromSerial(); break;    // PC の時計から時刻を設定（tools/settime.py）
             case 'P': tapFromSerial(); break;        // 開発用：P<x>,<y> でタップ
             case 'L': dump_log = true; break;        // 開発用：SD の操作ログの末尾を表示

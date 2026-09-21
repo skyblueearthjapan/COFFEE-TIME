@@ -114,9 +114,11 @@ lv_obj_t *makeMenuItem(lv_obj_t *parent, const char *text, lv_event_cb_t cb, voi
     lv_obj_set_style_pad_all(btn, 0, 0);
 
     lv_obj_t *l = makeLabel(btn, &ct_font_jp_20, enabled ? CT_COLOR_TEXT : CT_COLOR_DIM, text);
-    // 日本語は空白が無く自動折返しが効かないので、幅を決めてはみ出しを切る
+    // 日本語は空白が無く自動折返しが効かないので、幅を決めてはみ出しを切る。
+    // 右端は「準備中」(60px) か「>」(16px) のどちらかなので、遊べる項目では広く取れる
+    // （「喫茶「余白」の事件簿」は 10 文字 = 200px あり、196px だと末尾が欠ける）
     lv_label_set_long_mode(l, LV_LABEL_LONG_CLIP);
-    lv_obj_set_width(l, 196);
+    lv_obj_set_width(l, (enabled && cb != nullptr) ? 250 : 196);
     lv_obj_align(l, LV_ALIGN_LEFT_MID, 14, 0);
 
     if (enabled && cb != nullptr) {

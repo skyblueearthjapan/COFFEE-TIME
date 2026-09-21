@@ -1,0 +1,21 @@
+{
+ "game_title":"CAFE DETECTIVE","world_title":"喫茶「余白」","pack_title":"つづきは、ここで。",
+ "menu_new":"まだ読んでいない話","menu_replay":"もう一度読む","start":"お店に入る","next":"次へ","previous":"戻る",
+ "investigate":"話と手掛かりを集めよう","read":"読んだ","unread":"未読","notebook":"手帳","guess":"推理する",
+ "choose":"誰だと思う？","confirm":"この推理で決定する","change":"選び直す","prepare":"AIの回答を確定しています",
+ "ready":"AIの回答は確定済み","mode_solo":"ひとり推理","mode_jev":"Jevと推理勝負","mode_offline":"オフライン・練習",
+ "mode_practice":"復習","hint":"ヒント","hint_notice":"ヒントを読むと、AIとの勝敗には数えません。物語は最後まで読めます。",
+ "hint_read":"ヒントを読む","hint_again":"次のヒント","give_up":"答えとつづきを読む","give_up_confirm":"答えを読みますか？ 今回の推理は未正解として記録します。",
+ "human_win":"あなたの勝ち！","ai_win":"AIの勝ち！","both_correct":"どちらも名探偵！","both_incorrect":"今回は、どちらも未解決",
+ "solo_correct":"謎が解けました","solo_incorrect":"手掛かりを一緒に見直そう","assisted":"ヒント付きで解決","explanation":"手帳で確かめる",
+ "ending":"物語のつづき","collectible":"余白の手帳に記録しました","chapter_end":"第一章 おわり","back_home":"HOMEへ",
+ "pause":"あとで読む","abandon":"この挑戦を終了","resuming":"前のページから再開","not_ready":"手掛かりを全部読むと推理できます",
+ "offline_notice":"通信できません。読んだ内容は保持しています。ひとり推理として続けることもできます。",
+ "ai_unavailable":"今日はAIがお休みです。ひとり推理で、物語を続けましょう。",
+ "commit_failure":"AIの回答確認に失敗しました。勝敗は記録せず、物語を続けられます。",
+ "save_pending":"記録を確認しています。もう一度答えを選ばないでください。",
+ "maintenance":"記録の安全確認中です。新しいオンライン挑戦は開始できません。",
+ "privacy":"記録するのは、遊んだ話と結果だけ。読んだ順番や迷った時間はAIへ送りません。",
+ "coffee_add":"コーヒー＋1","coffee_added":"コーヒーを1杯記録","font_error":"日本語表示の設定を確認してください",
+ "disclaimer_preview":"PC参考版：ひとり推理のみ。Jev・Google・実機は接続していません。"
+}

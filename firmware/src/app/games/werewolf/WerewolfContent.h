@@ -3,6 +3,7 @@
 //   content: content.ja.json (schema_version 2.0.0)
 //   rules:   rules.json (schema_version 2.0.0)
 //   layout:  layout.json (schema_version 2.0.0)
+//   local:   content.local.ja.json (schema_version 2.0.0-local.1)
 // Re-run: python tools/gen_game_data.py
 #pragma once
 
@@ -14,7 +15,10 @@ namespace coffee { namespace wolf { namespace content {
 struct StringEntry { const char *key; const char *value; };
 extern const StringEntry kStrings[];
 extern const size_t kStringCount;
-// 線形検索。見つからなければ nullptr を返す。
+// content.local.ja.json の重ね書き。同じ鍵があればこちらが勝つ。
+extern const StringEntry kLocalStrings[];
+extern const size_t kLocalStringCount;
+// 線形検索。kLocalStrings を先に見る。見つからなければ nullptr を返す。
 const char *findString(const char *key);
 
 // id/title/body の3項目を持つページ（tutorial, mandatory_brief で共用）。
@@ -34,6 +38,26 @@ const EndingVariantGroup *findEndingVariants(const char *outcome);
 
 extern const PagedEntry kMandatoryBrief[];
 extern const size_t kMandatoryBriefCount;
+
+// --- content.local.ja.json（設計書に無い追加分）----------------------------
+
+// 席のキャラクター（公開情報）。icon は Material Icons Round の 1 文字（UTF-8）。
+// 文字は日本語フォントには無く、ct_font_icons_36 / ct_font_icons_88 でのみ描ける。
+struct SeatCharacter { const char *name; const char *icon; };
+extern const SeatCharacter kSeatCharacters[];
+extern const size_t kSeatCharacterCount;
+// seat は 0 起点。範囲外なら nullptr。
+const SeatCharacter *findSeatCharacter(int seat);
+
+// 世界観のお話（遊び方の先頭ページにも使う）。icon はアイコンフォントの 1 文字。
+struct StoryPage { const char *id; const char *title; const char *body; const char *icon; };
+extern const StoryPage kStory[];
+extern const size_t kStoryCount;
+
+// 役職のマーク（秘密の画面でのみ使う。表示の制御はファーム側の責任）。
+extern const char *const kIconWolf;
+extern const char *const kIconSeer;
+extern const char *const kIconVillager;
 
 }}} // namespace coffee::wolf::content
 

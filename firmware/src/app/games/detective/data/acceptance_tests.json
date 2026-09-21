@@ -1,0 +1,726 @@
+{
+  "scope": "実装後の受入試験。参考ロジック/PC検査の結果とは区別する。",
+  "count": 72,
+  "tests": [
+    {
+      "id": "STORY-01",
+      "category": "STORY",
+      "title": "3話を単独で解ける",
+      "procedure": "未プレイの人が各話の表示情報だけで解く",
+      "expected": "前話の正解・キャラの性格・動機を根拠に要求しない",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "STORY-02",
+      "category": "STORY",
+      "title": "正解の一意性",
+      "procedure": "全合法世界を列挙して各話を判定",
+      "expected": "CD001/2/3とも解1つ、正解IDが原稿と一致",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "STORY-03",
+      "category": "STORY",
+      "title": "手掛かりの必要性",
+      "procedure": "CD001/2でE1〜E3を一つずつ除く",
+      "expected": "どの削除でも回答候補が複数になる",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "STORY-04",
+      "category": "STORY",
+      "title": "第三話の真偽表",
+      "procedure": "全3人を置いた人と仮定して評価",
+      "expected": "誤発言数はラテ2、モカ1、チャイ2",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "STORY-05",
+      "category": "STORY",
+      "title": "条件と自然文の対応",
+      "procedure": "原稿・手帳まとめ・solverを人が並べて照合",
+      "expected": "否定、時刻、所有者、唯一性が同じ意味",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "STORY-06",
+      "category": "STORY",
+      "title": "初見の導入",
+      "procedure": "台詞を知らない読者3人以上に操作してもらう",
+      "expected": "何を問われているか説明できる。困った箇所を修正記録",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "STORY-07",
+      "category": "STORY",
+      "title": "誤答後の物語",
+      "procedure": "全誤答6通りで説明と結末へ進む",
+      "expected": "間違えても全エピローグと記念品へ到達",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "STORY-08",
+      "category": "STORY",
+      "title": "動機は採点外",
+      "procedure": "各話の動機を見ずに解き、解決後に読む",
+      "expected": "動機がなくても解け、台詞が論理条件と矛盾しない",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "STORY-09",
+      "category": "STORY",
+      "title": "前後の連続性",
+      "procedure": "第1〜3話を順番に読んで時刻・品物を追う",
+      "expected": "青いカップ、招待状、しおり、友人の再会がつながる",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "STORY-10",
+      "category": "STORY",
+      "title": "口調の一貫性",
+      "procedure": "人物別に全発言を抽出して読む",
+      "expected": "人物設定から不自然に外れず、犯人顔等で正解を漏らさない",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "STORY-11",
+      "category": "STORY",
+      "title": "全分岐の到達",
+      "procedure": "ヒント各段階、答えを見る、復習を試す",
+      "expected": "未実装台詞、TODO、空白画面、戻れない状態なし",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "STORY-12",
+      "category": "STORY",
+      "title": "美術に依存しない",
+      "procedure": "図柄を記号へ替えて全話を解く",
+      "expected": "色覚や画像の細部だけで必要情報が失われない",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "UI-01",
+      "category": "UI",
+      "title": "起動とメニュー",
+      "procedure": "実機のHOMEからゲームへ入る",
+      "expected": "COFFEE TIMEの既存機能を維持し3話を選べる",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "UI-02",
+      "category": "UI",
+      "title": "日本語の全字",
+      "procedure": "必要字一覧と全ページを実フォントで表示",
+      "expected": "豆腐・欠字・誤った禁則・行末欠けなし",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "UI-03",
+      "category": "UI",
+      "title": "丸型セーフエリア",
+      "procedure": "全画面を実機で撮影して外周を見る",
+      "expected": "重要文・ボタン・ページ番号が円外へ出ない",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "UI-04",
+      "category": "UI",
+      "title": "既読チェック",
+      "procedure": "3つの証拠を前後にページ送りする",
+      "expected": "最後まで開いた証拠だけ既読、推理可能条件と一致",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "UI-05",
+      "category": "UI",
+      "title": "手帳まとめ",
+      "procedure": "手帳を開いて各証拠の短いまとめを読む",
+      "expected": "未読情報を新規に混入しない。すぐ元の証拠へ戻れる",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "UI-06",
+      "category": "UI",
+      "title": "長押しと連打",
+      "procedure": "選択・決定を長押し/20回連打する",
+      "expected": "同じ回答の二重提出なし、押しっぱなしの連続イベントで進まない",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "UI-07",
+      "category": "UI",
+      "title": "確認画面",
+      "procedure": "人物選択後に戻って別人物を選ぶ",
+      "expected": "確認前は変更可能、送信開始後は選択固定",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "UI-08",
+      "category": "UI",
+      "title": "結果の区分",
+      "procedure": "AI双方正解/双方不正解/片方正解を注入",
+      "expected": "4結果の表記が正しく、solo/復習/ヒントは勝敗と別",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "UI-09",
+      "category": "UI",
+      "title": "集中して読める",
+      "procedure": "1ページを2分以上表示して読む",
+      "expected": "勝手に次のページへ進まず、再開できる警告/省電力のみ",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "UI-10",
+      "category": "UI",
+      "title": "片手で操作",
+      "procedure": "複数の身長/置き角度で実際に押す",
+      "expected": "48px以上の有効タッチ領域、誤タッチがないか観察",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "UI-11",
+      "category": "UI",
+      "title": "前後ページ",
+      "procedure": "各ページの戻る/次を操作",
+      "expected": "最初/最後の境界で範囲外参照や無限ループなし",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "UI-12",
+      "category": "UI",
+      "title": "途中のカフェ操作",
+      "procedure": "物語中と通信待ち中にコーヒー＋1を操作",
+      "expected": "ゲーム回答を変えずコーヒーだけ1回記録、元のページへ戻る",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "CORE-01",
+      "category": "CORE",
+      "title": "71件の単体検査",
+      "procedure": "node tests/test_core.jsを実行",
+      "expected": "全件PASS。実APIの成績と混同しない",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "CORE-02",
+      "category": "CORE",
+      "title": "C++入力ゲート",
+      "procedure": "test_gate.cppをホストでコンパイル・実行",
+      "expected": "18assert成功。実機試験は別",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "CORE-03",
+      "category": "CORE",
+      "title": "epochの古い応答",
+      "procedure": "別画面へ移った後に前画面の応答を流す",
+      "expected": "破棄済みUIポインタへ触れず新画面を上書きしない",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "CORE-04",
+      "category": "CORE",
+      "title": "ヒントは単調",
+      "procedure": "1→2→1の要求と重複要求を送る",
+      "expected": "hint_levelは下がらず、ヒント使用なしへ戻らない",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "CORE-05",
+      "category": "CORE",
+      "title": "準備の再試行",
+      "procedure": "preparing/readyでprepareを再送",
+      "expected": "新しい推論世代/AI選択を作らない",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "CORE-06",
+      "category": "CORE",
+      "title": "世代と締切",
+      "procedure": "期限直前/同時/直後の推論を返す",
+      "expected": "20秒lease以上の返答は不採用、solo後にAIへ戻らない",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "CORE-07",
+      "category": "CORE",
+      "title": "回答の固定",
+      "procedure": "resolvedへ同じ回答/異なる回答を送る",
+      "expected": "同じ結果を返す/ANSWER_ALREADY_LOCKED",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "CORE-08",
+      "category": "CORE",
+      "title": "初見のラッチ",
+      "procedure": "開始/中断/ヒント/誤答/再開を組み合わせる",
+      "expected": "有利な状態にするため初見を何度もやり直せない",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "CORE-09",
+      "category": "CORE",
+      "title": "24時間の期限",
+      "procedure": "nowをexpires_at-1/同値/+1にする",
+      "expected": "同値以降の未確定操作は期限切れ。既に確定した結果は保持",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "CORE-10",
+      "category": "CORE",
+      "title": "記念品一意",
+      "procedure": "finishを繰り返す/別requestで送る",
+      "expected": "story_completedはtrueのまま、記念品は重複しない",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "NETWORK-01",
+      "category": "NETWORK",
+      "title": "本物のJev契約",
+      "procedure": "テストキーで全3話を呼ぶ",
+      "expected": "有効model/3候補/数値分布を確認。正解率は実結果を記録",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "NETWORK-02",
+      "category": "NETWORK",
+      "title": "Jevへの情報漏れ",
+      "procedure": "実送信bodyを機密除去して許可リスト検査",
+      "expected": "答え/solver/結末/ヒント/個人/現在の選択は送らない",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "NETWORK-03",
+      "category": "NETWORK",
+      "title": "Jevが外すケース",
+      "procedure": "fixtureで間違った候補を最大にする",
+      "expected": "正解へ補正せずAIの不正解を表示",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "NETWORK-04",
+      "category": "NETWORK",
+      "title": "確率の不正",
+      "procedure": "HTML/NaN/文字列/和違い/余分な候補を返す",
+      "expected": "正式AIとして使わずsoloへ。架空の分布なし",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "NETWORK-05",
+      "category": "NETWORK",
+      "title": "認証/上限/API障害",
+      "procedure": "Jev401/403/429/5xx/タイムアウトを注入",
+      "expected": "キー異常停止/クールダウン/soloの規則どおり",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "NETWORK-06",
+      "category": "NETWORK",
+      "title": "Googleリダイレクト",
+      "procedure": "本当の/execからの302/303を確認",
+      "expected": "許可HTTPS応答先へGET、秘密POSTの再送なし",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "NETWORK-07",
+      "category": "NETWORK",
+      "title": "リダイレクト攻撃",
+      "procedure": "未知host/HTTP/307/ログインHTMLを返す",
+      "expected": "秘密を送らず通信設定エラー",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "NETWORK-08",
+      "category": "NETWORK",
+      "title": "通信遅延",
+      "procedure": "読書中にHTTP待ち15秒以上を注入",
+      "expected": "UI/コーヒー操作が固まらない。無限retryしない",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "NETWORK-09",
+      "category": "NETWORK",
+      "title": "受領済みだが返答消失",
+      "procedure": "resolve後のレスポンスだけ捨てる",
+      "expected": "get/同一requestから同一結果を復旧し新回答を許可しない",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "NETWORK-10",
+      "category": "NETWORK",
+      "title": "完全オフライン",
+      "procedure": "Wi-Fiなしで練習パックを読む",
+      "expected": "3話完走、Jevと記録しない。後日exposureのみ同期",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "STORE-01",
+      "category": "STORE",
+      "title": "初期化の安全",
+      "procedure": "既存データがあるWorkbookでinstall",
+      "expected": "不一致なら停止、既存タブをclearしない",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "STORE-02",
+      "category": "STORE",
+      "title": "列順の検査",
+      "procedure": "ヘッダー1列を変更する",
+      "expected": "処理停止、別列へ書き込まない",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "STORE-03",
+      "category": "STORE",
+      "title": "1件の保存",
+      "procedure": "resolveでattempt/progress/receiptを見る",
+      "expected": "一つのSheets batchで整合するスナップショット",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "STORE-04",
+      "category": "STORE",
+      "title": "同時提出",
+      "procedure": "実GASへ同一回答を並行で32回送る",
+      "expected": "確定結果1件、初回ポイント/結果は一度だけ",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "STORE-05",
+      "category": "STORE",
+      "title": "相反する提出",
+      "procedure": "同一attemptへ別回答を並行送信",
+      "expected": "どちらか一方だけ確定、もう一方は競合",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "STORE-06",
+      "category": "STORE",
+      "title": "保存成否不明",
+      "procedure": "Sheetsタイムアウトを注入してbarrier確認",
+      "expected": "全共通ストアの更新停止、別行への再appendなし",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "STORE-07",
+      "category": "STORE",
+      "title": "barrier復旧",
+      "procedure": "実保存済み/未確認/不整合の3種を作る",
+      "expected": "保存済み照合で返却、未確認停止、不整合は管理者対応",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "STORE-08",
+      "category": "STORE",
+      "title": "枠と行番号",
+      "procedure": "次行割当/件数が競合する操作を同時実行",
+      "expected": "同一行の衝突、上限すり抜け、紛失なし",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "STORE-09",
+      "category": "STORE",
+      "title": "保守と索引",
+      "procedure": "保持期限の削除と進行中操作を組み合わせる",
+      "expected": "行詰めで索引を壊さず必要な旧版を残す",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "STORE-10",
+      "category": "STORE",
+      "title": "バックアップ復元",
+      "procedure": "テストファイルへバックアップから復元",
+      "expected": "削除台帳を反映し、他人のプロフィールが復活しない",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "SECURITY-01",
+      "category": "SECURITY",
+      "title": "端末認証",
+      "procedure": "不明device/tokenなし/改変tokenで送信",
+      "expected": "個人結果も非公開解説も返さない",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "SECURITY-02",
+      "category": "SECURITY",
+      "title": "本人の認可",
+      "procedure": "AのtokenでBのattempt/progressを要求",
+      "expected": "AUTH系で拒否。存在の詳細を漏らさない",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "SECURITY-03",
+      "category": "SECURITY",
+      "title": "ゲストの分離",
+      "procedure": "ゲストで回答後別ゲスト開始・再起動",
+      "expected": "別人の履歴を継承せず正式戦績へ移さない",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "SECURITY-04",
+      "category": "SECURITY",
+      "title": "PINとtoken",
+      "procedure": "シート/端末NVS/ログ/リクエスト台帳を見る",
+      "expected": "PIN/本人token/Jevキーの不要な平文保存なし",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "SECURITY-05",
+      "category": "SECURITY",
+      "title": "コミット非公開",
+      "procedure": "ready状態のJSONを調べる",
+      "expected": "AIの手/確率/nonce/commit_payloadはまだない",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "SECURITY-06",
+      "category": "SECURITY",
+      "title": "コミット改変",
+      "procedure": "choice/確率/nonce/attempt/hashを変更",
+      "expected": "バイト列hashと期待IDの不一致で正式比較除外",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "SECURITY-07",
+      "category": "SECURITY",
+      "title": "式の注入",
+      "procedure": "表示名等に=やJSON文字列を保存する",
+      "expected": "SheetsのstringValueで保存、式として実行しない",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "SECURITY-08",
+      "category": "SECURITY",
+      "title": "再送の改変",
+      "procedure": "同request_idでpayload/actorを変える",
+      "expected": "REQUEST_CONFLICT、別操作として適用しない",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "SECURITY-09",
+      "category": "SECURITY",
+      "title": "期限/失効",
+      "procedure": "失効token/期限切れsessionで再開する",
+      "expected": "本人再認証が必要。別人に内容を見せない",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "SECURITY-10",
+      "category": "SECURITY",
+      "title": "退会・全ゲーム削除",
+      "procedure": "管理UIから本人削除を行う",
+      "expected": "共通sessionと各ゲーム参照を削除、公開管理endpointなし",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "INTEGRATION-01",
+      "category": "INTEGRATION",
+      "title": "既存機能回帰",
+      "procedure": "導入前後で＋1、時計、天気、他ゲームを比較",
+      "expected": "既存機能の成功条件を維持する",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "INTEGRATION-02",
+      "category": "INTEGRATION",
+      "title": "共有ロック",
+      "procedure": "DUEL/探偵/共通認証の同時書込み",
+      "expected": "同一writer/共通lock/barrierに統合、別projectで競合しない",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "INTEGRATION-03",
+      "category": "INTEGRATION",
+      "title": "電源断の各位置",
+      "procedure": "progress/prepare/resolve/finish前後で電源OFF",
+      "expected": "2スロットjournalから本人再認証後に整合復旧",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "INTEGRATION-04",
+      "category": "INTEGRATION",
+      "title": "メモリー長時間",
+      "procedure": "全話と他画面を100回以上巡回",
+      "expected": "リーク/ウォッチドッグ/フラグメント/タッチ停止を測定し解消",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "INTEGRATION-05",
+      "category": "INTEGRATION",
+      "title": "電池と温度",
+      "procedure": "1500mAhで輝度/通信条件を記録して稼働",
+      "expected": "実測時間/電流/温度を記録、未測定の1日持続をうたわない",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "INTEGRATION-06",
+      "category": "INTEGRATION",
+      "title": "旧版から更新",
+      "procedure": "有効attemptがある状態でコンテンツ更新",
+      "expected": "旧qverを維持し途中で別の正解へ置き換えない",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "INTEGRATION-07",
+      "category": "INTEGRATION",
+      "title": "PC脚本体験",
+      "procedure": "test_browser.pyと人の通読で3話を確認",
+      "expected": "正解/誤答/ヒント/答えを見るから全結末へ到達",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    },
+    {
+      "id": "INTEGRATION-08",
+      "category": "INTEGRATION",
+      "title": "納品判定",
+      "procedure": "試験結果と版/ソース/設定/写真を照合",
+      "expected": "未確認をPASSにしない。無効機能を明示し所有者が承認",
+      "required": true,
+      "implementation_result": "NOT_RUN",
+      "evidence": ""
+    }
+  ]
+}

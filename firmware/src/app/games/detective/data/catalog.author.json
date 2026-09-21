@@ -1,0 +1,1180 @@
+{
+  "schema_version": "1.0.0",
+  "pack_id": "YOHAKU_CH01",
+  "content_version": "1.0.0",
+  "language": "ja-JP",
+  "title": "喫茶「余白」第一章 — つづきは、ここで。",
+  "characters": [
+    {
+      "id": "NARRATOR",
+      "name": "手帳",
+      "role": "プレイヤーの観察を整理する語り",
+      "voice": "淡々と、短く。答えや動機を先に断定しない。",
+      "motif": "NOTE",
+      "color": "#445164"
+    },
+    {
+      "id": "LATTE",
+      "name": "ラテ",
+      "role": "喫茶「余白」の店主",
+      "voice": "落ち着いた短文。相手の間違いを責めず、最後に少しだけ冗談。",
+      "motif": "ROUND_GLASSES",
+      "color": "#596B57"
+    },
+    {
+      "id": "MOCHA",
+      "name": "モカ",
+      "role": "新人スタッフ",
+      "voice": "丁寧で快活。メモとラベルが好き。失敗役に固定しない。",
+      "motif": "SQUARE_APRON",
+      "color": "#BA784C"
+    },
+    {
+      "id": "CHAI",
+      "name": "チャイ",
+      "role": "窓際に座る常連",
+      "voice": "言葉は少なめ。物の細部に気づくが、自分の記憶も疑える。",
+      "motif": "STRIPED_SCARF",
+      "color": "#64798F"
+    },
+    {
+      "id": "COCOA",
+      "name": "ココア",
+      "role": "旅先の仕事から戻る挿絵描き。第3話の結末のみ登場",
+      "voice": "軽やかで親しみがある。事情説明を独白で長く語らない。",
+      "motif": "LEAF_BROOCH",
+      "color": "#96738D"
+    }
+  ],
+  "episodes": [
+    {
+      "case_id": "CD001",
+      "question_version": 1,
+      "order": 1,
+      "logic_family": "time_order",
+      "public": {
+        "title": "いつもの席に、二つのカップ",
+        "short_title": "二つのカップ",
+        "chapter": "第1話",
+        "difficulty": "ひと息",
+        "estimated_minutes": "2〜3分（目標）",
+        "intro": [
+          {
+            "speaker": "NARRATOR",
+            "emotion": "neutral",
+            "text": "閉店前の喫茶「余白」。\n窓際の席に、白いカップと\n青いカップが並んでいた。"
+          },
+          {
+            "speaker": "MOCHA",
+            "emotion": "puzzled",
+            "text": "注文は一杯だけです。\nあれ、ぼくが二つ\n用意したんでしたっけ？"
+          },
+          {
+            "speaker": "LATTE",
+            "emotion": "neutral",
+            "text": "慌てなくていいよ。\n青い方を置いたのが誰か、\n順番に確かめてみよう。"
+          },
+          {
+            "speaker": "CHAI",
+            "emotion": "puzzled",
+            "text": "……椅子も、二つとも\n引いてあるね。"
+          }
+        ],
+        "premises": [
+          {
+            "speaker": "NARRATOR",
+            "emotion": "neutral",
+            "text": "今日、3人は窓際の席へ\n一度ずつ行った。\n時刻は17:40、17:45、17:50。"
+          },
+          {
+            "speaker": "NARRATOR",
+            "emotion": "neutral",
+            "text": "同じ時刻に行った人は\nいない。青いカップは、\n誰かがその訪問中に置いた。"
+          },
+          {
+            "speaker": "NARRATOR",
+            "emotion": "neutral",
+            "text": "その間、ほかの人は\n席に触れていない。\n置いた後も動かしていない。"
+          }
+        ],
+        "question": "青いカップを置いたのは？",
+        "options": [
+          {
+            "id": "LATTE",
+            "label": "ラテ"
+          },
+          {
+            "id": "MOCHA",
+            "label": "モカ"
+          },
+          {
+            "id": "CHAI",
+            "label": "チャイ"
+          }
+        ],
+        "clues": [
+          {
+            "id": "E1",
+            "label": "窓際の観察メモ",
+            "speaker": "NARRATOR",
+            "pages": [
+              {
+                "speaker": "NARRATOR",
+                "emotion": "neutral",
+                "text": "17:48、窓際には\n白いカップが一つ。"
+              },
+              {
+                "speaker": "NARRATOR",
+                "emotion": "neutral",
+                "text": "17:52、同じ席には\n白と青のカップが一つずつ。"
+              }
+            ],
+            "summary": [
+              "17:48には白1つ、17:52には白と青。",
+              "青いカップは17:48より後、17:52までに置かれた。"
+            ]
+          },
+          {
+            "id": "E2",
+            "label": "店主の片づけ",
+            "speaker": "LATTE",
+            "pages": [
+              {
+                "speaker": "LATTE",
+                "emotion": "neutral",
+                "text": "窓際に行ったのは、\n私が最後ではないよ。"
+              },
+              {
+                "speaker": "LATTE",
+                "emotion": "neutral",
+                "text": "そのあとカウンターで\n布巾を洗っていたんだ。\n時計は見ていなかったけど。"
+              }
+            ],
+            "summary": [
+              "ラテは3人のうち最後ではない。"
+            ]
+          },
+          {
+            "id": "E3",
+            "label": "新人の順番",
+            "speaker": "MOCHA",
+            "pages": [
+              {
+                "speaker": "MOCHA",
+                "emotion": "neutral",
+                "text": "ぼくが窓際から戻った後に、\nラテさんがそちらへ\n行ったのは覚えています。"
+              },
+              {
+                "speaker": "MOCHA",
+                "emotion": "neutral",
+                "text": "椅子の向きを直していたら、\nちょっと緊張してしまって。"
+              }
+            ],
+            "summary": [
+              "モカはラテより先に窓際へ行った。"
+            ]
+          }
+        ],
+        "hints": [
+          {
+            "level": 1,
+            "pages": [
+              {
+                "speaker": "NARRATOR",
+                "emotion": "neutral",
+                "text": "青いカップが増えた時間に、\n訪問できるのは\n3つの時刻のうちどれ？"
+              }
+            ]
+          },
+          {
+            "level": 2,
+            "pages": [
+              {
+                "speaker": "NARRATOR",
+                "emotion": "neutral",
+                "text": "青いカップは17:50。\nラテは最後ではなく、\nモカはラテより先。"
+              },
+              {
+                "speaker": "NARRATOR",
+                "emotion": "neutral",
+                "text": "モカ→ラテの順で、\n二人とも最後になれない。\n残る人を考えよう。"
+              }
+            ]
+          }
+        ],
+        "ambient": [
+          {
+            "id": "A1",
+            "label": "窓際の椅子",
+            "pages": [
+              {
+                "speaker": "NARRATOR",
+                "emotion": "neutral",
+                "text": "普段は片方だけ\n引いてある椅子。\n今日は少し、にぎやかだ。"
+              }
+            ]
+          }
+        ],
+        "menu_teaser": "注文は一杯なのに、窓際には二つ。\n順番をたどって確かめよう。"
+      },
+      "private": {
+        "solver": {
+          "domains": {
+            "t_LATTE": [
+              0,
+              1,
+              2
+            ],
+            "t_MOCHA": [
+              0,
+              1,
+              2
+            ],
+            "t_CHAI": [
+              0,
+              1,
+              2
+            ],
+            "cup_slot": [
+              0,
+              1,
+              2
+            ]
+          },
+          "all_different": [
+            [
+              "t_LATTE",
+              "t_MOCHA",
+              "t_CHAI"
+            ]
+          ],
+          "constraints": [
+            {
+              "clue_id": "E1",
+              "expr": {
+                "op": "eq",
+                "a": {
+                  "var": "cup_slot"
+                },
+                "b": {
+                  "lit": 2
+                }
+              }
+            },
+            {
+              "clue_id": "E2",
+              "expr": {
+                "op": "not",
+                "x": {
+                  "op": "eq",
+                  "a": {
+                    "var": "t_LATTE"
+                  },
+                  "b": {
+                    "lit": 2
+                  }
+                }
+              }
+            },
+            {
+              "clue_id": "E3",
+              "expr": {
+                "op": "lt",
+                "a": {
+                  "var": "t_MOCHA"
+                },
+                "b": {
+                  "var": "t_LATTE"
+                }
+              }
+            }
+          ],
+          "answer": {
+            "kind": "owner_of_value",
+            "vars": {
+              "LATTE": "t_LATTE",
+              "MOCHA": "t_MOCHA",
+              "CHAI": "t_CHAI"
+            },
+            "target": {
+              "var": "cup_slot"
+            }
+          },
+          "expected_legal_worlds": 18,
+          "expected_solutions": 1
+        },
+        "answer_id": "CHAI",
+        "explanation": [
+          {
+            "speaker": "NARRATOR",
+            "emotion": "neutral",
+            "text": "正解はチャイ。\n青いカップが増えた間の\n訪問時刻は17:50だけ。"
+          },
+          {
+            "speaker": "NARRATOR",
+            "emotion": "neutral",
+            "text": "モカはラテより先。\nラテは最後ではないので、\nモカ→ラテ→チャイとなる。"
+          },
+          {
+            "speaker": "NARRATOR",
+            "emotion": "neutral",
+            "text": "17:40がモカ、17:45がラテ、\n17:50がチャイ。\nだから、置いたのはチャイ。"
+          }
+        ],
+        "wrong_feedback": {
+          "LATTE": "ラテは最後ではない。カップが増えた時間と比べよう。",
+          "MOCHA": "モカはラテより先なので、最後の訪問にはならない。"
+        },
+        "hint_conclusion": "人柄ではなく、時刻と順番から決められる。",
+        "epilogue": [
+          {
+            "speaker": "CHAI",
+            "emotion": "soft",
+            "text": "うん。置いたのは僕。\n会えるかはまだ\n分からないんだけど。"
+          },
+          {
+            "speaker": "LATTE",
+            "emotion": "soft",
+            "text": "それでも、二人分？"
+          },
+          {
+            "speaker": "CHAI",
+            "emotion": "soft",
+            "text": "前にここで本を貸して\nくれた人が、街へ戻るって。\nその人、青い方を使ってた。"
+          },
+          {
+            "speaker": "MOCHA",
+            "emotion": "smile",
+            "text": "じゃあ、青いカップは\nしまわないでおきます。\n今日は、席の予約だけ。"
+          },
+          {
+            "speaker": "LATTE",
+            "emotion": "smile",
+            "text": "そのカップは片づけよう。\n空けておくのは、\n明日の時間にしようか。"
+          },
+          {
+            "speaker": "NARRATOR",
+            "emotion": "neutral",
+            "text": "窓際の二脚は、そのまま。\n帰り道の足音が、\n少し軽く聞こえた。"
+          }
+        ],
+        "recap": [
+          {
+            "speaker": "NARRATOR",
+            "emotion": "neutral",
+            "text": "チャイが二つ目のカップを\n置いた。街へ戻る友人を\n迎えるつもりだった。"
+          }
+        ],
+        "collectible": {
+          "id": "MEM_BLUE_CUP",
+          "label": "青いカップ",
+          "text": "来るか分からなくても、空けておきたい席がある。"
+        },
+        "author_note": "最終動機は採点対象ではない。ココアの名前はまだ出さない。白カップの持ち主は問わない。"
+      }
+    },
+    {
+      "case_id": "CD002",
+      "question_version": 1,
+      "order": 2,
+      "logic_family": "matching",
+      "public": {
+        "title": "砂糖缶に届いた青い封筒",
+        "short_title": "青い封筒",
+        "chapter": "第2話",
+        "difficulty": "ひと考え",
+        "estimated_minutes": "2〜3分（目標）",
+        "intro": [
+          {
+            "speaker": "NARRATOR",
+            "emotion": "neutral",
+            "text": "翌日の夕方。\n伝言入れに使う空の砂糖缶に、\n青いリボンの封筒が入っていた。"
+          },
+          {
+            "speaker": "MOCHA",
+            "emotion": "puzzled",
+            "text": "この缶、今はお砂糖じゃなく\nお手紙入れなんです。\nでも、差出人の名前がない。"
+          },
+          {
+            "speaker": "LATTE",
+            "emotion": "neutral",
+            "text": "今日、みんなで作った\n封筒の一つだね。\n開ける前に持ち主を探そう。"
+          },
+          {
+            "speaker": "CHAI",
+            "emotion": "puzzled",
+            "text": "リボンの色と、小さな印。\n見覚えはあるんだけど。"
+          }
+        ],
+        "premises": [
+          {
+            "speaker": "NARRATOR",
+            "emotion": "neutral",
+            "text": "3人は一人一つずつ\n封筒を作った。\n色は青・金・赤を一つずつ。"
+          },
+          {
+            "speaker": "NARRATOR",
+            "emotion": "neutral",
+            "text": "印も、本・カップ・葉を\n一つずつ使った。\n同じ色や印は重ならない。"
+          },
+          {
+            "speaker": "NARRATOR",
+            "emotion": "neutral",
+            "text": "作った後にリボンや印を\n替えた人はいない。\n話と作業メモはすべて正確。"
+          }
+        ],
+        "question": "青い封筒を作ったのは？",
+        "options": [
+          {
+            "id": "LATTE",
+            "label": "ラテ"
+          },
+          {
+            "id": "MOCHA",
+            "label": "モカ"
+          },
+          {
+            "id": "CHAI",
+            "label": "チャイ"
+          }
+        ],
+        "clues": [
+          {
+            "id": "E1",
+            "label": "モカの作業メモ",
+            "speaker": "MOCHA",
+            "pages": [
+              {
+                "speaker": "MOCHA",
+                "emotion": "neutral",
+                "text": "ぼくは金色のリボンを\n使いました。\n作業メモにも書いてあります。"
+              },
+              {
+                "speaker": "MOCHA",
+                "emotion": "neutral",
+                "text": "名前を書く欄だけ\n作り忘れてしまいました。\n次は、欄を増やします。"
+              }
+            ],
+            "summary": [
+              "モカのリボンは金色。"
+            ]
+          },
+          {
+            "id": "E2",
+            "label": "リボンと印の見本",
+            "speaker": "NARRATOR",
+            "pages": [
+              {
+                "speaker": "NARRATOR",
+                "emotion": "neutral",
+                "text": "完成した3つを並べて\n作った見本メモ。\n「カップの印は金色」"
+              },
+              {
+                "speaker": "NARRATOR",
+                "emotion": "neutral",
+                "text": "もう一行ある。\n「本の印は青色」\nどちらも実物と一致する。"
+              }
+            ],
+            "summary": [
+              "カップ印の封筒は金色のリボン。",
+              "本印の封筒は青色のリボン。"
+            ]
+          },
+          {
+            "id": "E3",
+            "label": "チャイの印",
+            "speaker": "CHAI",
+            "pages": [
+              {
+                "speaker": "CHAI",
+                "emotion": "neutral",
+                "text": "僕が貼ったのは葉の印。\n本の印と迷ったけど、\n最後は葉にしたよ。"
+              },
+              {
+                "speaker": "CHAI",
+                "emotion": "neutral",
+                "text": "小さな葉っぱなら、\n風に乗って届きそうで。"
+              }
+            ],
+            "summary": [
+              "チャイの印は葉。"
+            ]
+          }
+        ],
+        "hints": [
+          {
+            "level": 1,
+            "pages": [
+              {
+                "speaker": "NARRATOR",
+                "emotion": "neutral",
+                "text": "色と印を、別々に\n推理しないでみよう。\n見本メモで結び付けられる。"
+              }
+            ]
+          },
+          {
+            "level": 2,
+            "pages": [
+              {
+                "speaker": "NARRATOR",
+                "emotion": "neutral",
+                "text": "金色のモカはカップ印。\nチャイは葉の印。\n本の印は、残る一人。"
+              },
+              {
+                "speaker": "NARRATOR",
+                "emotion": "neutral",
+                "text": "本の印の封筒が青色。\n誰に当たるかな？"
+              }
+            ]
+          }
+        ],
+        "ambient": [
+          {
+            "id": "A1",
+            "label": "伝言入れ",
+            "pages": [
+              {
+                "speaker": "NARRATOR",
+                "emotion": "neutral",
+                "text": "砂糖缶には、小さく\n「食べられないお知らせ」と\nモカのラベルが貼ってある。"
+              }
+            ]
+          }
+        ],
+        "menu_teaser": "差出人のない小さな封筒。\n色と印を組み合わせよう。"
+      },
+      "private": {
+        "solver": {
+          "domains": {
+            "r_LATTE": [
+              "BLUE",
+              "GOLD",
+              "RED"
+            ],
+            "r_MOCHA": [
+              "BLUE",
+              "GOLD",
+              "RED"
+            ],
+            "r_CHAI": [
+              "BLUE",
+              "GOLD",
+              "RED"
+            ],
+            "s_LATTE": [
+              "BOOK",
+              "CUP",
+              "LEAF"
+            ],
+            "s_MOCHA": [
+              "BOOK",
+              "CUP",
+              "LEAF"
+            ],
+            "s_CHAI": [
+              "BOOK",
+              "CUP",
+              "LEAF"
+            ]
+          },
+          "all_different": [
+            [
+              "r_LATTE",
+              "r_MOCHA",
+              "r_CHAI"
+            ],
+            [
+              "s_LATTE",
+              "s_MOCHA",
+              "s_CHAI"
+            ]
+          ],
+          "constraints": [
+            {
+              "clue_id": "E1",
+              "expr": {
+                "op": "eq",
+                "a": {
+                  "var": "r_MOCHA"
+                },
+                "b": {
+                  "lit": "GOLD"
+                }
+              }
+            },
+            {
+              "clue_id": "E2",
+              "expr": {
+                "op": "and",
+                "xs": [
+                  {
+                    "op": "eq",
+                    "a": {
+                      "op": "eq",
+                      "a": {
+                        "var": "s_LATTE"
+                      },
+                      "b": {
+                        "lit": "CUP"
+                      }
+                    },
+                    "b": {
+                      "op": "eq",
+                      "a": {
+                        "var": "r_LATTE"
+                      },
+                      "b": {
+                        "lit": "GOLD"
+                      }
+                    }
+                  },
+                  {
+                    "op": "eq",
+                    "a": {
+                      "op": "eq",
+                      "a": {
+                        "var": "s_LATTE"
+                      },
+                      "b": {
+                        "lit": "BOOK"
+                      }
+                    },
+                    "b": {
+                      "op": "eq",
+                      "a": {
+                        "var": "r_LATTE"
+                      },
+                      "b": {
+                        "lit": "BLUE"
+                      }
+                    }
+                  },
+                  {
+                    "op": "eq",
+                    "a": {
+                      "op": "eq",
+                      "a": {
+                        "var": "s_MOCHA"
+                      },
+                      "b": {
+                        "lit": "CUP"
+                      }
+                    },
+                    "b": {
+                      "op": "eq",
+                      "a": {
+                        "var": "r_MOCHA"
+                      },
+                      "b": {
+                        "lit": "GOLD"
+                      }
+                    }
+                  },
+                  {
+                    "op": "eq",
+                    "a": {
+                      "op": "eq",
+                      "a": {
+                        "var": "s_MOCHA"
+                      },
+                      "b": {
+                        "lit": "BOOK"
+                      }
+                    },
+                    "b": {
+                      "op": "eq",
+                      "a": {
+                        "var": "r_MOCHA"
+                      },
+                      "b": {
+                        "lit": "BLUE"
+                      }
+                    }
+                  },
+                  {
+                    "op": "eq",
+                    "a": {
+                      "op": "eq",
+                      "a": {
+                        "var": "s_CHAI"
+                      },
+                      "b": {
+                        "lit": "CUP"
+                      }
+                    },
+                    "b": {
+                      "op": "eq",
+                      "a": {
+                        "var": "r_CHAI"
+                      },
+                      "b": {
+                        "lit": "GOLD"
+                      }
+                    }
+                  },
+                  {
+                    "op": "eq",
+                    "a": {
+                      "op": "eq",
+                      "a": {
+                        "var": "s_CHAI"
+                      },
+                      "b": {
+                        "lit": "BOOK"
+                      }
+                    },
+                    "b": {
+                      "op": "eq",
+                      "a": {
+                        "var": "r_CHAI"
+                      },
+                      "b": {
+                        "lit": "BLUE"
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "clue_id": "E3",
+              "expr": {
+                "op": "eq",
+                "a": {
+                  "var": "s_CHAI"
+                },
+                "b": {
+                  "lit": "LEAF"
+                }
+              }
+            }
+          ],
+          "answer": {
+            "kind": "owner_of_value",
+            "vars": {
+              "LATTE": "r_LATTE",
+              "MOCHA": "r_MOCHA",
+              "CHAI": "r_CHAI"
+            },
+            "target": {
+              "lit": "BLUE"
+            }
+          },
+          "expected_legal_worlds": 36,
+          "expected_solutions": 1
+        },
+        "answer_id": "LATTE",
+        "explanation": [
+          {
+            "speaker": "NARRATOR",
+            "emotion": "neutral",
+            "text": "正解はラテ。\n金色のモカは、\n見本メモからカップ印。"
+          },
+          {
+            "speaker": "NARRATOR",
+            "emotion": "neutral",
+            "text": "チャイは葉の印。\n本の印が残るのは\nラテだけになる。"
+          },
+          {
+            "speaker": "NARRATOR",
+            "emotion": "neutral",
+            "text": "本の印は青色。\nだから、青い封筒を\n作ったのはラテ。"
+          }
+        ],
+        "wrong_feedback": {
+          "MOCHA": "モカは金色のリボンを使ったと記録されている。",
+          "CHAI": "チャイは葉の印。本の印の青い封筒とは一致しない。"
+        },
+        "hint_conclusion": "色と印をつなげれば、名前がなくてもたどり着ける。",
+        "epilogue": [
+          {
+            "speaker": "LATTE",
+            "emotion": "soft",
+            "text": "私からチャイへの手紙。\n差出人を書かなかったのは、\n少し照れくさくてね。"
+          },
+          {
+            "speaker": "CHAI",
+            "emotion": "soft",
+            "text": "「明日16時、窓際にて。\n一冊と、一人分の\nおかえりを持ち寄ること」"
+          },
+          {
+            "speaker": "MOCHA",
+            "emotion": "smile",
+            "text": "あ、ぼくの金色は\nラテさんへの招待状です。\n同じことを考えてました。"
+          },
+          {
+            "speaker": "CHAI",
+            "emotion": "smile",
+            "text": "僕の赤い封筒は、\n戻ってくる友人へ。\n店の住所だけ、もう一度。"
+          },
+          {
+            "speaker": "LATTE",
+            "emotion": "smile",
+            "text": "誰も主催者のつもりじゃ\nないのに、会ができたね。\n名前は「余白の一ページ」。"
+          },
+          {
+            "speaker": "NARRATOR",
+            "emotion": "neutral",
+            "text": "三つの封筒が、\n同じ明日の窓際へ\nつながっていた。"
+          }
+        ],
+        "recap": [
+          {
+            "speaker": "NARRATOR",
+            "emotion": "neutral",
+            "text": "青い封筒はラテの招待状。\n3人の手紙から、明日の\n「余白の一ページ」が生まれた。"
+          }
+        ],
+        "collectible": {
+          "id": "MEM_BLUE_LETTER",
+          "label": "青い招待状",
+          "text": "別々に書いた手紙が、同じ場所へ向かう日もある。"
+        },
+        "author_note": "封筒の色/印/持ち主は全て異なる。リボンの材質や色覚は推理条件にしない。ラベルでも色を読める。"
+      }
+    },
+    {
+      "case_id": "CD003",
+      "question_version": 1,
+      "order": 3,
+      "logic_family": "testimony",
+      "public": {
+        "title": "雨上がりのしおり",
+        "short_title": "雨上がりのしおり",
+        "chapter": "第3話",
+        "difficulty": "ひと考え",
+        "estimated_minutes": "2〜4分（目標）",
+        "intro": [
+          {
+            "speaker": "NARRATOR",
+            "emotion": "neutral",
+            "text": "「余白の一ページ」の当日。\n雨が上がると、青いカップの横に\n銀色のしおりが置かれていた。"
+          },
+          {
+            "speaker": "CHAI",
+            "emotion": "puzzled",
+            "text": "このしおり、見覚えがある。\nでも、結んだ糸が\n新しくなってるね。"
+          },
+          {
+            "speaker": "MOCHA",
+            "emotion": "neutral",
+            "text": "誰が置いたか確かめてから、\nちゃんと渡したいですね。"
+          },
+          {
+            "speaker": "LATTE",
+            "emotion": "soft",
+            "text": "三人の記憶を並べてみよう。\n責めるためじゃなく、\nお礼を言う相手を探すんだ。"
+          }
+        ],
+        "premises": [
+          {
+            "speaker": "NARRATOR",
+            "emotion": "neutral",
+            "text": "しおりを置いたのは\nラテ・モカ・チャイの\nうち一人だけ。"
+          },
+          {
+            "speaker": "NARRATOR",
+            "emotion": "neutral",
+            "text": "これから読む三つの発言で、\n事実と違うのは\nちょうど一つ。"
+          },
+          {
+            "speaker": "NARRATOR",
+            "emotion": "neutral",
+            "text": "置いた本人の発言が\n間違いとは限らない。\n表情や口調は手掛かりにしない。"
+          }
+        ],
+        "question": "しおりを置いたのは？",
+        "options": [
+          {
+            "id": "LATTE",
+            "label": "ラテ"
+          },
+          {
+            "id": "MOCHA",
+            "label": "モカ"
+          },
+          {
+            "id": "CHAI",
+            "label": "チャイ"
+          }
+        ],
+        "clues": [
+          {
+            "id": "E1",
+            "label": "ラテの記憶",
+            "speaker": "LATTE",
+            "pages": [
+              {
+                "speaker": "LATTE",
+                "emotion": "neutral",
+                "text": "置いたのはモカだよ。\nそう覚えている。"
+              }
+            ],
+            "summary": [
+              "ラテの発言：置いたのはモカ。"
+            ]
+          },
+          {
+            "id": "E2",
+            "label": "モカの記憶",
+            "speaker": "MOCHA",
+            "pages": [
+              {
+                "speaker": "MOCHA",
+                "emotion": "neutral",
+                "text": "置いたのは\nチャイさんではありません。"
+              }
+            ],
+            "summary": [
+              "モカの発言：置いたのはチャイではない。"
+            ]
+          },
+          {
+            "id": "E3",
+            "label": "チャイの記憶",
+            "speaker": "CHAI",
+            "pages": [
+              {
+                "speaker": "CHAI",
+                "emotion": "neutral",
+                "text": "置いたのは僕だ。\n……そうだったはず。"
+              }
+            ],
+            "summary": [
+              "チャイの発言：置いたのはチャイ。"
+            ]
+          }
+        ],
+        "hints": [
+          {
+            "level": 1,
+            "pages": [
+              {
+                "speaker": "NARRATOR",
+                "emotion": "neutral",
+                "text": "誰か一人が置いたと仮定し、\n発言がそれぞれ\n正しいか確かめよう。"
+              }
+            ]
+          },
+          {
+            "level": 2,
+            "pages": [
+              {
+                "speaker": "NARRATOR",
+                "emotion": "neutral",
+                "text": "モカとチャイの発言は\n反対の内容なので、\nどちらか一方だけが間違い。"
+              },
+              {
+                "speaker": "NARRATOR",
+                "emotion": "neutral",
+                "text": "それだけで間違いは一つ。\nラテの発言まで間違いだと、\n二つになってしまう。"
+              }
+            ]
+          }
+        ],
+        "ambient": [
+          {
+            "id": "A1",
+            "label": "しおりを眺める",
+            "pages": [
+              {
+                "speaker": "NARRATOR",
+                "emotion": "neutral",
+                "text": "銀色のしおりに、\n新しい青い糸。\n持ち主の名前は書かれていない。"
+              }
+            ]
+          }
+        ],
+        "menu_teaser": "誰かが結び直した、小さな糸。\n三人の記憶を並べてみよう。"
+      },
+      "private": {
+        "solver": {
+          "domains": {
+            "giver": [
+              "LATTE",
+              "MOCHA",
+              "CHAI"
+            ]
+          },
+          "all_different": [],
+          "constraints": [
+            {
+              "clue_id": "RULE_TESTIMONY",
+              "expr": {
+                "op": "exactly_false",
+                "n": 1,
+                "xs": [
+                  {
+                    "op": "eq",
+                    "a": {
+                      "var": "giver"
+                    },
+                    "b": {
+                      "lit": "MOCHA"
+                    }
+                  },
+                  {
+                    "op": "not",
+                    "x": {
+                      "op": "eq",
+                      "a": {
+                        "var": "giver"
+                      },
+                      "b": {
+                        "lit": "CHAI"
+                      }
+                    }
+                  },
+                  {
+                    "op": "eq",
+                    "a": {
+                      "var": "giver"
+                    },
+                    "b": {
+                      "lit": "CHAI"
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "statements": [
+            {
+              "clue_id": "E1",
+              "expr": {
+                "op": "eq",
+                "a": {
+                  "var": "giver"
+                },
+                "b": {
+                  "lit": "MOCHA"
+                }
+              }
+            },
+            {
+              "clue_id": "E2",
+              "expr": {
+                "op": "not",
+                "x": {
+                  "op": "eq",
+                  "a": {
+                    "var": "giver"
+                  },
+                  "b": {
+                    "lit": "CHAI"
+                  }
+                }
+              }
+            },
+            {
+              "clue_id": "E3",
+              "expr": {
+                "op": "eq",
+                "a": {
+                  "var": "giver"
+                },
+                "b": {
+                  "lit": "CHAI"
+                }
+              }
+            }
+          ],
+          "answer": {
+            "kind": "variable",
+            "var": "giver"
+          },
+          "expected_legal_worlds": 3,
+          "expected_solutions": 1
+        },
+        "answer_id": "MOCHA",
+        "explanation": [
+          {
+            "speaker": "NARRATOR",
+            "emotion": "neutral",
+            "text": "正解はモカ。\nモカが置いたなら、\nラテの発言は正しい。"
+          },
+          {
+            "speaker": "NARRATOR",
+            "emotion": "neutral",
+            "text": "モカの「チャイではない」も\n正しい。間違うのは\nチャイの発言一つだけ。"
+          },
+          {
+            "speaker": "NARRATOR",
+            "emotion": "neutral",
+            "text": "ラテが置いた場合も、\nチャイが置いた場合も、\n間違いが二つになってしまう。"
+          }
+        ],
+        "wrong_feedback": {
+          "LATTE": "ラテが置いたとすると、ラテとチャイの発言が間違いになる。",
+          "CHAI": "チャイが置いたとすると、ラテとモカの発言が間違いになる。"
+        },
+        "hint_conclusion": "思い込みではなく、条件に合う発言の組合せで確かめられた。",
+        "epilogue": [
+          {
+            "speaker": "MOCHA",
+            "emotion": "soft",
+            "text": "糸がほどけかけていたので、\n結び直してから置きました。\n中の文字は、そのままです。"
+          },
+          {
+            "speaker": "CHAI",
+            "emotion": "soft",
+            "text": "昨日、僕が取り出したから\nそのまま置いた気になってた。\n直してくれたんだね。"
+          },
+          {
+            "speaker": "LATTE",
+            "emotion": "soft",
+            "text": "間違えた記憶にも、\n理由があったんだね。"
+          },
+          {
+            "speaker": "NARRATOR",
+            "emotion": "neutral",
+            "text": "入口のベルが鳴る。\n傘を閉じた人が、\n窓際の青いカップを見つけた。"
+          },
+          {
+            "speaker": "COCOA",
+            "emotion": "smile",
+            "text": "ただいま。\n……まだ、このカップ\n残してくれてたんだ。"
+          },
+          {
+            "speaker": "CHAI",
+            "emotion": "smile",
+            "text": "おかえり、ココア。\n借りた本と、しおり。\nずいぶん長く預かった。"
+          },
+          {
+            "speaker": "COCOA",
+            "emotion": "soft",
+            "text": "しおりの裏、覚えてる？\n「つづきは、ここで」って\n書いたんだったね。"
+          },
+          {
+            "speaker": "MOCHA",
+            "emotion": "smile",
+            "text": "じゃあ、一ページ目から\nじゃなくて、つづきから。\nコーヒーは何杯にします？"
+          },
+          {
+            "speaker": "LATTE",
+            "emotion": "smile",
+            "text": "今日は、みんなの分。\nゆっくり淹れよう。"
+          },
+          {
+            "speaker": "NARRATOR",
+            "emotion": "neutral",
+            "text": "三つの小さな謎が、\n一つの「おかえり」になった。\n喫茶「余白」は、今日も営業中。"
+          }
+        ],
+        "recap": [
+          {
+            "speaker": "NARRATOR",
+            "emotion": "neutral",
+            "text": "モカがしおりの糸を直した。\n戻ったココアを迎えて、\n「余白の一ページ」が始まった。"
+          }
+        ],
+        "collectible": {
+          "id": "MEM_SILVER_BOOKMARK",
+          "label": "銀色のしおり",
+          "text": "つづきは、ここで。"
+        },
+        "author_note": "誤った記憶＝嘘つきの性格ではない。糸の修理者と置いた人が同じなのは結末の情報で、採点に不要。"
+      }
+    }
+  ]
+}

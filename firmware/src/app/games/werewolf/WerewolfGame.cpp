@@ -27,6 +27,9 @@ LV_FONT_DECLARE(ct_font_jp_20);
 LV_FONT_DECLARE(ct_font_jp_22);
 LV_FONT_DECLARE(ct_font_jp_40);
 LV_FONT_DECLARE(ct_font_time_64);
+// 席のキャラクター・役職・お話のマーク（Material Icons Round）。日本語フォントとは別物
+LV_FONT_DECLARE(ct_font_icons_36);
+LV_FONT_DECLARE(ct_font_icons_88);
 
 namespace werewolf {
 namespace {
@@ -43,9 +46,11 @@ using namespace coffee::wolf;
 enum class View : uint8_t {
     Lobby,              // 人数を決める（count テンプレート）
     RebootNotice,       // 電源断で無効になった局のお知らせ
+    Story,              // 世界観のお話（毎回・6 ページ・スキップ可）
     Brief,              // 始める前の約束（必読 4 ページ）
     SetupConfirm,       // 人数と席順の確認
-    Tutorial,           // 遊び方（ロビーからのみ・17 ページ）
+    Roster,             // あなたは だれ？（席のキャラクター一覧・配る直前）
+    Tutorial,           // 遊び方（ロビーからのみ・お話 6 + 17 ページ）
     Error,              // 乱数 / 記録領域の異常
     NightHandoff,
     RoleCheck,          // 秘密
@@ -74,8 +79,10 @@ enum class View : uint8_t {
 // 押した内容。lv_event の user_data に入れて 1 つのコールバックで処理する
 enum class Act : int {
     CountMinus = 1, CountPlus, LobbyStart, LobbyLeave, LobbyHelp,
+    StoryPrev, StoryNext, StorySkip,
     BriefPrev, BriefNext, BriefDone,
     SetupBack, SetupNext, SetupStart,
+    RosterBack, RosterOk,
     TutorialPrev, TutorialNext, TutorialExit,
     NoticeOk,
     NightReceive, RoleAck,
@@ -105,6 +112,7 @@ lv_timer_t *s_tick = nullptr;
 
 // 作り直すたびに nullptr へ戻す部品
 lv_obj_t *s_role_label = nullptr;   // 役職名（秘密）
+lv_obj_t *s_role_icon = nullptr;    // 役職のマーク（秘密。役職名と同じ扱いにする）
 lv_obj_t *s_secret_label = nullptr; // 秘密の本文
 lv_obj_t *s_cover_label = nullptr;  // 秘密を隠しているときの案内
 lv_obj_t *s_timer_label = nullptr;  // 議論の残り時間
@@ -222,6 +230,45 @@ void numberText(char *out, size_t cap, int value)
     std::snprintf(out, cap, "%d", value);
 }
 
+// --- 席のキャラクター（公開情報。秘密ではない）-----------------------------
+// 番号だけだと取り違えるので、席ごとに喫茶の小物の名前とマークを割り当てる。
+// 番号は「本人確認ではない」が、並び順の目印として小さく添える。
+
+// 席の名前だけ（ボタン用）。データに無ければ空文字
+const char *seatName(int seat)
+{
+    const content::SeatCharacter *c = content::findSeatCharacter(seat);
+    return (c != nullptr && c->name != nullptr) ? c->name : "";
+}
+
+// 席のマーク（アイコンフォントの 1 文字）。データに無ければ空文字
+const char *seatIcon(int seat)
+{
+    const content::SeatCharacter *c = content::findSeatCharacter(seat);
+    return (c != nullptr && c->icon != nullptr) ? c->icon : "";
+}
+
+// 文章の中の呼び名（「カップさん」）。char.honorific が持っている
+void seatHonorific(char *out, size_t cap, int seat)
+{
+    const char *name = seatName(seat);
+    if (name[0] == '\0') {
+        std::snprintf(out, cap, "%d", seat + 1);   // 通常は起きない（保険）
+        return;
+    }
+    const Subst subs[] = {{"name", name}};
+    fillText(out, cap, str("char.honorific"), subs, 1);
+}
+
+// 席番号の添え字（「3番」）
+void seatNumberText(char *out, size_t cap, int seat)
+{
+    char num[8];
+    numberText(num, sizeof(num), seat + 1);
+    const Subst subs[] = {{"seat", num}};
+    fillText(out, cap, str("char.seat_no"), subs, 1);
+}
+
 // 席番号や伏せ札の呼び名。{target_label} / {selected_label} に入れる
 void targetLabel(char *out, size_t cap, int target)
 {
@@ -234,7 +281,7 @@ void targetLabel(char *out, size_t cap, int target)
     } else if (target == NONE) {
         std::snprintf(out, cap, "%s", str("vote.ineligible"));
     } else {
-        std::snprintf(out, cap, "%d番", target + 1);
+        seatHonorific(out, cap, target);
     }
 }
 
@@ -244,6 +291,17 @@ const char *roleName(Role role)
     case Role::Wolf: return str("role.wolf.name");
     case Role::Seer: return str("role.seer.name");
     case Role::Villager: return str("role.villager.name");
+    default: return "";
+    }
+}
+
+// 役職のマーク。これは秘密なので、呼べるのは showSecret() の中だけ
+const char *roleIcon(Role role)
+{
+    switch (role) {
+    case Role::Wolf: return content::kIconWolf;
+    case Role::Seer: return content::kIconSeer;
+    case Role::Villager: return content::kIconVillager;
     default: return "";
     }
 }
@@ -295,6 +353,24 @@ lv_obj_t *rectLabel(const layout::Rect &r, const lv_font_t *font, lv_color_t col
     } else {
         lv_obj_set_pos(l, r.x, (int16_t)(r.h > h ? r.y + (r.h - h) / 2 : r.y));
     }
+    return l;
+}
+
+// マーク（アイコンフォント）のラベル。枠の中央に置く。
+// 文字は Material Icons Round の 1 文字で、日本語フォントでは描けない
+lv_obj_t *iconLabel(const layout::Rect &r, const lv_font_t *font, lv_color_t color,
+                    const char *text)
+{
+    lv_obj_t *l = lv_label_create(s_content);
+    lv_obj_set_style_text_font(l, font, 0);
+    lv_obj_set_style_text_color(l, color, 0);
+    lv_label_set_long_mode(l, LV_LABEL_LONG_CLIP);
+    lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_width(l, r.w);
+    const int16_t h = (int16_t)font->line_height;
+    lv_obj_set_height(l, h < r.h ? h : r.h);
+    lv_label_set_text(l, text);
+    lv_obj_set_pos(l, r.x, (int16_t)(r.h > h ? r.y + (r.h - h) / 2 : r.y));
     return l;
 }
 
@@ -376,6 +452,68 @@ constexpr layout::Rect kMenu1{110, 214, 260, 54};
 constexpr layout::Rect kMenu2{110, 278, 260, 54};
 constexpr layout::Rect kMenu3{110, 342, 260, 54};
 
+// --- キャラクター表示のための追加座標（layout.json は設計書の正本なので変えない）---
+// いずれも中心 (240,240) から半径 228px の内側に収まることを確認済み。
+
+// お話のページ: 見出し(46) / マーク(92) / 本文(144) / ページ送り(292) / スキップ(348)
+constexpr layout::Rect kStoryIcon{204, 92, 72, 44};
+
+// 手渡しの画面: 見出し(46) / 大きなマーク(92) / 番号(196) / 本文(226) / 受け取りました(338)
+constexpr layout::Rect kHandoffIcon{176, 92, 128, 100};
+constexpr layout::Rect kHandoffSeat{180, 196, 120, 26};
+constexpr layout::Rect kHandoffBody{90, 226, 300, 100};
+
+// 「あなたは だれ？」の一覧: 案内(94) / 4 枠(142〜280) / ページ送り(292) / おぼえた(348)
+constexpr layout::Rect kRosterNote{110, 94, 260, 32};
+
+// 役職のマーク（秘密）。役職名 role_name は x108〜372 の中央に描かれるので左側が空く
+constexpr layout::Rect kRoleIcon{112, 136, 48, 48};
+
+// 枠の中に「マーク＋名前」を並べるときの、マーク側の幅（左の余白 10px を含む）。
+// 154px の枠なら名前に 96px 残る（いちばん長い名前は 4 文字 = 88px）
+constexpr int16_t kIconSlotW = 52;
+
+// 席のボタン（夜の対象・投票先）。左にキャラクターのマーク、右に名前を置く。
+// 自分・対象外のときも席が分かるようにマークは出し、色だけ落とす（枠は詰めない）
+lv_obj_t *seatTargetButton(const layout::Rect &r, const char *text, const char *icon,
+                           int target, bool enabled)
+{
+    lv_obj_t *btn = targetButton(r, text, target, enabled);
+    if (icon == nullptr || icon[0] == '\0') {
+        return btn;
+    }
+    // rectButton が作った文字を右側へ寄せ、空いた左側にマークを入れる
+    lv_obj_t *l = lv_obj_get_child(btn, 0);
+    if (l != nullptr) {
+        lv_obj_set_width(l, (int16_t)(r.w - kIconSlotW - 6));
+        lv_obj_align(l, LV_ALIGN_RIGHT_MID, -6, 0);
+    }
+    lv_obj_t *ic = lv_label_create(btn);
+    lv_obj_set_style_text_font(ic, &ct_font_icons_36, 0);
+    lv_obj_set_style_text_color(ic, enabled ? CT_COLOR_ACCENT_HI : CT_COLOR_DIM, 0);
+    lv_label_set_long_mode(ic, LV_LABEL_LONG_CLIP);
+    lv_label_set_text(ic, icon);
+    lv_obj_align(ic, LV_ALIGN_LEFT_MID, 10, 0);
+    return btn;
+}
+
+// 「マーク＋名前＋番号」の 1 枠（あなたは だれ？の一覧。押せない表示だけの枠）
+void rosterCell(const layout::Rect &r, int seat)
+{
+    const layout::Rect icon_rect{(int16_t)(r.x + 6), r.y, 44, r.h};
+    iconLabel(icon_rect, &ct_font_icons_36, CT_COLOR_ACCENT_HI, seatIcon(seat));
+
+    const int16_t text_x = (int16_t)(r.x + kIconSlotW);
+    const int16_t text_w = (int16_t)(r.w - kIconSlotW - 6);
+    rectLabel(layout::Rect{text_x, (int16_t)(r.y + 4), text_w, 26}, &ct_font_jp_22,
+              CT_COLOR_TEXT, seatName(seat));
+
+    char num[16];
+    seatNumberText(num, sizeof(num), seat);
+    rectLabel(layout::Rect{text_x, (int16_t)(r.y + 34), text_w, 24}, &ct_font_jp_20,
+              CT_COLOR_DIM, num);
+}
+
 bool isPrivateView(View v)
 {
     return v == View::RoleCheck || v == View::NightResult || v == View::VoteConfirm;
@@ -391,8 +529,9 @@ bool isSoloView(View v)
 // 公開画面（結果・ロビー等）ではない、進行中の局の画面か
 bool isInGameView(View v)
 {
-    return v != View::Lobby && v != View::RebootNotice && v != View::Brief &&
-           v != View::SetupConfirm && v != View::Tutorial && v != View::Error &&
+    return v != View::Lobby && v != View::RebootNotice && v != View::Story &&
+           v != View::Brief && v != View::SetupConfirm && v != View::Roster &&
+           v != View::Tutorial && v != View::Error &&
            v != View::Result && v != View::Aborted && v != View::Pause &&
            v != View::PauseOwner && v != View::PauseAbortConfirm;
 }
@@ -405,6 +544,10 @@ void blankSecretLabels()
     }
     if (s_role_label != nullptr) {
         lv_label_set_text(s_role_label, "");
+    }
+    if (s_role_icon != nullptr) {
+        // マークだけでも役職が分かってしまうので、役職名と必ず同時に消す
+        lv_label_set_text(s_role_icon, "");
     }
     if (s_cover_label != nullptr) {
         lv_obj_clear_flag(s_cover_label, LV_OBJ_FLAG_HIDDEN);
@@ -562,7 +705,8 @@ void buildRebootNotice()
 // 361〜411 と 398〜442 で重なるため、この画面では使わない。
 void buildDocPager(const char *title, const char *body, size_t page, size_t total,
                    Act prev_act, Act next_act,
-                   const char *action_text, Act action_act, bool action_enabled)
+                   const char *action_text, Act action_act, bool action_enabled,
+                   bool next_past_last = false)
 {
     makeTitle(title);
     rectLabel(layout::kBody, &ct_font_jp_22, CT_COLOR_TEXT, body);
@@ -578,8 +722,53 @@ void buildDocPager(const char *title, const char *body, size_t page, size_t tota
 
     // 1 ページ目の「前へ」は前の画面へ戻る出口にする（行き止まりを作らない）
     rectButton(layout::kPagePrev, page > 0 ? str("common.prev") : str("common.no"), prev_act, true);
-    rectButton(layout::kPageNext, str("common.next"), next_act, page + 1 < total);
+    // next_past_last のときは最後のページの「次へ」が次の画面への出口になる
+    rectButton(layout::kPageNext, str("common.next"), next_act,
+               next_past_last || page + 1 < total);
     rectButton(kActionWide, action_text, action_act, action_enabled, action_enabled);
+}
+
+// 世界観のお話（毎回・遊び方の先頭にも出す）。本文の上にマークを 1 つ置く
+void buildStory(size_t page)
+{
+    const content::StoryPage &entry = content::kStory[page];
+    buildDocPager(entry.title, entry.body, page, content::kStoryCount,
+                  Act::StoryPrev, Act::StoryNext,
+                  str("story.skip"), Act::StorySkip, true, true);
+    iconLabel(kStoryIcon, &ct_font_icons_36, CT_COLOR_ACCENT_HI, entry.icon);
+}
+
+// 「あなたは だれ？」— 遊ぶ席のキャラクターだけを並べる（公開情報）
+void buildRoster()
+{
+    makeTitle(str("roster.title"));
+    rectLabel(kRosterNote, &ct_font_jp_20, CT_COLOR_SUBTEXT, str("roster.note"));
+
+    const uint8_t pages = (uint8_t)((s_players + PAGE_SIZE - 1) / PAGE_SIZE);
+    if (pages > 0 && s_page >= pages) {
+        s_page = (uint8_t)(pages - 1);
+    }
+    for (uint8_t i = 0; i < PAGE_SIZE; ++i) {
+        const int seat = s_page * PAGE_SIZE + i;
+        if (seat >= (int)s_players) {
+            break;
+        }
+        rosterCell(layout::kSlots[i], seat);
+    }
+
+    char status[16];
+    char cur[8];
+    char total[8];
+    numberText(cur, sizeof(cur), s_page + 1);
+    numberText(total, sizeof(total), pages > 0 ? pages : 1);
+    const Subst subs[] = {{"page", cur}, {"pages", total}};
+    fillText(status, sizeof(status), str("page.status"), subs, 2);
+    rectLabel(layout::kPageLabel, &ct_font_jp_20, CT_COLOR_SUBTEXT, status);
+    // 1 ページ目の「前へ」は人数確認へ戻る出口にする（行き止まりを作らない）
+    rectButton(layout::kPagePrev, s_page > 0 ? str("common.prev") : str("common.no"),
+               s_page > 0 ? Act::PagePrev : Act::RosterBack, true);
+    rectButton(layout::kPageNext, str("common.next"), Act::PageNext, s_page + 1 < pages);
+    rectButton(kActionWide, str("roster.ok"), Act::RosterOk, true, true);
 }
 
 void buildBrief()
@@ -621,13 +810,23 @@ void buildSetupConfirm()
                   str("setup.check"), Act::SetupStart, page + 1 >= kSetupPages);
 }
 
+// 遊び方 = 世界観のお話（6 ページ）＋ もとの遊び方（17 ページ）
+const size_t kTutorialTotal = content::kStoryCount + content::kTutorialCount;
+
 void buildTutorial()
 {
-    const size_t total = content::kTutorialCount;
-    const size_t page = s_doc_page < total ? s_doc_page : 0;
-    const content::PagedEntry &entry = content::kTutorial[page];
-
-    buildDocPager(entry.title, entry.body, page, total, Act::TutorialPrev, Act::TutorialNext,
+    const size_t page = s_doc_page < kTutorialTotal ? s_doc_page : 0;
+    if (page < content::kStoryCount) {
+        const content::StoryPage &entry = content::kStory[page];
+        buildDocPager(entry.title, entry.body, page, kTutorialTotal,
+                      Act::TutorialPrev, Act::TutorialNext,
+                      str("help.return"), Act::TutorialExit, true);
+        iconLabel(kStoryIcon, &ct_font_icons_36, CT_COLOR_ACCENT_HI, entry.icon);
+        return;
+    }
+    const content::PagedEntry &entry = content::kTutorial[page - content::kStoryCount];
+    buildDocPager(entry.title, entry.body, page, kTutorialTotal,
+                  Act::TutorialPrev, Act::TutorialNext,
                   str("help.return"), Act::TutorialExit, true);
 }
 
@@ -639,21 +838,35 @@ void buildError()
     rectButton(layout::kWideButton, str("common.no"), Act::ErrorBack, true, true);
 }
 
-void buildNightHandoff(const PublicView &pv)
+// 手渡しの画面（夜・投票で共通）。大きなマークと名前で「誰の番か」を一目で伝える。
+// 席番号は本人確認ではないので、名前の下に小さく添えるだけにする
+void buildHandoff(const PublicView &pv, const char *title_key, const char *body_key,
+                  Act receive_act)
 {
     char seat[8];
     numberText(seat, sizeof(seat), pv.actor + 1);
-    const Subst subs[] = {{"seat", seat}};
+    const Subst subs[] = {{"seat", seat}, {"name", seatName(pv.actor)}};
 
     char title[64];
-    fillText(title, sizeof(title), str("handoff.night.title"), subs, 1);
+    fillText(title, sizeof(title), str(title_key), subs, 2);
     makeTitle(title);
 
-    char body[192];
-    fillText(body, sizeof(body), str("handoff.night.body"), subs, 1);
-    rectLabel(layout::kBody, &ct_font_jp_22, CT_COLOR_TEXT, body);
+    iconLabel(kHandoffIcon, &ct_font_icons_88, CT_COLOR_ACCENT_HI, seatIcon(pv.actor));
 
-    rectButton(layout::kWideButton, str("handoff.receive"), Act::NightReceive, true, true);
+    char num[16];
+    seatNumberText(num, sizeof(num), pv.actor);
+    rectLabel(kHandoffSeat, &ct_font_jp_20, CT_COLOR_DIM, num);
+
+    char body[192];
+    fillText(body, sizeof(body), str(body_key), subs, 2);
+    rectLabel(kHandoffBody, &ct_font_jp_22, CT_COLOR_TEXT, body);
+
+    rectButton(layout::kWideButton, str("handoff.receive"), receive_act, true, true);
+}
+
+void buildNightHandoff(const PublicView &pv)
+{
+    buildHandoff(pv, "handoff.night.title", "handoff.night.body", Act::NightReceive);
 }
 
 // 秘密を出す画面の骨組み。秘密のラベルは空で作り、押している間だけ中身を入れる
@@ -665,6 +878,8 @@ void buildPrivate(const char *title_key, const char *hold_key, const char *conti
 
     if (with_role_name) {
         s_role_label = rectLabel(layout::kRoleName, &ct_font_jp_40, CT_COLOR_ACCENT_HI, "");
+        // 役職のマークも秘密。必ず空で作り、showSecret() の中でだけ中身を入れる
+        s_role_icon = iconLabel(kRoleIcon, &ct_font_icons_36, CT_COLOR_ACCENT_HI, "");
     }
     s_cover_label = rectLabel(layout::kSecretBody, &ct_font_jp_20, CT_COLOR_DIM, str("role.cover"));
     s_secret_label = rectLabel(layout::kSecretBody, &ct_font_jp_22, CT_COLOR_TEXT, "");
@@ -705,9 +920,10 @@ void buildSeatPage(const PublicView &pv, bool vote)
         } else if (!eligible) {
             std::snprintf(label, sizeof(label), "%s", str("vote.ineligible"));
         } else {
-            targetLabel(label, sizeof(label), seat);
+            // ボタンの上では敬称なしの短い名前にする（幅が 154px しかない）
+            std::snprintf(label, sizeof(label), "%s", seatName(seat));
         }
-        targetButton(layout::kSlots[i], label, seat, !self && eligible);
+        seatTargetButton(layout::kSlots[i], label, seatIcon(seat), seat, !self && eligible);
     }
 
     char status[16];
@@ -804,19 +1020,7 @@ void buildVoteReady()
 
 void buildVoteHandoff(const PublicView &pv)
 {
-    char seat[8];
-    numberText(seat, sizeof(seat), pv.actor + 1);
-    const Subst subs[] = {{"seat", seat}};
-
-    char title[64];
-    fillText(title, sizeof(title), str("vote.handoff.title"), subs, 1);
-    makeTitle(title);
-
-    char body[192];
-    fillText(body, sizeof(body), str("vote.handoff.body"), subs, 1);
-    rectLabel(layout::kBody, &ct_font_jp_22, CT_COLOR_TEXT, body);
-
-    rectButton(layout::kWideButton, str("handoff.receive"), Act::VoteReceive, true, true);
+    buildHandoff(pv, "vote.handoff.title", "vote.handoff.body", Act::VoteReceive);
 }
 
 void buildVoteSelect(const PublicView &pv)
@@ -1003,9 +1207,10 @@ void buildResult()
     for (uint8_t seat = 0; seat < r.player_count; ++seat) {
         char num[8];
         numberText(num, sizeof(num), seat + 1);
-        const Subst subs[] = {{"seat", num}, {"role", roleName(r.roles[seat])}};
+        const Subst subs[] = {{"seat", num}, {"name", seatName(seat)},
+                              {"role", roleName(r.roles[seat])}};
         char line[64];
-        fillText(line, sizeof(line), str("result.role_row"), subs, 2);
+        fillText(line, sizeof(line), str("result.role_row"), subs, 3);
         addRow(line);
     }
 
@@ -1026,9 +1231,10 @@ void buildResult()
         char num[8];
         numberText(num, sizeof(num), seat + 1);
         targetLabel(label, sizeof(label), r.first[seat]);
-        const Subst subs[] = {{"seat", num}, {"target_label", label}};
+        const Subst subs[] = {{"seat", num}, {"name", seatName(seat)},
+                              {"target_label", label}};
         char line[64];
-        fillText(line, sizeof(line), str("result.vote_row"), subs, 2);
+        fillText(line, sizeof(line), str("result.vote_row"), subs, 3);
         addRow(line);
     }
     if (r.had_runoff) {
@@ -1037,9 +1243,10 @@ void buildResult()
             char num[8];
             numberText(num, sizeof(num), seat + 1);
             targetLabel(label, sizeof(label), r.runoff[seat]);
-            const Subst subs[] = {{"seat", num}, {"target_label", label}};
+            const Subst subs[] = {{"seat", num}, {"name", seatName(seat)},
+                                  {"target_label", label}};
             char line[64];
-            fillText(line, sizeof(line), str("result.vote_row"), subs, 2);
+            fillText(line, sizeof(line), str("result.vote_row"), subs, 3);
             addRow(line);
         }
     }
@@ -1052,10 +1259,12 @@ void buildResult()
         char num[8];
         numberText(num, sizeof(num), r.seer + 1);
         targetLabel(label, sizeof(label), r.inspected);
-        const Subst subs[] = {{"seat", num}, {"target_label", label}};
+        const Subst subs[] = {{"seat", num}, {"name", seatName(r.seer)},
+                              {"target_label", label}};
         char line[64];
-        fillText(line, sizeof(line), str("result.seer_row"), subs, 2);
-        addRow(line);
+        fillText(line, sizeof(line), str("result.seer_row"), subs, 3);
+        // 重ね書きの文言は 2 行に分かれている（1 行 43px には収まらないため）
+        addLines(line);
         // 占い結果は「人狼」か「人狼ではない」の二択。文言は既存のものを流用する
         addRow(str(r.finding == Finding::Wolf ? "role.wolf.name" : "vote.peace"));
     }
@@ -1078,9 +1287,9 @@ void buildPauseOwner(const PublicView &pv)
     makeTitle(str("pause.title"));
     char seat[8];
     numberText(seat, sizeof(seat), pv.actor + 1);
-    const Subst subs[] = {{"seat", seat}};
+    const Subst subs[] = {{"seat", seat}, {"name", seatName(pv.actor)}};
     char body[192];
-    fillText(body, sizeof(body), str("pause.resume.owner"), subs, 1);
+    fillText(body, sizeof(body), str("pause.resume.owner"), subs, 2);
     rectLabel(layout::kBody, &ct_font_jp_22, CT_COLOR_TEXT, body);
     rectButton(layout::kWideButton, str("common.yes"), Act::PauseResumeOk, true, true);
     rectButton(layout::kPublicBack, str("common.no"), Act::PauseResumeNo);
@@ -1124,6 +1333,7 @@ void rebuild()
     }
     // 秘密が残らないよう、部品はいったん全部消してから作り直す（アニメーションはしない）
     s_role_label = nullptr;
+    s_role_icon = nullptr;
     s_secret_label = nullptr;
     s_cover_label = nullptr;
     s_timer_label = nullptr;
@@ -1137,8 +1347,12 @@ void rebuild()
     switch (s_view) {
     case View::Lobby:             buildLobby(); break;
     case View::RebootNotice:      buildRebootNotice(); break;
+    case View::Story:
+        buildStory(s_doc_page < content::kStoryCount ? s_doc_page : 0);
+        break;
     case View::Brief:             buildBrief(); break;
     case View::SetupConfirm:      buildSetupConfirm(); break;
+    case View::Roster:            buildRoster(); break;
     case View::Tutorial:          buildTutorial(); break;
     case View::Error:             buildError(); break;
     case View::NightHandoff:      buildNightHandoff(pv); break;
@@ -1226,6 +1440,7 @@ void showSecret()
     body[0] = '\0';
     label[0] = '\0';
     const char *role_text = nullptr;
+    const char *role_mark = nullptr;
 
     if (s_view == View::RoleCheck) {
         Role role = Role::Empty;
@@ -1233,6 +1448,7 @@ void showSecret()
             return;
         }
         role_text = roleName(role);
+        role_mark = roleIcon(role);
         const char *key = role == Role::Wolf ? "role.wolf.body"
                         : role == Role::Seer ? "role.seer.body" : "role.villager.body";
         std::snprintf(body, sizeof(body), "%s", str(key));
@@ -1272,7 +1488,18 @@ void showSecret()
     if (s_role_label != nullptr && role_text != nullptr) {
         lv_label_set_text(s_role_label, role_text);
     }
+    if (s_role_icon != nullptr && role_mark != nullptr) {
+        lv_label_set_text(s_role_icon, role_mark);
+    }
     lv_label_set_text(s_secret_label, body);
+    // ラベルは空（1 行分）の状態で枠の中央に置かれているので、行数が決まった今、置き直す。
+    // これをしないと 4 行の本文が中央から下へ伸び、「押して見る」のボタンに重なる
+    {
+        const layout::Rect &r = layout::kSecretBody;
+        const int16_t text_h = (int16_t)(ct_font_jp_22.line_height * lineCount(body));
+        lv_obj_set_height(s_secret_label, text_h < r.h ? text_h : r.h);
+        lv_obj_set_pos(s_secret_label, r.x, (int16_t)(text_h < r.h ? r.y + (r.h - text_h) / 2 : r.y));
+    }
     // 手元の一時コピーも消しておく（スタックに役職名や調べた相手が残らないように）
     volatile char *wipe = body;
     for (size_t i = 0; i < sizeof(body); ++i) {
@@ -1447,8 +1674,9 @@ void actionCb(lv_event_t *e)
         if (s_players < MAX_PLAYERS) { ++s_players; s_dirty = true; }
         break;
     case Act::LobbyStart:
+        // 毎回まず世界観のお話から（人狼を知らない人のため）。スキップもできる
         s_doc_page = 0;
-        setView(View::Brief);
+        setView(View::Story);
         break;
     case Act::LobbyLeave:
         leaveGame(false);
@@ -1458,10 +1686,30 @@ void actionCb(lv_event_t *e)
         setView(View::Tutorial);
         break;
 
-    case Act::BriefPrev:
-        // 1 ページ目より前は人数決めへ戻る（必読とこの先で行き止まりにしない）
+    case Act::StoryPrev:
+        // 1 ページ目より前は人数決めへ戻る
         if (s_doc_page > 0) { --s_doc_page; s_dirty = true; }
         else { setView(View::Lobby); }
+        break;
+    case Act::StoryNext:
+        // 最後のページの「次へ」は、そのまま約束（必読）へ進む
+        if (s_doc_page + 1 < content::kStoryCount) { ++s_doc_page; s_dirty = true; }
+        else { s_doc_page = 0; setView(View::Brief); }
+        break;
+    case Act::StorySkip:
+        s_doc_page = 0;
+        setView(View::Brief);
+        break;
+
+    case Act::BriefPrev:
+        // 1 ページ目より前はお話の最後のページへ戻る（行き止まりを作らない）
+        if (s_doc_page > 0) {
+            --s_doc_page;
+            s_dirty = true;
+        } else {
+            s_doc_page = (uint8_t)(content::kStoryCount - 1);
+            setView(View::Story);
+        }
         break;
     case Act::BriefNext:
         if (s_doc_page + 1 < content::kMandatoryBriefCount) { ++s_doc_page; s_dirty = true; }
@@ -1485,6 +1733,17 @@ void actionCb(lv_event_t *e)
         if (s_doc_page + 1 < kSetupPages) { ++s_doc_page; s_dirty = true; }
         break;
     case Act::SetupStart:
+        // 配る前に、この局で使う席のキャラクターを覚えてもらう
+        s_page = 0;
+        setView(View::Roster);
+        break;
+
+    case Act::RosterBack:
+        s_page = 0;
+        s_doc_page = (uint8_t)(kSetupPages - 1);
+        setView(View::SetupConfirm);
+        break;
+    case Act::RosterOk:
         doStart();
         break;
 
@@ -1494,7 +1753,7 @@ void actionCb(lv_event_t *e)
         else { s_doc_page = 0; setView(View::Lobby); }
         break;
     case Act::TutorialNext:
-        if (s_doc_page + 1 < content::kTutorialCount) { ++s_doc_page; s_dirty = true; }
+        if (s_doc_page + 1 < kTutorialTotal) { ++s_doc_page; s_dirty = true; }
         break;
     case Act::TutorialExit:
         s_doc_page = 0;
@@ -1854,6 +2113,7 @@ void screenDeletedCb(lv_event_t *e)
     s_screen = nullptr;
     s_content = nullptr;
     s_role_label = nullptr;
+    s_role_icon = nullptr;
     s_secret_label = nullptr;
     s_cover_label = nullptr;
     s_timer_label = nullptr;

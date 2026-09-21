@@ -1,0 +1,88 @@
+{
+  "schema_version": "2.0.0-local.1",
+  "base": "content.ja.json",
+  "note": "設計書の正本（content.ja.json / rules.json / layout.json）は無改変のまま残し、この重ね書きファイルで席のキャラクター・世界観のお話・追加の文言を足す。strings は同じ鍵で正本を上書きする（content::findString が先にこちらを見る）。icon は Material Icons Round の符号位置（16進）で、生成時に UTF-8 のバイト列へ変換される。日本語のフォント一覧には入らない。",
+  "icon_font": {
+    "family": "Material Icons Round",
+    "license": "Apache-2.0",
+    "source": "https://github.com/google/material-design-icons",
+    "sizes": [36, 88]
+  },
+  "characters": [
+    { "seat": 1, "name": "カップ", "icon": "efef", "icon_name": "coffee" },
+    { "seat": 2, "name": "パン", "icon": "ea53", "icon_name": "bakery_dining" },
+    { "seat": 3, "name": "スプーン", "icon": "f00c", "icon_name": "flatware" },
+    { "seat": 4, "name": "ポット", "icon": "eff0", "icon_name": "coffee_maker" },
+    { "seat": 5, "name": "クッキー", "icon": "eaac", "icon_name": "cookie" },
+    { "seat": 6, "name": "ほし", "icon": "e838", "icon_name": "star" },
+    { "seat": 7, "name": "はっぱ", "icon": "ea35", "icon_name": "eco" },
+    { "seat": 8, "name": "ベル", "icon": "e7f4", "icon_name": "notifications" },
+    { "seat": 9, "name": "ほん", "icon": "ea19", "icon_name": "menu_book" },
+    { "seat": 10, "name": "つき", "icon": "e51c", "icon_name": "dark_mode" }
+  ],
+  "role_icons": {
+    "wolf": { "icon": "e91d", "icon_name": "pets" },
+    "seer": { "icon": "e8f4", "icon_name": "visibility" },
+    "villager": { "icon": "e88a", "icon_name": "home" }
+  },
+  "story": [
+    {
+      "id": "S1",
+      "title": "閉店後の人狼会",
+      "icon": "ef5e",
+      "icon_name": "nightlight_round",
+      "body": "閉店後の喫茶「余白」。\n常連たちの中に、\n人に化けた「人狼」が\nまぎれているらしい。"
+    },
+    {
+      "id": "S2",
+      "title": "閉店後の人狼会",
+      "icon": "e91d",
+      "icon_name": "pets",
+      "body": "人狼は、人のふりをして\nうそをつく。放っておくと\n常連がひとりずつ\n消えてしまう…という噂。"
+    },
+    {
+      "id": "S3",
+      "title": "閉店後の人狼会",
+      "icon": "f233",
+      "icon_name": "groups",
+      "body": "村人は、話し合いと投票で\n人狼を見つけ出す。\n見つけられなければ、\n人狼の勝ち。"
+    },
+    {
+      "id": "S4",
+      "title": "閉店後の人狼会",
+      "icon": "e8f4",
+      "icon_name": "visibility",
+      "body": "占い師は、夜のあいだに\nひとりだけ正体を\n占える。その結果が\n推理の手がかりになる。"
+    },
+    {
+      "id": "S5",
+      "title": "閉店後の人狼会",
+      "icon": "e666",
+      "icon_name": "auto_stories",
+      "body": "ただし役職の札は\n人数より2枚多い。\n人狼が誰の手にも\n渡っていない夜もある。"
+    },
+    {
+      "id": "S6",
+      "title": "閉店後の人狼会",
+      "icon": "e541",
+      "icon_name": "local_cafe",
+      "body": "そのときは\n「人狼はいない」に\n投票できれば\nみんなの勝ち。"
+    }
+  ],
+  "strings": {
+    "char.honorific": "{name}さん",
+    "char.seat_no": "{seat}番",
+    "roster.title": "あなたは だれ？",
+    "roster.note": "番号より名前で呼ぼう",
+    "roster.ok": "おぼえた",
+    "story.skip": "スキップ",
+    "handoff.night.title": "{name}さんの番です",
+    "handoff.night.body": "前の画面は隠れています。\n{name}さんへ渡してね。\n画面を自分側に向けて。",
+    "vote.handoff.title": "{name}さんへ渡そう",
+    "vote.handoff.body": "ほかの人の画面を見ずに\n{name}さんが受け取ってね。",
+    "pause.resume.owner": "{name}さんご本人ですか？\n指を離してから再開します。",
+    "result.role_row": "{name}さん：{role}",
+    "result.vote_row": "{name}さん → {target_label}",
+    "result.seer_row": "{name}さんが調べたのは\n{target_label}"
+  }
+}

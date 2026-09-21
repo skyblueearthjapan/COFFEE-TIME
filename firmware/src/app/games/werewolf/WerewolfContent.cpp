@@ -168,7 +168,29 @@ const StringEntry kStrings[] = {
 };
 const size_t kStringCount = sizeof(kStrings) / sizeof(kStrings[0]);
 
+const StringEntry kLocalStrings[] = {
+    {"char.honorific", "{name}さん"},
+    {"char.seat_no", "{seat}番"},
+    {"roster.title", "あなたは だれ？"},
+    {"roster.note", "番号より名前で呼ぼう"},
+    {"roster.ok", "おぼえた"},
+    {"story.skip", "スキップ"},
+    {"handoff.night.title", "{name}さんの番です"},
+    {"handoff.night.body", "前の画面は隠れています。\n{name}さんへ渡してね。\n画面を自分側に向けて。"},
+    {"vote.handoff.title", "{name}さんへ渡そう"},
+    {"vote.handoff.body", "ほかの人の画面を見ずに\n{name}さんが受け取ってね。"},
+    {"pause.resume.owner", "{name}さんご本人ですか？\n指を離してから再開します。"},
+    {"result.role_row", "{name}さん：{role}"},
+    {"result.vote_row", "{name}さん → {target_label}"},
+    {"result.seer_row", "{name}さんが調べたのは\n{target_label}"},
+};
+const size_t kLocalStringCount = sizeof(kLocalStrings) / sizeof(kLocalStrings[0]);
+
 const char *findString(const char *key) {
+    // 重ね書き（content.local.ja.json）を先に見る。設計書の正本は無改変のまま。
+    for (size_t i = 0; i < kLocalStringCount; ++i) {
+        if (std::strcmp(kLocalStrings[i].key, key) == 0) return kLocalStrings[i].value;
+    }
     for (size_t i = 0; i < kStringCount; ++i) {
         if (std::strcmp(kStrings[i].key, key) == 0) return kStrings[i].value;
     }
@@ -260,6 +282,39 @@ const PagedEntry kMandatoryBrief[] = {
     {"B04", "投票の約束", "各自が1票。自分は選べず、\n最多票で決まります。\n同票は1回決選、再同票は\n引き分け。途中脱落なし。"},
 };
 const size_t kMandatoryBriefCount = sizeof(kMandatoryBrief) / sizeof(kMandatoryBrief[0]);
+
+const SeatCharacter kSeatCharacters[] = {
+    {"カップ", "\xEE\xBF\xAF"},   // 1 coffee
+    {"パン", "\xEE\xA9\x93"},   // 2 bakery_dining
+    {"スプーン", "\xEF\x80\x8C"},   // 3 flatware
+    {"ポット", "\xEE\xBF\xB0"},   // 4 coffee_maker
+    {"クッキー", "\xEE\xAA\xAC"},   // 5 cookie
+    {"ほし", "\xEE\xA0\xB8"},   // 6 star
+    {"はっぱ", "\xEE\xA8\xB5"},   // 7 eco
+    {"ベル", "\xEE\x9F\xB4"},   // 8 notifications
+    {"ほん", "\xEE\xA8\x99"},   // 9 menu_book
+    {"つき", "\xEE\x94\x9C"},   // 10 dark_mode
+};
+const size_t kSeatCharacterCount = sizeof(kSeatCharacters) / sizeof(kSeatCharacters[0]);
+
+const SeatCharacter *findSeatCharacter(int seat) {
+    if (seat < 0 || (size_t)seat >= kSeatCharacterCount) return nullptr;
+    return &kSeatCharacters[seat];
+}
+
+const StoryPage kStory[] = {
+    {"S1", "閉店後の人狼会", "閉店後の喫茶「余白」。\n常連たちの中に、\n人に化けた「人狼」が\nまぎれているらしい。", "\xEE\xBD\x9E"},   // nightlight_round
+    {"S2", "閉店後の人狼会", "人狼は、人のふりをして\nうそをつく。放っておくと\n常連がひとりずつ\n消えてしまう…という噂。", "\xEE\xA4\x9D"},   // pets
+    {"S3", "閉店後の人狼会", "村人は、話し合いと投票で\n人狼を見つけ出す。\n見つけられなければ、\n人狼の勝ち。", "\xEF\x88\xB3"},   // groups
+    {"S4", "閉店後の人狼会", "占い師は、夜のあいだに\nひとりだけ正体を\n占える。その結果が\n推理の手がかりになる。", "\xEE\xA3\xB4"},   // visibility
+    {"S5", "閉店後の人狼会", "ただし役職の札は\n人数より2枚多い。\n人狼が誰の手にも\n渡っていない夜もある。", "\xEE\x99\xA6"},   // auto_stories
+    {"S6", "閉店後の人狼会", "そのときは\n「人狼はいない」に\n投票できれば\nみんなの勝ち。", "\xEE\x95\x81"},   // local_cafe
+};
+const size_t kStoryCount = sizeof(kStory) / sizeof(kStory[0]);
+
+const char *const kIconWolf = "\xEE\xA4\x9D";   // pets
+const char *const kIconSeer = "\xEE\xA3\xB4";   // visibility
+const char *const kIconVillager = "\xEE\xA2\x8A";   // home
 
 }}} // namespace coffee::wolf::content
 
