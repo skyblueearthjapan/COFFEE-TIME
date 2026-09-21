@@ -47,4 +47,12 @@ for sz in 20 22 40; do
         --font ZenMaruGothic-Medium.ttf --symbols "$GAME_JP" \
         -o "$OUT/ct_font_jp_$sz.c" --lv-font-name ct_font_jp_$sz
 done
+# HOME の天気マーク（Weather Icons by Erik Flowers, SIL OFL 1.1）。使う 11 個だけを収録する。
+# 晴れ F00D / 晴れ時々くもり F002 / くもり F013 / 霧 F014 / 霧雨 F01C / 雨 F019 / 雪 F01B / にわか雨 F01A / 雷雨 F01E
+# 夜の晴れ F02E / 夜の晴れ時々くもり F086（対応は HomeScreen.cpp の weatherIcon()）
+dl weathericons.ttf https://github.com/erikflowers/weather-icons/raw/master/font/weathericons-regular-webfont.ttf
+$CONV --size 44 --font weathericons.ttf \
+    -r 0xF00D,0xF002,0xF013,0xF014,0xF01C,0xF019,0xF01B,0xF01A,0xF01E,0xF02E,0xF086 \
+    -o "$OUT/ct_font_weather_44.c" --lv-font-name ct_font_weather_44
+
 echo "fonts written to $OUT"

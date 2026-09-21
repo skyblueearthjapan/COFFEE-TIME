@@ -15,13 +15,31 @@
 #include "NetService.h"
 #include "ui/MainMenu.h"
 #include "ui/ScreenManager.h"
+#include "games/werewolf/WerewolfGame.h"
+#include "games/werewolf/WerewolfPort.h"
 #include "games/werewolf/WerewolfUI.h"
 #include "RtcClock.h"
+#include "SdLog.h"
 
 using namespace esp_panel::drivers;
 using namespace esp_panel::board;
 
 static bool s_ready = false;
+
+static const char *resetReasonText()
+{
+    switch (esp_reset_reason()) {
+    case ESP_RST_POWERON:  return "poweron";
+    case ESP_RST_SW:       return "software";
+    case ESP_RST_PANIC:    return "panic";
+    case ESP_RST_INT_WDT:
+    case ESP_RST_TASK_WDT:
+    case ESP_RST_WDT:      return "watchdog";
+    case ESP_RST_BROWNOUT: return "brownout";
+    case ESP_RST_USB:      return "usb";
+    default:               return "other";
+    }
+}
 
 // 開発用：シリアルで 'S' を受け取ったら画面をそのまま送る（tools/snapshot.py で PNG 化）
 static void sendSnapshot()
@@ -45,6 +63,31 @@ static void sendSnapshot()
     heap_caps_free(buf);
 }
 
+// 人狼の秘密（役職・占い結果・投票先）が映っている間は、開発用コマンドで画面を
+// 送ったり切り替えたりしない。スクリーンショットが秘密ごと PC に渡るのを防ぐ
+static bool blockedBySecret()
+{
+    if (!werewolf::secretOnScreen()) {
+        return false;
+    }
+    Serial.println("[DEV] ignored: a werewolf secret is on screen");
+    return true;
+}
+
+// 開発用："P<x>,<y>改行" でその座標をタップする（画面確認の自動化。秘密の表示はできない）
+static void tapFromSerial()
+{
+    Serial.setTimeout(1000);
+    const String arg = Serial.readStringUntil('\n');
+    const int comma = arg.indexOf(',');
+    if (comma <= 0) {
+        return;
+    }
+    const int x = arg.substring(0, comma).toInt(), y = arg.substring(comma + 1).toInt();
+    lvgl_port_debug_tap((int16_t)x, (int16_t)y, 120);
+    Serial.printf("[TAP] %d,%d\n", x, y);   // tools/uiwalk.py はこの返事を待ってから次へ進む
+}
+
 // PC から "C<UNIX秒>改行" を受け取り、時刻を設定して時計チップにも保存する（Wi-Fi が使えない場所用）
 static void setTimeFromSerial()
 {
@@ -63,6 +106,7 @@ static void setTimeFromSerial()
     Serial.printf("[TIME] set to %04d-%02d-%02d %02d:%02d:%02d JST\n",
                   tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
     rtc::saveSystemTime();
+    sdlog::event("timeset", cup::taken(), cup::remaining(), cup::remaining(), "from serial");
 }
 
 void setup()
@@ -91,8 +135,14 @@ void setup()
         return;
     }
 
+    // 人狼ゲームはバックライトを直接切って覗き見を防ぐため、Board を渡しておく
+    werewolf::setBoard(board);
+
     // Wi-Fi が無くても日付が分かるよう、時計チップから時刻を復元（I2C は board->begin() で初期化済み）
-    rtc::restoreSystemTime();
+    const bool rtc_ok = rtc::restoreSystemTime();
+
+    // 操作ログ用の microSD（LCD と信号線を共用しているので board->begin() の後。無くても動く）
+    sdlog::begin(board);
 
     Serial.println("Initializing LVGL");
     if (!lvgl_port_init(board->getLCD(), board->getTouch())) {
@@ -103,6 +153,10 @@ void setup()
     cup::load();
     battery::begin();
     battery::update();
+
+    char boot_note[40];
+    snprintf(boot_note, sizeof(boot_note), "reset=%s rtc=%s", resetReasonText(), rtc_ok ? "ok" : "lost");
+    sdlog::event("boot", cup::taken(), cup::remaining(), cup::remaining(), boot_note);
 
     Serial.println("Creating UI");
     if (!lvgl_port_lock(-1)) {
@@ -142,6 +196,7 @@ void loop()
 
     net::Weather weather;
     const bool got_weather = net::poll(weather);
+    bool dump_log = false;
 
     if (lvgl_port_lock(-1)) {
         if (got_weather) {
@@ -150,7 +205,7 @@ void loop()
         cup::saveIfDirty();
         while (Serial.available() > 0) {
             switch (Serial.read()) {
-            case 'S': sendSnapshot(); break;
+            case 'S': if (!blockedBySecret()) { sendSnapshot(); } break;
             // 開発用：背景の時間帯を固定 M=朝 N=昼 E=夕方 A=自動
             case 'M': home::debugForceHour(8); break;
             case 'N': home::debugForceHour(13); break;
@@ -160,16 +215,28 @@ void loop()
             case 'T': home::debugTake(); break;
             case 'R': home::debugRefill(); break;
             case 'W': net::debugScan(); break;       // 開発用：Wi-Fi スキャン
-            // 開発用：画面遷移の確認（スクリーンショット用）
-            case '1': ui::push(ui::createMainMenu); break;
-            case '2': ui::push(werewolf::createEntryScreen); break;
-            case '3': ui::push(werewolf::createLobbyScreen); break;
-            case '0': ui::goHome(); break;
+            // 開発用：画面遷移の確認（スクリーンショット用）。
+            // 秘密が映っている間は切り替えない（覗き見防止の手順を飛ばさないため）。
+            // 秘密が出ていなければ、進行中でも '0' で抜けられる（局は無効になる）
+            case '1': if (!blockedBySecret()) { ui::push(ui::createMainMenu); } break;
+            case '2': if (!blockedBySecret()) { ui::push(werewolf::createEntryScreen); } break;
+            case '3': if (!blockedBySecret()) { ui::push(werewolf::createGameScreen); } break;
+            case '0': if (!blockedBySecret()) { ui::goHome(); } break;
+            // 開発用：人狼の今の場面を表示（公開情報のみ。役職や投票先は出さない）
+            case 'G': werewolf::debugPrintPublicState(); break;
             case 'C': setTimeFromSerial(); break;    // PC の時計から時刻を設定（tools/settime.py）
+            case 'P': tapFromSerial(); break;        // 開発用：P<x>,<y> でタップ
+            case 'L': dump_log = true; break;        // 開発用：SD の操作ログの末尾を表示
             default: break;
             }
         }
         lvgl_port_unlock();
+    }
+
+    // SD への書き込みは画面を止めないよう、LVGL のロックの外で行う
+    sdlog::poll();
+    if (dump_log) {
+        sdlog::dumpTail(Serial);
     }
     delay(200);
 }

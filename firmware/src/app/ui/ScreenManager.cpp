@@ -50,13 +50,16 @@ void goHome()
     if (s_depth <= 1) {
         return;
     }
+    // 表示中の画面は pop() と同じく LVGL に任せて削除する（auto_del = true）。
+    // ここで lv_obj_del すると、まだ lv_scr_act() がこの画面を指したまま解放され、
+    // 続く遷移アニメーションが解放済みメモリを触ってしまう。
+    s_stack[--s_depth] = nullptr;
     // 表示されていない中間の画面はその場で破棄してよい
-    while (s_depth > 2) {
+    while (s_depth > 1) {
         lv_obj_t *hidden = s_stack[--s_depth];
         s_stack[s_depth] = nullptr;
         lv_obj_del(hidden);
     }
-    s_stack[--s_depth] = nullptr;
     lv_scr_load_anim(s_stack[0], LV_SCR_LOAD_ANIM_MOVE_RIGHT, kAnimMs, 0, true);
 }
 

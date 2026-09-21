@@ -46,7 +46,7 @@
  */
 #define LVGL_PORT_TASK_MAX_DELAY_MS             (500)       // The maximum delay of the LVGL timer task, in milliseconds
 #define LVGL_PORT_TASK_MIN_DELAY_MS             (2)         // The minimum delay of the LVGL timer task, in milliseconds
-#define LVGL_PORT_TASK_STACK_SIZE               (6 * 1024)  // The stack size of the LVGL timer task, in bytes
+#define LVGL_PORT_TASK_STACK_SIZE               (8 * 1024)  // The stack size of the LVGL timer task, in bytes（人狼の画面作り直し＋中立画面の確定で深くなるため 6→8 KB。実測の残量はシリアル 'G' の lvgl_stack）
 #define LVGL_PORT_TASK_PRIORITY                 (2)         // The priority of the LVGL timer task
 #ifdef ARDUINO_RUNNING_CORE
 #define LVGL_PORT_TASK_CORE                     (ARDUINO_RUNNING_CORE)  // Valid if using Arduino
@@ -130,9 +130,53 @@
 
 // *INDENT-ON*
 
+/**
+ * 覗き見防止（人狼ゲームの SecretGate）用に読み取るタッチの生データの点数。
+ * LVGL へ渡すのは 1 点目だけ。2 点目は「複数点が触れているか」の判定にしか使わない。
+ */
+#define LVGL_PORT_TOUCH_READ_POINTS             (2)
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/**
+ * @brief タッチドライバー（GT911）の最新の読み取り結果。
+ *
+ * GT911 はステータスレジスタを読むと状態が消えるため、読み手を増やすと取りこぼす。
+ * 唯一の読み手である LVGL の read_cb が読むたびにここへ写している。
+ *
+ * - sampled_ms : esp_timer 基準の 64bit ミリ秒（millis() と違い折り返さない）
+ * - down       : この読み取り時点で触れていたか（LVGL に伝えた内容と同じ）
+ * - x, y       : 1 点目の座標（down が false のときは 0）
+ * - points     : 触れていた点の数（0〜LVGL_PORT_TOUCH_READ_POINTS）
+ */
+typedef struct {
+    uint64_t sampled_ms;
+    bool down;
+    int16_t x;
+    int16_t y;
+    uint8_t points;
+} lvgl_port_touch_sample_t;
+
+/**
+ * @brief 最新のタッチ生データを取り出す（LVGL タスク以外からも呼べる）。
+ *
+ * @param[out] out 書き込み先。nullptr 不可
+ * @return 一度でも読み取りが行われていれば true。起動直後でまだ 1 件も無ければ false
+ */
+bool lvgl_port_get_touch_sample(lvgl_port_touch_sample_t *out);
+
+/**
+ * @brief LVGL タスクのスタックの残り（バイト・これまでの最小値）。
+ *        開発用の状態表示で余裕を確かめるために使う。まだ起動していなければ 0
+ */
+unsigned lvgl_port_task_stack_free(void);
+
+/**
+ * 開発用：LVGL に対してだけ、指定座標のタップを偽装する（生のタッチデータは更新しない）。
+ */
+void lvgl_port_debug_tap(int16_t x, int16_t y, uint32_t hold_ms);
 
 /**
  * @brief Porting LVGL with LCD and touch panel. This function should be called after the initialization of the LCD and touch panel.

@@ -8,10 +8,12 @@
 #include "ui/MainMenu.h"
 #include "ui/ScreenManager.h"
 #include "CupState.h"
+#include "SdLog.h"
 
 LV_FONT_DECLARE(ct_font_time_104);
 LV_FONT_DECLARE(ct_font_30);
 LV_FONT_DECLARE(ct_font_22);
+LV_FONT_DECLARE(ct_font_weather_44);
 LV_IMG_DECLARE(bg_morning);
 LV_IMG_DECLARE(bg_noon);
 LV_IMG_DECLARE(bg_evening);
@@ -36,11 +38,13 @@ static const lv_img_dsc_t *s_bg_src = nullptr;
 static lv_obj_t *s_date = nullptr;
 static lv_obj_t *s_time = nullptr;
 static lv_obj_t *s_weather = nullptr;
+static lv_obj_t *s_weather_icon = nullptr;
 static lv_obj_t *s_taken = nullptr;
 static lv_obj_t *s_left = nullptr;
 static lv_obj_t *s_left_box = nullptr;
 static lv_obj_t *s_wifi = nullptr;
 static lv_obj_t *s_battery = nullptr;
+static lv_obj_t *s_sd = nullptr;
 static lv_obj_t *s_toast = nullptr;
 
 static uint32_t s_left_press_ms = 0;
@@ -60,6 +64,26 @@ static const char *weatherText(int code)
     if (code >= 85 && code <= 86) return "にわか雪";
     if (code >= 95) return "雷雨";
     return "--";
+}
+
+// 天気をマークで出すか（true）、日本語の文字で出すか（false）
+static constexpr bool kWeatherAsIcon = true;
+
+// WMO 天気コード → 天気マーク（fonts/ct_font_weather_44。収録は tools/gen_fonts.sh の 11 個だけ）。
+// 夜（18〜5 時）の晴れ・晴れ時々くもりは月のマークにする。hour が負なら昼扱い
+static const char *weatherIcon(int code, int hour)
+{
+    const bool night = hour >= 0 && (hour >= 18 || hour < 5);
+    if (code <= 1) return night ? "\xEF\x80\xAE" : "\xEF\x80\x8D";     // U+F02E 月 / U+F00D 太陽
+    if (code == 2) return night ? "\xEF\x82\x86" : "\xEF\x80\x82";     // U+F086 月と雲 / U+F002 太陽と雲
+    if (code == 3) return "\xEF\x80\x93";                              // U+F013 くもり
+    if (code == 45 || code == 48) return "\xEF\x80\x94";               // U+F014 霧
+    if (code >= 51 && code <= 57) return "\xEF\x80\x9C";               // U+F01C 霧雨
+    if (code >= 61 && code <= 67) return "\xEF\x80\x99";               // U+F019 雨
+    if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86)) return "\xEF\x80\x9B";   // U+F01B 雪
+    if (code >= 80 && code <= 82) return "\xEF\x80\x9A";               // U+F01A にわか雨
+    if (code >= 95) return "\xEF\x80\x9E";                             // U+F01E 雷雨
+    return "";
 }
 
 // 時間帯で背景を切り替える：5-11 時 朝 / 11-16 時 昼 / それ以外 夕方〜夜
@@ -126,15 +150,31 @@ static void showToast(const char *text)
     lv_timer_create(toastHideCb, 2000, nullptr);
 }
 
+// 杯数が変わった出来事を、GAS（Wi-Fi）と SD の操作ログの両方へ記録する
+static void recordEvent(const char *event, uint32_t prev)
+{
+    net::reportEvent(event, cup::taken(), cup::remaining(), prev);
+    sdlog::event(event, cup::taken(), cup::remaining(), prev);
+}
+
+// コーヒーを 1 杯記録する。HOME の「+1」のほか、ゲーム中の一時停止メニューからも呼ばれる
+void addOneCup()
+{
+    const uint32_t prev = cup::remaining();
+    cup::takeOne();
+    recordEvent("take", prev);
+    // HOME 以外の画面が出ていても値は更新しておく（部品は HOME 画面に残っている）
+    refreshCups();
+    if (ui::isHome()) {
+        pulse(s_taken);
+    }
+}
+
 // 押して離したとき（LV_EVENT_CLICKED）だけ加算する。押下中の連続加算はしない。
 static void plusOneClickedCb(lv_event_t *e)
 {
     (void)e;
-    const uint32_t prev = cup::remaining();
-    cup::takeOne();
-    net::reportEvent("take", cup::taken(), cup::remaining(), prev);
-    refreshCups();
-    pulse(s_taken);
+    addOneCup();
 }
 
 // 残り杯数を長押し（1.5 秒）すると「コーヒーを作った」として上限まで補充する
@@ -149,7 +189,7 @@ static void leftBoxEventCb(lv_event_t *e)
             s_refill_fired = true;
             const uint32_t prev = cup::remaining();
             cup::refill();
-            net::reportEvent("refill", cup::taken(), cup::remaining(), prev);
+            recordEvent("refill", prev);
             refreshCups();
             pulse(s_left);
             showToast("REFILLED: 10 CUPS");
@@ -186,7 +226,7 @@ static void clockTimerCb(lv_timer_t *t)
         const uint32_t before = cup::taken() + prev_left * 1000;
         cup::checkNewDay(ymd);
         if (before != cup::taken() + cup::remaining() * 1000) {
-            net::reportEvent("newday", cup::taken(), cup::remaining(), prev_left);
+            recordEvent("newday", prev_left);
             refreshCups();
         }
     }
@@ -194,6 +234,7 @@ static void clockTimerCb(lv_timer_t *t)
         return;
     }
     lv_obj_set_style_text_color(s_wifi, net::wifiConnected() ? COLOR_SUBTEXT : COLOR_DIM, 0);
+    lv_obj_set_style_text_color(s_sd, sdlog::mounted() ? COLOR_SUBTEXT : COLOR_DIM, 0);
 
     // 電池電圧（充電確認のため当面は電圧を表示する）
     const uint32_t mv = battery::millivolts();
@@ -259,8 +300,19 @@ bool create()
     s_time = makeLabel(scr, &ct_font_time_104, COLOR_TEXT, "--:--");
     lv_obj_align(s_time, LV_ALIGN_TOP_MID, 0, 72);
 
-    s_weather = makeLabel(scr, &ct_font_30, COLOR_SUBTEXT, "接続中…");
-    lv_obj_align(s_weather, LV_ALIGN_TOP_MID, 0, 186);
+    // 天気の行：マーク + 気温を横に並べて中央寄せ（幅は中身に合わせる）。取得前は「接続中…」だけを出す
+    lv_obj_t *weather_row = lv_obj_create(scr);
+    lv_obj_remove_style_all(weather_row);
+    lv_obj_set_size(weather_row, LV_SIZE_CONTENT, 48);
+    lv_obj_set_flex_flow(weather_row, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(weather_row, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_column(weather_row, 12, 0);
+    lv_obj_clear_flag(weather_row, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_align(weather_row, LV_ALIGN_TOP_MID, 0, 178);
+
+    s_weather_icon = makeLabel(weather_row, &ct_font_weather_44, COLOR_TEXT, "");
+    lv_obj_add_flag(s_weather_icon, LV_OBJ_FLAG_HIDDEN);
+    s_weather = makeLabel(weather_row, &ct_font_30, COLOR_SUBTEXT, "接続中…");
 
     // 中段：本日杯数 / +1 / 残り杯数
     lv_obj_t *taken_box = makeStatBox(scr, "TODAY", &s_taken);
@@ -285,10 +337,10 @@ bool create()
     lv_obj_t *btn_label = makeLabel(btn, &lv_font_montserrat_48, COLOR_TEXT, "+1");
     lv_obj_center(btn_label);
 
-    // メニューボタン（時計の下、左寄り。丸画面の内側に収める）
+    // メニューボタン（右斜め下。LEFT の長押し領域の下端 y=372 とは重ならない。丸画面の内側に収める）
     lv_obj_t *menu_btn = lv_btn_create(scr);
     lv_obj_set_size(menu_btn, 52, 52);
-    lv_obj_align(menu_btn, LV_ALIGN_CENTER, -132, 170);
+    lv_obj_align(menu_btn, LV_ALIGN_CENTER, 132, 170);
     lv_obj_set_style_radius(menu_btn, LV_RADIUS_CIRCLE, 0);
     lv_obj_set_style_bg_color(menu_btn, lv_color_hex(0x241A13), 0);
     lv_obj_set_style_bg_opa(menu_btn, LV_OPA_70, 0);
@@ -306,10 +358,14 @@ bool create()
     lv_obj_align(logo, LV_ALIGN_BOTTOM_MID, 0, -42);
 
     s_wifi = makeLabel(scr, &lv_font_montserrat_16, COLOR_DIM, LV_SYMBOL_WIFI);
-    lv_obj_align(s_wifi, LV_ALIGN_BOTTOM_MID, -44, -18);
+    lv_obj_align(s_wifi, LV_ALIGN_BOTTOM_MID, -34, -18);
+
+    // microSD が使えるとき明るく、無いとき暗く表示する
+    s_sd = makeLabel(scr, &lv_font_montserrat_16, COLOR_DIM, LV_SYMBOL_SD_CARD);
+    lv_obj_align(s_sd, LV_ALIGN_BOTTOM_MID, -62, -18);
 
     s_battery = makeLabel(scr, &lv_font_montserrat_16, COLOR_SUBTEXT, "");
-    lv_obj_align(s_battery, LV_ALIGN_BOTTOM_MID, 14, -18);
+    lv_obj_align(s_battery, LV_ALIGN_BOTTOM_MID, 24, -18);
 
     // 補充したときなどの一時メッセージ
     s_toast = makeLabel(scr, &ct_font_22, COLOR_BG, "");
@@ -333,7 +389,23 @@ void setWeather(const net::Weather &w)
         return;
     }
     lv_obj_set_style_text_color(s_weather, COLOR_TEXT, 0);
-    lv_label_set_text_fmt(s_weather, "%s  %d\xC2\xB0" "C", weatherText(w.code), (int)lroundf(w.temperature));
+    const int temp = (int)lroundf(w.temperature);
+    int hour = -1;
+    if (net::timeSynced()) {
+        const time_t now = time(nullptr);
+        struct tm tm;
+        localtime_r(&now, &tm);
+        hour = tm.tm_hour;
+    }
+    const char *icon = weatherIcon(w.code, hour);
+    if (kWeatherAsIcon && icon[0] != '\0') {
+        lv_label_set_text(s_weather_icon, icon);
+        lv_obj_clear_flag(s_weather_icon, LV_OBJ_FLAG_HIDDEN);
+        lv_label_set_text_fmt(s_weather, "%d\xC2\xB0" "C", temp);
+    } else {
+        lv_obj_add_flag(s_weather_icon, LV_OBJ_FLAG_HIDDEN);
+        lv_label_set_text_fmt(s_weather, "%s  %d\xC2\xB0" "C", weatherText(w.code), temp);
+    }
 }
 
 }  // namespace home
@@ -350,7 +422,7 @@ void debugRefill()
 {
     const uint32_t prev = cup::remaining();
     cup::refill();
-    net::reportEvent("refill", cup::taken(), cup::remaining(), prev);
+    recordEvent("refill", prev);
     refreshCups();
 }
 

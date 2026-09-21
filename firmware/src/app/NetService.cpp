@@ -20,6 +20,11 @@
 #define WIFI_SSID2 ""
 #define WIFI_PASSWORD2 ""
 #endif
+// 3 つ目（スマホのテザリングなど）も任意
+#ifndef WIFI_SSID3
+#define WIFI_SSID3 ""
+#define WIFI_PASSWORD3 ""
+#endif
 
 namespace net {
 
@@ -69,9 +74,27 @@ void begin()
     s_device_id = id;
 
     WiFi.mode(WIFI_STA);
-    WiFi.setAutoReconnect(true);
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-    Serial.printf("[NET] connecting to \"%s\"\n", WIFI_SSID);
+    // 再接続は poll() の WiFiMulti に任せる。ドライバーの自動再接続を有効にすると、つながらない間ずっと
+    // 裏で接続を試み続け、その間のスキャンが「0 件」になって他の登録先を見つけられなくなる
+    WiFi.setAutoReconnect(false);
+    // 切断・接続失敗の理由コードを記録する（Wi-Fi 名は出さない）。
+    // 主な値: 2=認証期限切れ 15=4way ハンドシェイク失敗(パスワード違いが多い) 201=見つからない 202=認証失敗 205=接続失敗
+    WiFi.onEvent([](arduino_event_id_t, arduino_event_info_t info) {
+        Serial.printf("[NET] disconnected, reason %d\n", (int)info.wifi_sta_disconnected.reason);
+    }, ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
+    // 登録済みの Wi-Fi（最大 3 つ）のうち、見つかった電波の強い方へ poll() の WiFiMulti がつなぐ。
+    // 2 つ目・3 つ目は自宅やスマホのテザリング用。ESP32 は 2.4GHz 専用なので、iPhone は「互換性を優先」をオンにすること
+    s_wifi_multi.addAP(WIFI_SSID, WIFI_PASSWORD);
+    int registered = 1;
+    if (strlen(WIFI_SSID2) > 0) {
+        s_wifi_multi.addAP(WIFI_SSID2, WIFI_PASSWORD2);
+        ++registered;
+    }
+    if (strlen(WIFI_SSID3) > 0) {
+        s_wifi_multi.addAP(WIFI_SSID3, WIFI_PASSWORD3);
+        ++registered;
+    }
+    Serial.printf("[NET] %d Wi-Fi network(s) registered\n", registered);
 }
 
 void debugScan()
@@ -89,8 +112,14 @@ void debugScan()
     for (int i = 0; i < n; ++i) {
         const String ssid = WiFi.SSID(i);
         const char *tag = ssid == WIFI_SSID ? "WIFI_SSID (1)"
-                        : (strlen(WIFI_SSID2) > 0 && ssid == WIFI_SSID2) ? "WIFI_SSID2 (2)" : "other";
+                        : (strlen(WIFI_SSID2) > 0 && ssid == WIFI_SSID2) ? "WIFI_SSID2 (2)"
+                        : (strlen(WIFI_SSID3) > 0 && ssid == WIFI_SSID3) ? "WIFI_SSID3 (3)" : "other";
         Serial.printf("[SCAN] %-14s ch=%2d rssi=%d\n", tag, WiFi.channel(i), WiFi.RSSI(i));
+        // 端末のすぐ近く（-65dBm より強い）にあるのに登録外の電波は、自分のスマホのテザリングで名前が
+        // 食い違っている可能性が高い。照合できるよう、その名前と文字数だけは表示する
+        if (strcmp(tag, "other") == 0 && WiFi.RSSI(i) > -65) {
+            Serial.printf("[SCAN]   nearby unregistered name: \"%s\" (%u bytes)\n", ssid.c_str(), (unsigned)ssid.length());
+        }
     }
     WiFi.scanDelete();
 }
@@ -231,7 +260,8 @@ bool poll(Weather &out)
     // 未接続なら 10 秒ごとに周囲をスキャンして、登録済みの Wi-Fi に接続を試みる
     if (WiFi.status() != WL_CONNECTED && (int32_t)(millis() - s_next_wifi_try_ms) >= 0) {
         s_next_wifi_try_ms = millis() + 10000;
-        s_wifi_multi.run(5000);
+        // スマホのテザリングは認証に時間がかかることがあるので 10 秒待つ（この間 loop() は止まる）
+        s_wifi_multi.run(10000);
     }
     if (s_ntp_synced) {
         s_ntp_synced = false;

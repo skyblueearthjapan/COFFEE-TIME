@@ -642,23 +642,102 @@ static lv_disp_t *display_init(LCD *lcd)
 
 static SemaphoreHandle_t touch_detected;
 
+/*
+ * 人狼ゲームの覗き見防止（SecretGate）は「指が触れていることをどれだけ新しく確認できたか」を
+ * 判定に使うため、LVGL のイベントではなくドライバーの生の読み取り結果が要る。
+ * ただし GT911 はステータスレジスタを読むと状態が消えるので、読み手を 2 つにすると取りこぼす。
+ * そこで唯一の読み手である read_cb がここへ最新の 1 件を書き写し、他からは getter で読む。
+ * LVGL へ渡す内容は従来どおり 1 点目だけで、アプリ全体の操作感は変えない。
+ */
+static portMUX_TYPE touch_sample_mux = portMUX_INITIALIZER_UNLOCKED;
+static lvgl_port_touch_sample_t touch_sample = {};
+
+static void store_touch_sample(bool down, int16_t x, int16_t y, uint8_t points)
+{
+    // esp_timer は 64bit マイクロ秒で、millis() と違い 49 日で折り返さない
+    const uint64_t now_ms = (uint64_t)(esp_timer_get_time() / 1000);
+    portENTER_CRITICAL(&touch_sample_mux);
+    touch_sample.sampled_ms = now_ms;
+    touch_sample.down = down;
+    touch_sample.x = x;
+    touch_sample.y = y;
+    touch_sample.points = points;
+    portEXIT_CRITICAL(&touch_sample_mux);
+}
+
+unsigned lvgl_port_task_stack_free(void)
+{
+    if (lvgl_task_handle == nullptr) {
+        return 0;
+    }
+    // uxTaskGetStackHighWaterMark は「これまでで最も少なかった残り」を語数で返す
+    return (unsigned)(uxTaskGetStackHighWaterMark(lvgl_task_handle) * sizeof(StackType_t));
+}
+
+bool lvgl_port_get_touch_sample(lvgl_port_touch_sample_t *out)
+{
+    if (out == nullptr) {
+        return false;
+    }
+    portENTER_CRITICAL(&touch_sample_mux);
+    *out = touch_sample;
+    portEXIT_CRITICAL(&touch_sample_mux);
+    // 一度も読み取っていない間は sampled_ms が 0 のまま（起動直後だけ）
+    return out->sampled_ms != 0;
+}
+
+// 開発用：シリアルから指定した座標を「タップ」させる（画面確認の自動化用）。
+// LVGL への入力だけを偽装し、覗き見防止が見る生データ（store_touch_sample）は更新しない。
+// そのため、この方法で人狼の秘密（役職・投票先）を表示させることはできない。
+static volatile bool s_sim_tap_active = false;
+static volatile int16_t s_sim_tap_x = 0, s_sim_tap_y = 0;
+static volatile uint32_t s_sim_tap_until_ms = 0;
+
+void lvgl_port_debug_tap(int16_t x, int16_t y, uint32_t hold_ms)
+{
+    s_sim_tap_x = x;
+    s_sim_tap_y = y;
+    s_sim_tap_until_ms = lv_tick_get() + hold_ms;
+    s_sim_tap_active = true;
+}
+
 static void touchpad_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
 {
+    if (s_sim_tap_active) {
+        if ((int32_t)(lv_tick_get() - s_sim_tap_until_ms) < 0) {
+            data->point.x = s_sim_tap_x;
+            data->point.y = s_sim_tap_y;
+            data->state = LV_INDEV_STATE_PRESSED;
+            return;
+        }
+        s_sim_tap_active = false;   // 次の読み取りからは実際のタッチに戻る（この回は「離した」を返す）
+        data->point.x = s_sim_tap_x;
+        data->point.y = s_sim_tap_y;
+        data->state = LV_INDEV_STATE_RELEASED;
+        return;
+    }
     Touch *tp = (Touch *)indev_drv->user_data;
-    TouchPoint point;
+    TouchPoint points[LVGL_PORT_TOUCH_READ_POINTS];
     data->state = LV_INDEV_STATE_RELEASED;
 
     /* if we are interrupt driven wait for the ISR to fire */
     if ( tp->isInterruptEnabled() && (xSemaphoreTake( touch_detected, 0 ) == pdFALSE) ) {
+        // 割り込みが無い＝LVGL には「離している」と伝えるので、生データも同じ内容で更新する
+        store_touch_sample(false, 0, 0, 0);
         return;
     }
 
     /* Read data from touch controller */
-    int read_touch_result = tp->readPoints(&point, 1, 0);
+    int read_touch_result = tp->readPoints(points, LVGL_PORT_TOUCH_READ_POINTS, 0);
     if (read_touch_result > 0) {
-        data->point.x = point.x;
-        data->point.y = point.y;
+        data->point.x = points[0].x;
+        data->point.y = points[0].y;
         data->state = LV_INDEV_STATE_PRESSED;
+        // 2 点目以降は LVGL には渡さない。複数点かどうかだけを覗き見防止の判定に使う
+        store_touch_sample(true, (int16_t)points[0].x, (int16_t)points[0].y,
+                           (uint8_t)read_touch_result);
+    } else {
+        store_touch_sample(false, 0, 0, 0);
     }
 }
 

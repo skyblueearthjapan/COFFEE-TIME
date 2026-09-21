@@ -11,3 +11,8 @@
 // 2 つ目の Wi-Fi（自宅など・任意）。使わないなら空のままでよい
 #define WIFI_SSID2     ""
 #define WIFI_PASSWORD2 ""
+
+// 3 つ目の Wi-Fi（スマホのテザリングなど・任意）。ESP32 は 2.4GHz 専用。
+// iPhone は「インターネット共有」の「互換性を優先」をオンにし、iPhone の名前は半角英数字にしておくと確実
+#define WIFI_SSID3     ""
+#define WIFI_PASSWORD3 ""

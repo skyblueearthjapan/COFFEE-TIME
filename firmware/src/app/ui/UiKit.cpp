@@ -57,30 +57,34 @@ lv_obj_t *makeBackButton(lv_obj_t *parent, const char *text)
     return btn;
 }
 
+// 表示中のトースト（無ければ nullptr）。消えたら必ず nullptr に戻す
+static lv_obj_t *s_toast = nullptr;
+
 static void toastHideCb(lv_timer_t *t)
 {
+    // タイマーの削除は toastDeletedCb に任せる（ここでも消すと二重解放になる）
     lv_obj_t *toast = (lv_obj_t *)t->user_data;
     if (toast != nullptr) {
         lv_obj_del(toast);
     }
-    lv_timer_del(t);
 }
 
 static void toastDeletedCb(lv_event_t *e)
 {
-    // 画面ごと消えた場合はタイマーを止める（解放済みオブジェクトを触らないため）
+    // 時間切れ・連打による差し替え・画面ごとの破棄のどの経路でも、ここでタイマーを止めて参照を消す
     lv_timer_t *timer = (lv_timer_t *)lv_event_get_user_data(e);
     if (timer != nullptr) {
         lv_timer_del(timer);
+    }
+    if (lv_event_get_target(e) == s_toast) {
+        s_toast = nullptr;
     }
 }
 
 void showToast(lv_obj_t *parent, const char *text)
 {
-    static lv_obj_t *s_toast = nullptr;
     if (s_toast != nullptr) {      // 連打しても 1 つだけにする
-        lv_obj_del(s_toast);
-        s_toast = nullptr;
+        lv_obj_del(s_toast);       // toastDeletedCb が s_toast を nullptr に戻す
     }
     lv_obj_t *toast = makeLabel(parent, &ct_font_jp_22, CT_COLOR_BG, text);
     lv_obj_set_style_bg_color(toast, CT_COLOR_ACCENT_HI, 0);
@@ -90,7 +94,6 @@ void showToast(lv_obj_t *parent, const char *text)
     lv_obj_set_style_pad_ver(toast, 8, 0);
     lv_obj_align(toast, LV_ALIGN_CENTER, 0, 150);
     lv_timer_t *timer = lv_timer_create(toastHideCb, 2000, toast);
-    lv_timer_set_repeat_count(timer, 1);
     lv_obj_add_event_cb(toast, toastDeletedCb, LV_EVENT_DELETE, timer);
     s_toast = toast;
 }
