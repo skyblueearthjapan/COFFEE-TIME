@@ -54,11 +54,38 @@ game_chars = collect(list((SRC / "ui").rglob("*")) + list((SRC / "games").rglob(
 
 missing = merge(HOME_SYMBOLS, home_chars) + merge(GAME_SYMBOLS, game_chars)
 
+
+def glyphs_missing_in_fonts() -> list:
+    """文字一覧にあるのに、生成済みフォント (.c) に収録されていない文字を返す。
+
+    一覧だけ更新してフォントを作り直し忘れると、一覧との照合は通るのに画面では □ になる
+    （2026-09-21 に「犠牲」などで実際に起きた）。--check ではフォントの実体まで確かめる。
+    """
+    pairs = [(HOME_SYMBOLS, ["ct_font_22", "ct_font_30"]),
+             (GAME_SYMBOLS, ["ct_font_jp_20", "ct_font_jp_22", "ct_font_jp_40"])]
+    out = []
+    for symbols_file, fonts in pairs:
+        listed = set(symbols_file.read_text(encoding="utf-8")) - {chr(10), chr(13)}
+        for name in fonts:
+            src = (SRC / "fonts" / (name + ".c")).read_text(encoding="utf-8", errors="replace")
+            have = {chr(int(h, 16)) for h in re.findall(r"/\* U\+([0-9A-Fa-f]{4,6})", src)}
+            lack = sorted(listed - have)
+            if lack:
+                out.append("%s: %s" % (name, "".join(lack)))
+    return out
+
+
 if args.check:
     if missing:
         print("フォント一覧に無い文字:", "".join(missing))
         sys.exit(1)
-    print("不足文字なし")
+    stale = glyphs_missing_in_fonts()
+    if stale:
+        print("一覧にはあるがフォントに未収録（フォントの作り直しが必要）:")
+        for line in stale:
+            print("  " + line)
+        sys.exit(1)
+    print("不足文字なし（一覧・フォントの実体とも）")
     sys.exit(0)
 
 if missing:

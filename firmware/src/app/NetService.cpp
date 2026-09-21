@@ -13,6 +13,7 @@
 #include <time.h>
 
 #include "RtcClock.h"
+#include "Settings.h"
 #include "secrets.h"
 
 // 2 つ目の Wi-Fi（自宅など）は任意。secrets.h に無ければ使わない
@@ -47,6 +48,7 @@ struct Report {
     uint32_t left;
     uint32_t prev;      // イベント前の残り杯数
     uint32_t ts;        // 端末時刻 (UNIX 秒)。未同期なら 0
+    uint16_t max;       // そのときの「1 回に作る杯数」（GAS のメールのゲージに使う）
 };
 
 static QueueHandle_t s_reports = nullptr;
@@ -58,6 +60,8 @@ static String s_device_id;
 static WiFiMulti s_wifi_multi;
 static uint32_t s_next_wifi_try_ms = 0;
 static volatile bool s_ntp_synced = false;     // SNTP のコールバックで立て、loop 側で RTC に保存する
+static volatile bool s_ntp_ever = false;       // 一度でも NTP で合ったか（システム情報の「時計」表示用）
+static int s_registered = 0;                   // 登録済み Wi-Fi の数（名前は保持しない）
 
 static bool s_time_configured = false;
 static uint32_t s_next_weather_ms = 0;
@@ -94,7 +98,23 @@ void begin()
         s_wifi_multi.addAP(WIFI_SSID3, WIFI_PASSWORD3);
         ++registered;
     }
+    s_registered = registered;
     Serial.printf("[NET] %d Wi-Fi network(s) registered\n", registered);
+}
+
+int rssi()
+{
+    return WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0;
+}
+
+int registeredCount()
+{
+    return s_registered;
+}
+
+bool ntpSynced()
+{
+    return s_ntp_ever;
 }
 
 void debugScan()
@@ -177,6 +197,9 @@ void reportEvent(const char *event, uint32_t taken, uint32_t left, uint32_t prev
     r.left = left;
     r.prev = prev;
     r.ts = timeSynced() ? (uint32_t)time(nullptr) : 0;
+    // 端末側で変えられるようになったので、そのときの上限も送る（GAS 側は Code.gs の
+    // MAX_CUPS ではなく、届いた max を使うように直すこと）
+    r.max = settings::maxCups();
     if (xQueueSend(s_reports, &r, 0) != pdTRUE) {
         Serial.println("[GAS] queue full, event dropped");
     }
@@ -192,6 +215,7 @@ static bool sendReport(const Report &r)
     doc["taken"] = r.taken;
     doc["left"] = r.left;
     doc["prev"] = r.prev;
+    doc["max"] = r.max;
     doc["rssi"] = WiFi.RSSI();
     if (r.ts != 0) {
         doc["ts"] = r.ts;
@@ -284,7 +308,7 @@ bool poll(Weather &out)
 
     if (!s_time_configured) {
         // NTP で時刻が合うたびに（起動後と、以後約 1 時間ごと）時計チップへ保存する
-        sntp_set_time_sync_notification_cb([](struct timeval *) { s_ntp_synced = true; });
+        sntp_set_time_sync_notification_cb([](struct timeval *) { s_ntp_synced = true; s_ntp_ever = true; });
         configTzTime("JST-9", "ntp.nict.jp", "time.google.com", "pool.ntp.org");
         s_time_configured = true;
     }

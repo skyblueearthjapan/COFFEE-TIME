@@ -8,6 +8,7 @@
 #include <freertos/task.h>
 #include <lvgl.h>
 
+#include "../../Display.h"
 #include "../../lvgl_v8_port.h"
 #include "../../ui/ScreenManager.h"
 #include "WerewolfContent.h"
@@ -56,10 +57,9 @@ void EspPort::cutBacklight()
     if (board_ == nullptr) {
         return;
     }
-    auto *bl = board_->getBacklight();
-    if (bl != nullptr) {
-        bl->off();
-    }
+    // バックライトの持ち主は display:: だけ（設定の明るさ・自動暗転もここが握っている）。
+    // 直に bl->off() を呼ぶと、戻すときに設定の明るさが分からなくなる
+    display::privacyCut();
 }
 
 void EspPort::requestNeutralScanout(uint64_t privacy_epoch)
@@ -85,10 +85,9 @@ void EspPort::restoreBacklight(uint64_t verified_privacy_epoch)
     if (!fence_->canRestore(verified_privacy_epoch)) {
         return;
     }
-    auto *bl = board_->getBacklight();
-    if (bl != nullptr) {
-        bl->on();
-    }
+    // 100% ではなく「設定の明るさ」に戻す（docs/MENU_DESIGN.md §4）。
+    // 判断（canRestore）は今までどおりここで行い、実際の点灯だけを display:: に任せる
+    display::privacyRestore();
 }
 
 TouchSample EspPort::latestFreshDriverSample()
@@ -174,6 +173,27 @@ EspPort &port()
 void setBoard(esp_panel::board::Board *board)
 {
     s_port.setBoard(board);
+}
+
+uint8_t readLastMode()
+{
+    Preferences prefs;
+    if (!prefs.begin(rules::kNvsNamespace, true)) {
+        return 0;   // まだ一度も保存していない
+    }
+    const uint8_t mode = prefs.getUChar("mode", 0);
+    prefs.end();
+    return mode <= 1 ? mode : 0;
+}
+
+void writeLastMode(uint8_t mode)
+{
+    Preferences prefs;
+    if (!prefs.begin(rules::kNvsNamespace, false)) {
+        return;
+    }
+    prefs.putUChar("mode", mode <= 1 ? mode : 0);
+    prefs.end();
 }
 
 }  // namespace werewolf

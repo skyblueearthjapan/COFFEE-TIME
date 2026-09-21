@@ -38,6 +38,9 @@ static QueueHandle_t s_queue = nullptr;
 static esp_panel::board::Board *s_board = nullptr;
 static bool s_mounted = false;
 static uint32_t s_next_mount_ms = 0;
+// 空き容量はマウントしたときに 1 回だけ数えておく。FAT の使用量の集計は数百 ms かかることが
+// あるので、「システム情報」画面を作るたびに数え直さない
+static uint64_t s_free_bytes = 0;
 
 static bool mount()
 {
@@ -59,6 +62,7 @@ static bool mount()
     if (!SD_MMC.exists(kDir)) {
         SD_MMC.mkdir(kDir);
     }
+    s_free_bytes = SD_MMC.totalBytes() - SD_MMC.usedBytes();
     return true;
 }
 
@@ -66,6 +70,7 @@ static void unmount()
 {
     SD_MMC.end();
     s_mounted = false;
+    s_free_bytes = 0;
     s_next_mount_ms = millis() + kRemountRetryMs;
 }
 
@@ -114,8 +119,7 @@ void begin(esp_panel::board::Board *board)
     s_queue = xQueueCreate(kQueueLen, sizeof(Entry));
     s_mounted = mount();
     if (s_mounted) {
-        Serial.printf("[SD] mounted, %llu MB free\n",
-                      (SD_MMC.totalBytes() - SD_MMC.usedBytes()) / (1024ULL * 1024ULL));
+        Serial.printf("[SD] mounted, %llu MB free\n", s_free_bytes / (1024ULL * 1024ULL));
     } else {
         Serial.println("[SD] no card (logging disabled until a card is found)");
         s_next_mount_ms = millis() + kRemountRetryMs;
@@ -177,6 +181,11 @@ void poll()
 bool mounted()
 {
     return s_mounted;
+}
+
+uint64_t freeBytes()
+{
+    return s_mounted ? s_free_bytes : 0;
 }
 
 void dumpTail(Stream &out, size_t max_bytes)

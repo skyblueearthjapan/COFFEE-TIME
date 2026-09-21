@@ -183,6 +183,92 @@ const StringEntry kLocalStrings[] = {
     {"result.role_row", "{name}さん：{role}"},
     {"result.vote_row", "{name}さん → {target_label}"},
     {"result.seer_row", "{name}さんが調べたのは\n{target_label}"},
+    {"vote.choose.title", "人狼だと思う人を選ぼう"},
+    {"night.target.title", "夜の行動：1つ選ぼう"},
+    {"night.target.note", "効くのは占い師だけ"},
+    {"role.wolf.body", "選ばれずに逃げ切ろう。\nほかの役を名乗ってもOK。\n次の画面はふりだけ。\n今夜の襲撃はありません。"},
+    {"role.seer.body", "人か伏せ札を1つ選ぶと\n人狼かどうか分かります。\n次の画面で占えます。\n結果を話すかは自由です。"},
+    {"role.villager.body", "人狼を見つければ勝ち。\n夜の力はありません。\n次の画面はふりだけ。\n何も起きません。"},
+    {"mode.title", "どちらで遊ぶ？"},
+    {"mode.std", "通常ルール"},
+    {"mode.std.note", "決着がつくまで続ける"},
+    {"mode.one", "ワンナイト"},
+    {"mode.one.note", "ひと晩で決着"},
+    {"mode.only_one", "3人はワンナイトだけ。\n通常ルールは4人から。"},
+    {"mode.last_std", "前回：通常ルール"},
+    {"mode.last_one", "前回：ワンナイト"},
+    {"mode.summary", "人狼{wolves}・占い師{seers}・村人{villagers}"},
+    {"std.seat.dead", "脱落"},
+    {"std.abort.timeout", "120分でゲームを終えます。\n勝ち負けは付きません。"},
+    {"std.setup.body", "{players}人で遊びます。\n1番から時計回りに着席。\nゲーム中は席を変えません。"},
+    {"std.setup.pool", "1人1枚ずつ配ります。\n伏せ札はありません。\n抜けた人の役職は\n最後まで公開しません。"},
+    {"std.brief.title", "今夜のあなた"},
+    {"std.brief.hold", "押して見る"},
+    {"std.brief.next", "覚えました"},
+    {"std.brief.villager", "次の画面では、誰かを\n選ぶふりをするだけ。\n何も起きません。"},
+    {"std.brief.seer", "次の画面で選んだ人が\n人狼かどうか分かります。\n生きている人を\nひとり選ぼう。"},
+    {"std.brief.wolf.first", "初日は襲撃なし。\n次の画面は選ぶふりだけ。"},
+    {"std.brief.wolf", "次の画面で、今夜\nおそう相手を選ぼう。"},
+    {"std.brief.wolf.mate", "仲間：{name}さん"},
+    {"std.brief.wolf.pick", "仲間の{name}さんは\n{target_label}を選んだよ。\nあとに選んだほうが\n今夜の襲撃先になる。"},
+    {"std.night.target.title", "夜の行動：1人選ぼう"},
+    {"std.night.target.note", "効くのは占い師と人狼"},
+    {"std.night.target.confirm", "{target_label}を選びますか？\n決定後は変えられません。"},
+    {"std.night.result.title", "夜の結果"},
+    {"std.night.result.hold", "押して確認"},
+    {"std.night.result.next", "確認しました"},
+    {"std.night.result.wolf", "{target_label}は\n人狼です。\n覚えておこう。"},
+    {"std.night.result.not_wolf", "{target_label}は\n人狼ではありません。\n覚えておこう。"},
+    {"std.night.result.attack", "今夜おそう相手を\n決めました。\n朝に分かります。"},
+    {"std.night.result.first", "初日は襲撃なし。\n何も起きません。"},
+    {"std.night.result.none", "あなたに分かることは\nありません。"},
+    {"std.night.done.last", "朝の発表へ"},
+    {"std.table.title", "みんなで見よう"},
+    {"std.table.body", "端末をテーブルに置いて、\nみんなで見よう。"},
+    {"std.morning.open", "朝の発表を見る"},
+    {"std.morning.title", "朝になりました"},
+    {"std.morning.victim", "昨夜おそわれました"},
+    {"std.morning.safe", "昨夜の犠牲者は\nいませんでした。"},
+    {"std.morning.next", "話し合いへ"},
+    {"std.final.next", "決着を見る"},
+    {"std.day.title", "{day}日目の話し合い"},
+    {"std.day.alive", "生きている人：{alive}人"},
+    {"std.vote.ready.title", "秘密の投票をします"},
+    {"std.vote.ready.body", "生きている人だけで、\n1人ずつ順に投票します。\n自分以外から選ぼう。"},
+    {"std.vote.begin", "投票を始める"},
+    {"std.vote.done.last", "集計へ"},
+    {"std.runoff.vote.title", "決選投票：人狼を選ぼう"},
+    {"std.runoff.note", "候補の中から選ぼう"},
+    {"std.runoff.title", "同票になりました"},
+    {"std.runoff.body", "最多票の人だけで\nもう一度投票します。\n次も同票なら\n今日は追放なしです。"},
+    {"std.runoff.candidates", "決選の候補"},
+    {"std.runoff.start", "決選投票へ"},
+    {"std.exec.open", "追放の発表を見る"},
+    {"std.exec.title", "追放が決まりました"},
+    {"std.exec.done", "追放されました"},
+    {"std.exec.none", "今日は誰も\n追放されません。"},
+    {"std.exec.next", "夜へ進む"},
+    {"std.final.ready.title", "みんなで答え合わせ"},
+    {"std.final.ready.body", "端末をテーブルに置いて、\n一緒に結果を開こう。"},
+    {"std.final.reveal", "みんなで結果を見る"},
+    {"std.result.village", "村の勝ち！"},
+    {"std.result.wolves", "人狼の勝ち！"},
+    {"std.result.village.body", "人狼を全員見つけました。"},
+    {"std.result.wolves.body", "人狼が村と同じ数まで\n生き残りました。"},
+    {"std.result.roles", "全員の役職"},
+    {"std.result.role_alive", "{name}：{role}（生存）"},
+    {"std.result.role_dead", "{name}：{role}（脱落）"},
+    {"std.result.day", "── {day}日目 ──"},
+    {"std.result.victim", "おそわれた：{name}さん"},
+    {"std.result.no_victim", "おそわれた人なし"},
+    {"std.result.executed", "追放：{name}さん"},
+    {"std.result.no_executed", "追放なし"},
+    {"std.result.votes", "この日の投票"},
+    {"std.result.runoff", "決選投票"},
+    {"std.result.seer", "占いの結果"},
+    {"std.result.seer_row", "{name}さん→{target_label}"},
+    {"std.result.finding_wolf", "　→ 人狼でした"},
+    {"std.result.finding_not", "　→ 人狼ではない"},
 };
 const size_t kLocalStringCount = sizeof(kLocalStrings) / sizeof(kLocalStrings[0]);
 
@@ -309,8 +395,27 @@ const StoryPage kStory[] = {
     {"S4", "閉店後の人狼会", "占い師は、夜のあいだに\nひとりだけ正体を\n占える。その結果が\n推理の手がかりになる。", "\xEE\xA3\xB4"},   // visibility
     {"S5", "閉店後の人狼会", "ただし役職の札は\n人数より2枚多い。\n人狼が誰の手にも\n渡っていない夜もある。", "\xEE\x99\xA6"},   // auto_stories
     {"S6", "閉店後の人狼会", "そのときは\n「人狼はいない」に\n投票できれば\nみんなの勝ち。", "\xEE\x95\x81"},   // local_cafe
+    {"S7", "ワンナイトです", "このモードは、\nひと晩で決着。\n襲撃も脱落も\nありません。", "\xEE\xA2\xB5"},   // schedule
 };
 const size_t kStoryCount = sizeof(kStory) / sizeof(kStory[0]);
+
+const StoryPage kStoryStd[] = {
+    {"T1", "閉店後の人狼会", "閉店後の喫茶「余白」。\n常連の中に、人に化けた\n「人狼」がいるらしい。", "\xEE\xBD\x9E"},   // nightlight_round
+    {"T2", "通常ルールです", "このモードは、決着まで\n何日も続きます。\n夜ごとに、ひとり\n消えていきます。", "\xEE\xA4\x9D"},   // pets
+    {"T3", "1日の流れ", "朝に犠牲者を知り、\n昼に話し合い、\n投票で1人を追放。\nこれを毎日くり返す。", "\xEE\x90\xB0"},   // wb_sunny
+    {"T4", "占い師のこと", "占い師は毎晩、\n生きている人をひとり\n占えます。", "\xEE\xA3\xB4"},   // visibility
+    {"T5", "勝ち負け", "人狼を全員追放できたら\n村の勝ち。\n人狼の数が村と\n同じになったら人狼の勝ち。", "\xEF\x88\xB3"},   // groups
+    {"T6", "抜けた人のこと", "抜けた人の役職は\n最後まで伏せたまま。\n終わったら全部\n公開します。", "\xEE\x95\x81"},   // local_cafe
+};
+const size_t kStoryStdCount = sizeof(kStoryStd) / sizeof(kStoryStd[0]);
+
+const PagedEntry kBriefStd[] = {
+    {"B1", "始める前の約束", "画面は自分側に向けて。\n覗かない・撮らない。\n役職はゲームの中だけ。"},
+    {"B2", "この人数の配役", "{players}人で遊びます。\n人狼{wolves}・占い師{seers}・村人{villagers}。\n伏せ札はありません。\n1人1枚ずつ配ります。"},
+    {"B3", "抜けた人のこと", "追放・襲撃で抜けた人は\n端末を受け取りません。\n投票もされません。\n話し合いは見守ってね。"},
+    {"B4", "時間のこと", "話し合いは人数で決まる\n時間まで。+1分の延長は\n1日1回だけ。\n1局120分で終わります。"},
+};
+const size_t kBriefStdCount = sizeof(kBriefStd) / sizeof(kBriefStd[0]);
 
 const char *const kIconWolf = "\xEE\xA4\x9D";   // pets
 const char *const kIconSeer = "\xEE\xA3\xB4";   // visibility

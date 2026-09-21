@@ -18,6 +18,9 @@ void poll();
 
 bool mounted();
 
+// 「システム情報」画面用。カードが無ければ 0（SD の読み取りは loop 側から呼ぶこと）
+uint64_t freeBytes();
+
 // 開発用：今月のログの末尾をシリアルに出す
 void dumpTail(Stream &out, size_t max_bytes = 2048);
 

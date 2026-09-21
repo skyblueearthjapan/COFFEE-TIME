@@ -9,6 +9,8 @@
 #include <cstdio>
 #include <cstring>
 
+#include "../../CupState.h"
+#include "../../Display.h"
 #include "../../HomeScreen.h"
 #include "../../lvgl_v8_port.h"
 #include "../../ui/ScreenManager.h"
@@ -22,6 +24,7 @@
 #include "core/privacy_fence.hpp"
 #include "core/public_meta.hpp"
 #include "core/werewolf_core.hpp"
+#include "core_std/werewolf_std_core.hpp"
 
 LV_FONT_DECLARE(ct_font_jp_20);
 LV_FONT_DECLARE(ct_font_jp_22);
@@ -37,20 +40,29 @@ namespace {
 // content:: / layout:: / rules:: はこの using で coffee::wolf の中のものが見える
 using namespace coffee::wolf;
 
+// 通常ルール（多日制）のコアは別の名前空間。Role / Phase / Err の意味が違うので
+// using はせず、必ず ws:: を付けて呼ぶ（ワンナイト版のものと取り違えないため）
+namespace ws = coffee::wolfstd;
+
+// 遊び方は 2 つ。人数を決めたあとに選ぶ
+enum class Mode : uint8_t { OneNight = 0, Standard = 1 };
+
 // ---------------------------------------------------------------------------
 // 画面の種類
 //
 // Engine の Phase で決まるものと、この層だけが持つ小画面（確認・ページ物）がある。
 // Engine の revision が変わったときだけ Phase から作り直し、小画面はそのまま維持する。
+// Std* が付くものは通常ルール専用（ws::Engine の Phase に対応する）。
 // ---------------------------------------------------------------------------
 enum class View : uint8_t {
     Lobby,              // 人数を決める（count テンプレート）
+    ModeSelect,         // どちらで遊ぶ？（通常ルール / ワンナイト）
     RebootNotice,       // 電源断で無効になった局のお知らせ
-    Story,              // 世界観のお話（毎回・6 ページ・スキップ可）
+    Story,              // 世界観のお話（毎回・7 ページ・スキップ可）
     Brief,              // 始める前の約束（必読 4 ページ）
     SetupConfirm,       // 人数と席順の確認
     Roster,             // あなたは だれ？（席のキャラクター一覧・配る直前）
-    Tutorial,           // 遊び方（ロビーからのみ・お話 6 + 17 ページ）
+    Tutorial,           // 遊び方（ロビーからのみ・お話 7 + 17 ページ）
     Error,              // 乱数 / 記録領域の異常
     NightHandoff,
     RoleCheck,          // 秘密
@@ -74,11 +86,34 @@ enum class View : uint8_t {
     PauseOwner,         // 「{seat}番の本人ですか？」
     PauseAbortConfirm,
     Aborted,
+    // --- 通常ルール（多日制）---------------------------------------------
+    StdStory,           // 通常ルールのお話（6 ページ）
+    StdBrief,           // 通常ルールの約束（4 ページ）
+    StdNightHandoff,
+    StdNightBrief,      // 秘密（今夜のあなた）
+    StdNightTarget,
+    StdNightTargetConfirm,
+    StdNightResult,     // 秘密（夜の結果）
+    StdNightDone,
+    StdMorningReady,    // 「端末をテーブルに置こう」
+    StdMorningAnnounce, // 朝の発表（公開）
+    StdDayTalk,
+    StdVoteReady,
+    StdVoteHandoff,
+    StdVoteSelect,
+    StdVoteConfirm,     // 秘密（自分の投票先）
+    StdVoteDone,
+    StdRunoffReady,
+    StdExecReady,       // 「端末をテーブルに置こう」
+    StdExecAnnounce,    // 追放の発表（公開）
+    StdFinalReady,
+    StdResult,
 };
 
 // 押した内容。lv_event の user_data に入れて 1 つのコールバックで処理する
 enum class Act : int {
     CountMinus = 1, CountPlus, LobbyStart, LobbyLeave, LobbyHelp,
+    ModeStd, ModeOne, ModeBack,
     StoryPrev, StoryNext, StorySkip,
     BriefPrev, BriefNext, BriefDone,
     SetupBack, SetupNext, SetupStart,
@@ -97,12 +132,26 @@ enum class Act : int {
     PauseAbort, PauseAbortOk, PauseAbortNo,
     AbortedAgain, AbortedExit,
     ErrorBack,
+    // --- 通常ルール ---
+    StdStoryPrev, StdStoryNext, StdStorySkip,
+    StdBriefPrev, StdBriefNext, StdBriefDone,
+    StdNightReceive, StdBriefAck,
+    StdTargetOk, StdTargetChange,
+    StdNightAck, StdNightPass,
+    StdMorningOpen, StdMorningNext,
+    StdDayExtend, StdDayFinish,
+    StdVoteBegin, StdVoteReceive, StdVoteCommit, StdVoteChange, StdVotePass,
+    StdRunoffStart,
+    StdExecOpen, StdExecNext,
+    StdReveal, StdResultAgain,
 };
 
 // ---------------------------------------------------------------------------
 // 状態
 // ---------------------------------------------------------------------------
-Engine s_engine;
+Engine s_engine;        // ワンナイト（core/werewolf_core.hpp・無改変）
+ws::Engine s_std;       // 通常ルール（core_std/werewolf_std_core.hpp）
+Mode s_mode = Mode::OneNight;
 SecretGate s_gate;
 PrivacyFence s_fence;
 
@@ -136,6 +185,8 @@ const char *s_error_key = nullptr;
 // s_last_tick_ms は 32bit にしてある。64bit だと xtensa では 2 語に分かれて読み書きされ、
 // コアをまたぐと上位と下位がちぐはぐな値を拾うことがあるため
 bool s_secret_shown = false;
+// 結果まで進んだ局を「遊んだ 1 回」として数える予約。秘密が画面から消えてから数える
+bool s_play_pending = false;
 volatile bool s_secret_on_screen = false;
 volatile uint32_t s_last_tick_ms = 0;
 TaskHandle_t s_watchdog = nullptr;
@@ -152,10 +203,16 @@ uint32_t nowTicks()
     return (uint32_t)(esp_timer_get_time() / 1000);
 }
 
-// 結果・決選候補の一覧（1 行 1 文字列にしてから 4 行ずつページ送りする）
-constexpr size_t kMaxRows = 56;
-constexpr size_t kRowChars = 72;
+// 結果・決選候補の一覧（1 行 1 文字列にしてから 4 行ずつページ送りする）。
+// 通常ルールの答え合わせは「全員の役職＋日ごとの記録（犠牲者・追放・全員の投票・
+// 占いの結果）」なので行数が多い。10 人 7 日でも収まるよう 160 行にしてある
+// （1 行は最長 14 全角 = 42 バイトなので 64 バイトで足りる。合計 10KB）
+constexpr size_t kMaxRows = 160;
+constexpr size_t kRowChars = 64;
 char s_rows[kMaxRows][kRowChars];
+// 行の左に置くマーク（席のキャラクター）。無い行は nullptr。
+// マークはアイコンフォントの 1 文字で、日本語フォントでは描けないので別ラベルにする
+const char *s_row_icons[kMaxRows];
 uint8_t s_row_count = 0;
 
 // ---------------------------------------------------------------------------
@@ -516,24 +573,58 @@ void rosterCell(const layout::Rect &r, int seat)
 
 bool isPrivateView(View v)
 {
-    return v == View::RoleCheck || v == View::NightResult || v == View::VoteConfirm;
+    return v == View::RoleCheck || v == View::NightResult || v == View::VoteConfirm ||
+           v == View::StdNightBrief || v == View::StdNightResult || v == View::StdVoteConfirm;
 }
 
 // 1 人が端末を持って操作している場面（無操作で自動的に一時停止する）
 bool isSoloView(View v)
 {
     return isPrivateView(v) || v == View::NightTarget || v == View::NightTargetConfirm ||
-           v == View::VoteSelect;
+           v == View::VoteSelect || v == View::StdNightTarget ||
+           v == View::StdNightTargetConfirm || v == View::StdVoteSelect;
+}
+
+// 通常ルールの進行中の画面か（左上を「一時停止」にする対象）
+bool isStdGameView(View v)
+{
+    switch (v) {
+    case View::StdNightHandoff: case View::StdNightBrief: case View::StdNightTarget:
+    case View::StdNightTargetConfirm: case View::StdNightResult: case View::StdNightDone:
+    case View::StdMorningReady: case View::StdMorningAnnounce: case View::StdDayTalk:
+    case View::StdVoteReady: case View::StdVoteHandoff: case View::StdVoteSelect:
+    case View::StdVoteConfirm: case View::StdVoteDone: case View::StdRunoffReady:
+    case View::StdExecReady: case View::StdExecAnnounce: case View::StdFinalReady:
+        return true;
+    default:
+        return false;
+    }
 }
 
 // 公開画面（結果・ロビー等）ではない、進行中の局の画面か
 bool isInGameView(View v)
 {
-    return v != View::Lobby && v != View::RebootNotice && v != View::Story &&
-           v != View::Brief && v != View::SetupConfirm && v != View::Roster &&
-           v != View::Tutorial && v != View::Error &&
+    if (isStdGameView(v)) {
+        return true;
+    }
+    return v != View::Lobby && v != View::ModeSelect && v != View::RebootNotice &&
+           v != View::Story && v != View::Brief && v != View::SetupConfirm &&
+           v != View::Roster && v != View::Tutorial && v != View::Error &&
            v != View::Result && v != View::Aborted && v != View::Pause &&
-           v != View::PauseOwner && v != View::PauseAbortConfirm;
+           v != View::PauseOwner && v != View::PauseAbortConfirm &&
+           v != View::StdStory && v != View::StdBrief && v != View::StdResult;
+}
+
+// いま動いているのは通常ルールのコアか
+bool stdMode() { return s_mode == Mode::Standard; }
+
+// どちらかの局が進行中か
+bool anyGameActive() { return s_engine.active() || s_std.active(); }
+
+// 一時停止中か（モードに合わせて見る）
+bool enginePaused()
+{
+    return stdMode() ? s_std.publicView().paused : s_engine.publicView().paused;
 }
 
 void blankSecretLabels()
@@ -664,7 +755,7 @@ void buildTopButtons()
         // 進行中は左上が一時停止。押すと先に画面を中立にしてから Engine を止める。
         // ちょうど良い長さの文言が content に無いので短い見出しを置く
         rectButton(kCafeWide, "一時停止", Act::Pause);
-    } else if (s_view == View::Result) {
+    } else if (s_view == View::Result || s_view == View::StdResult) {
         rectButton(kCafeWide, str("result.exit"), Act::ResultExit);
     } else if (s_view == View::Lobby) {
         rectButton(kCafeWide, str("menu.back"), Act::LobbyLeave);
@@ -690,6 +781,55 @@ void buildLobby()
     rectLabel(layout::kCountHint, &ct_font_jp_20, CT_COLOR_SUBTEXT, hint);
 
     rectButton(layout::kWideButton, str("menu.start"), Act::LobbyStart, true, true);
+}
+
+// --- 遊び方の選択（人数を決めたあと）---------------------------------------
+// 3 人は通常ルールが成立しないのでワンナイトだけにする（理由も画面に出す）。
+
+// 見出し(46) / 通常ルール(140) と注記(196) / ワンナイト(232) と注記(288) / 戻る(348)
+constexpr layout::Rect kModeStd{100, 140, 280, 56};
+constexpr layout::Rect kModeStdNote{90, 200, 300, 28};
+constexpr layout::Rect kModeOne{100, 234, 280, 56};
+constexpr layout::Rect kModeOneNote{90, 292, 300, 26};
+constexpr layout::Rect kModeFoot{90, 322, 300, 56};   // 2 行になることがあるので高さを取る
+
+// 通常ルールの配役を 1 行にする（公開情報。ロビーと約束の両方で使う）
+void stdCompositionText(char *out, size_t cap, uint8_t players)
+{
+    const ws::Composition c = ws::compositionFor(players);
+    char w[8], s[8], v[8];
+    numberText(w, sizeof(w), c.wolves);
+    numberText(s, sizeof(s), c.seers);
+    numberText(v, sizeof(v), c.villagers(players));
+    const Subst subs[] = {{"wolves", w}, {"seers", s}, {"villagers", v}};
+    fillText(out, cap, str("mode.summary"), subs, 3);
+}
+
+void buildModeSelect()
+{
+    makeTitle(str("mode.title"));
+
+    const bool std_ok = ws::validPlayers(s_players);
+    rectButton(kModeStd, str("mode.std"), Act::ModeStd, std_ok, std_ok);
+    if (std_ok) {
+        // 選ぶ前にこの人数の配役を見せる（人狼が何人になるかは公開情報）
+        char comp[64];
+        stdCompositionText(comp, sizeof(comp), s_players);
+        rectLabel(kModeStdNote, &ct_font_jp_20, CT_COLOR_SUBTEXT, comp);
+    } else {
+        rectLabel(kModeStdNote, &ct_font_jp_20, CT_COLOR_DIM, str("mode.std.note"));
+    }
+
+    rectButton(kModeOne, str("mode.one"), Act::ModeOne, true, !std_ok);
+    rectLabel(kModeOneNote, &ct_font_jp_20, CT_COLOR_SUBTEXT, str("mode.one.note"));
+
+    if (!std_ok) {
+        rectLabel(kModeFoot, &ct_font_jp_20, CT_COLOR_DIM, str("mode.only_one"));
+    } else {
+        rectLabel(kModeFoot, &ct_font_jp_20, CT_COLOR_DIM,
+                  str(s_mode == Mode::Standard ? "mode.last_std" : "mode.last_one"));
+    }
+    rectButton(layout::kPublicBack, str("common.no"), Act::ModeBack);
 }
 
 void buildRebootNotice()
@@ -790,6 +930,38 @@ void buildBrief()
                   str("common.understood"), Act::BriefDone, page + 1 >= total);
 }
 
+// 通常ルールのお話（6 ページ）。作りはワンナイトと同じで、文言だけ差し替える
+void buildStdStory(size_t page)
+{
+    const content::StoryPage &entry = content::kStoryStd[page];
+    buildDocPager(entry.title, entry.body, page, content::kStoryStdCount,
+                  Act::StdStoryPrev, Act::StdStoryNext,
+                  str("story.skip"), Act::StdStorySkip, true, true);
+    iconLabel(kStoryIcon, &ct_font_icons_36, CT_COLOR_ACCENT_HI, entry.icon);
+}
+
+// 通常ルールの約束（4 ページ）。2 ページ目にこの人数の配役を差し込む
+void buildStdBrief()
+{
+    const size_t total = content::kBriefStdCount;
+    const size_t page = s_doc_page < total ? s_doc_page : 0;
+    const content::PagedEntry &entry = content::kBriefStd[page];
+
+    const ws::Composition c = ws::compositionFor(s_players);
+    char players[8], wolves[8], seers[8], villagers[8];
+    numberText(players, sizeof(players), s_players);
+    numberText(wolves, sizeof(wolves), c.wolves);
+    numberText(seers, sizeof(seers), c.seers);
+    numberText(villagers, sizeof(villagers), c.villagers(s_players));
+    const Subst subs[] = {{"players", players}, {"wolves", wolves},
+                          {"seers", seers}, {"villagers", villagers}};
+    char body[256];
+    fillText(body, sizeof(body), entry.body, subs, 4);
+
+    buildDocPager(entry.title, body, page, total, Act::StdBriefPrev, Act::StdBriefNext,
+                  str("common.understood"), Act::StdBriefDone, page + 1 >= total);
+}
+
 // 人数確認も 2 ページに分ける。1 枚に詰めると setup.pool の 4 行がボタンの下へ潜る
 constexpr size_t kSetupPages = 2;
 
@@ -803,8 +975,11 @@ void buildSetupConfirm()
     numberText(pool, sizeof(pool), s_players + 2);
     const Subst subs[] = {{"players", players}, {"pool", pool}};
 
+    // 通常ルールには伏せ札が無いので、人数確認の文も差し替える
+    const char *key = stdMode() ? (page == 0 ? "std.setup.body" : "std.setup.pool")
+                                : (page == 0 ? "setup.body" : "setup.pool");
     char body[256];
-    fillText(body, sizeof(body), str(page == 0 ? "setup.body" : "setup.pool"), subs, 2);
+    fillText(body, sizeof(body), str(key), subs, 2);
 
     buildDocPager(str("setup.title"), body, page, kSetupPages, Act::SetupBack, Act::SetupNext,
                   str("setup.check"), Act::SetupStart, page + 1 >= kSetupPages);
@@ -1065,14 +1240,20 @@ void buildFinalReady()
 
 // ---- 4 行ずつのページ物（決選の候補・結果の一覧） -------------------------
 
-void addRow(const char *text)
+void addRowIcon(const char *text, const char *icon)
 {
     if (s_row_count >= kMaxRows) {
-        return;
+        return;   // 行があふれたら静かに捨てる（進めなくなるよりまし）
     }
     std::snprintf(s_rows[s_row_count], kRowChars, "%s", text);
     trimUtf8(s_rows[s_row_count]);
+    s_row_icons[s_row_count] = icon;
     ++s_row_count;
+}
+
+void addRow(const char *text)
+{
+    addRowIcon(text, nullptr);
 }
 
 // 改行入りの文言を 1 行ずつに分けて積む（行の高さが 43px しかないため）
@@ -1115,8 +1296,18 @@ void buildRowPages(const char *title, const char *footer_right_text, Act footer_
         if (index >= s_row_count) {
             break;
         }
-        rectLabel(layout::kRows[i], fitFont(s_rows[index], layout::kRows[i].w),
-                  CT_COLOR_TEXT, s_rows[index]);
+        const layout::Rect &r = layout::kRows[i];
+        const char *icon = s_row_icons[index];
+        if (icon != nullptr && icon[0] != '\0') {
+            // 席のキャラクターのマークを左に置き、文字はその右へ寄せる
+            iconLabel(layout::Rect{(int16_t)(r.x + 2), r.y, 40, r.h}, &ct_font_icons_36,
+                      CT_COLOR_ACCENT_HI, icon);
+            const layout::Rect text_rect{(int16_t)(r.x + 44), r.y, (int16_t)(r.w - 44), r.h};
+            rectLabel(text_rect, fitFont(s_rows[index], text_rect.w), CT_COLOR_TEXT,
+                      s_rows[index]);
+        } else {
+            rectLabel(r, fitFont(s_rows[index], r.w), CT_COLOR_TEXT, s_rows[index]);
+        }
     }
 
     char status[16];
@@ -1285,9 +1476,10 @@ void buildPause()
 void buildPauseOwner(const PublicView &pv)
 {
     makeTitle(str("pause.title"));
+    const uint8_t actor = stdMode() ? s_std.publicView().actor : pv.actor;
     char seat[8];
-    numberText(seat, sizeof(seat), pv.actor + 1);
-    const Subst subs[] = {{"seat", seat}, {"name", seatName(pv.actor)}};
+    numberText(seat, sizeof(seat), actor + 1);
+    const Subst subs[] = {{"seat", seat}, {"name", seatName(actor)}};
     char body[192];
     fillText(body, sizeof(body), str("pause.resume.owner"), subs, 2);
     rectLabel(layout::kBody, &ct_font_jp_22, CT_COLOR_TEXT, body);
@@ -1307,15 +1499,397 @@ void buildAborted()
 {
     makeTitle(str("abort.title"));
     const char *body = str("abort.body");
-    switch (s_engine.abortReason()) {
-    case AbortReason::Privacy:   body = str("abort.privacy"); break;
-    case AbortReason::HardLimit: body = str("abort.timeout"); break;
-    case AbortReason::ClockFault: body = str("error.stale"); break;
-    default: break;
+    if (stdMode()) {
+        switch (s_std.abortReason()) {
+        case ws::AbortReason::Privacy:    body = str("abort.privacy"); break;
+        case ws::AbortReason::HardLimit:  body = str("std.abort.timeout"); break;
+        case ws::AbortReason::ClockFault: body = str("error.stale"); break;
+        case ws::AbortReason::Internal:   body = str("error.storage"); break;
+        default: break;
+        }
+    } else {
+        switch (s_engine.abortReason()) {
+        case AbortReason::Privacy:   body = str("abort.privacy"); break;
+        case AbortReason::HardLimit: body = str("abort.timeout"); break;
+        case AbortReason::ClockFault: body = str("error.stale"); break;
+        default: break;
+        }
     }
     rectLabel(layout::kBody, &ct_font_jp_22, CT_COLOR_TEXT, body);
     rectButton(layout::kWideButton, str("result.again"), Act::AbortedAgain, true, true);
     rectButton(layout::kPublicBack, str("result.exit"), Act::AbortedExit);
+}
+
+// ===========================================================================
+// 通常ルール（多日制）の画面
+//
+// 覗き見防止の仕組み（SecretGate・PrivacyFence・中立化・見張りタスク・バックライト）は
+// ワンナイトとまったく同じものをそのまま使う。ここで作るのは中身だけ。
+// 秘密のラベルは必ず空で作り、showSecret() の中でだけ文字を入れる。
+// ===========================================================================
+
+// 発表の画面で使う中立なマーク（Material Icons Round E541 local_cafe）。
+// 役職のマーク（kIconWolf など＝秘密）とは別物。日本語フォントには無い文字なので、
+// tools/collect_ui_chars.py に拾われないようエスケープで書く
+constexpr const char *kIconCafe = "\xEE\x95\x81";
+
+// 発表の画面: マーク(96) / 大きな名前(150) / 本文(214) / ボタン(338)
+constexpr layout::Rect kStdAnnounceIcon{204, 96, 72, 48};
+constexpr layout::Rect kStdBigName{100, 150, 280, 52};
+constexpr layout::Rect kStdAnnounce{90, 214, 300, 90};
+
+// 席の呼び名（通常ルールには伏せ札も「人狼はいない」も無いので席だけ）
+void stdSeatLabel(char *out, size_t cap, int seat)
+{
+    if (seat < 0 || seat >= (int)ws::MAX_PLAYERS) {
+        std::snprintf(out, cap, "%s", str("vote.ineligible"));
+        return;
+    }
+    seatHonorific(out, cap, seat);
+}
+
+// 席のページ（4 枠ずつ）。抜けた人は「脱落」と出して押せなくする（誰が抜けたかは公開情報）
+void buildStdSeatPage(const ws::PublicView &pv, bool vote)
+{
+    const uint8_t page_total = (uint8_t)((pv.player_count + PAGE_SIZE - 1) / PAGE_SIZE);
+    if (page_total > 0 && s_page >= page_total) {
+        s_page = (uint8_t)(page_total - 1);
+    }
+    for (uint8_t i = 0; i < PAGE_SIZE; ++i) {
+        const int seat = s_page * PAGE_SIZE + i;
+        if (seat >= (int)pv.player_count) {
+            break;
+        }
+        const bool self = (uint8_t)seat == pv.actor;
+        const bool alive = (pv.alive & ws::bit((uint8_t)seat)) != 0;
+        const bool candidate = !vote || (pv.eligible & ws::bit((uint8_t)seat)) != 0;
+        const bool usable = !self && alive && candidate;
+        char label[24];
+        if (self) {
+            std::snprintf(label, sizeof(label), "%s", str("vote.self"));
+        } else if (!alive) {
+            std::snprintf(label, sizeof(label), "%s", str("std.seat.dead"));
+        } else if (!candidate) {
+            std::snprintf(label, sizeof(label), "%s", str("vote.ineligible"));
+        } else {
+            std::snprintf(label, sizeof(label), "%s", seatName(seat));
+        }
+        seatTargetButton(layout::kSlots[i], label, seatIcon(seat), seat, usable);
+    }
+
+    char status[16], cur[8], pages[8];
+    numberText(cur, sizeof(cur), (int)s_page + 1);
+    numberText(pages, sizeof(pages), (int)(page_total > 0 ? page_total : 1));
+    const Subst page_subs[] = {{"page", cur}, {"pages", pages}};
+    fillText(status, sizeof(status), str("page.status"), page_subs, 2);
+    rectLabel(layout::kPageLabel, &ct_font_jp_20, CT_COLOR_SUBTEXT, status);
+    rectButton(layout::kPagePrev, str("common.prev"), Act::PagePrev, s_page > 0);
+    rectButton(layout::kPageNext, str("common.next"), Act::PageNext, s_page + 1 < page_total);
+}
+
+void buildStdHandoff(const ws::PublicView &pv, const char *title_key, const char *body_key,
+                     Act receive_act)
+{
+    char seat[8];
+    numberText(seat, sizeof(seat), pv.actor + 1);
+    const Subst subs[] = {{"seat", seat}, {"name", seatName(pv.actor)}};
+
+    char title[64];
+    fillText(title, sizeof(title), str(title_key), subs, 2);
+    makeTitle(title);
+
+    iconLabel(kHandoffIcon, &ct_font_icons_88, CT_COLOR_ACCENT_HI, seatIcon(pv.actor));
+    char num[16];
+    seatNumberText(num, sizeof(num), pv.actor);
+    rectLabel(kHandoffSeat, &ct_font_jp_20, CT_COLOR_DIM, num);
+
+    char body[192];
+    fillText(body, sizeof(body), str(body_key), subs, 2);
+    rectLabel(kHandoffBody, &ct_font_jp_22, CT_COLOR_TEXT, body);
+
+    rectButton(layout::kWideButton, str("handoff.receive"), receive_act, true, true);
+}
+
+void buildStdNightTarget(const ws::PublicView &pv)
+{
+    // 見出しは役職で変えない。何の選択なのかは直前の秘密画面（今夜のあなた）で伝える
+    makeTitle(str("std.night.target.title"));
+    buildStdSeatPage(pv, false);
+    rectLabel(layout::kSmallNote, &ct_font_jp_20, CT_COLOR_DIM, str("std.night.target.note"));
+}
+
+void buildStdNightTargetConfirm()
+{
+    makeTitle(str("std.night.target.title"));
+    char label[24];
+    stdSeatLabel(label, sizeof(label), s_pending_target);
+    const Subst subs[] = {{"target_label", label}};
+    char body[192];
+    fillText(body, sizeof(body), str("std.night.target.confirm"), subs, 1);
+    rectLabel(layout::kBody, &ct_font_jp_22, CT_COLOR_TEXT, body);
+    rectButton(layout::kWideButton, str("night.target.ok"), Act::StdTargetOk, true, true);
+    rectButton(layout::kPublicBack, str("common.change"), Act::StdTargetChange);
+}
+
+// 次に端末を渡す相手が居るか（居なければ朝の発表へ進む）
+bool stdHasNextActor(const ws::PublicView &pv)
+{
+    for (uint8_t a = (uint8_t)(pv.actor + 1); a < pv.player_count; ++a) {
+        if (pv.alive & ws::bit(a)) return true;
+    }
+    return false;
+}
+
+void buildStdNightDone(const ws::PublicView &pv)
+{
+    makeTitle(str("night.done.title"));
+    const bool last = !stdHasNextActor(pv);
+    rectLabel(layout::kBody, &ct_font_jp_22, CT_COLOR_TEXT,
+              str(last ? "night.done.last" : "night.done.body"));
+    rectButton(layout::kWideButton, str(last ? "std.night.done.last" : "handoff.pass"),
+               Act::StdNightPass, true, true);
+}
+
+// 公開の発表の前に必ず出す案内（「端末をテーブルに置いて、みんなで見よう」）
+void buildStdTable(const char *ok_key, Act ok_act)
+{
+    makeTitle(str("std.table.title"));
+    rectLabel(layout::kBody, &ct_font_jp_22, CT_COLOR_TEXT, str("std.table.body"));
+    rectButton(layout::kWideButton, str(ok_key), ok_act, true, true);
+}
+
+void buildStdMorning(const ws::PublicView &pv)
+{
+    makeTitle(str("std.morning.title"));
+    if (pv.last_victim == ws::NONE) {
+        iconLabel(kStdAnnounceIcon, &ct_font_icons_36, CT_COLOR_ACCENT_HI, kIconCafe);
+        rectLabel(kStdAnnounce, &ct_font_jp_22, CT_COLOR_TEXT, str("std.morning.safe"));
+    } else {
+        const int victim = pv.last_victim;
+        iconLabel(kStdAnnounceIcon, &ct_font_icons_36, CT_COLOR_ALERT, seatIcon(victim));
+        char name[24];
+        seatHonorific(name, sizeof(name), victim);
+        rectLabel(kStdBigName, &ct_font_jp_40, CT_COLOR_ALERT, name);
+        rectLabel(kStdAnnounce, &ct_font_jp_22, CT_COLOR_TEXT, str("std.morning.victim"));
+    }
+    // 決着していたら答え合わせへ、そうでなければ話し合いへ
+    const bool over = pv.winner != ws::Winner::None;
+    rectButton(layout::kWideButton, str(over ? "std.final.next" : "std.morning.next"),
+               Act::StdMorningNext, true, true);
+}
+
+void buildStdDayTalk(const ws::PublicView &pv)
+{
+    char day[8];
+    numberText(day, sizeof(day), pv.day);
+    const Subst day_subs[] = {{"day", day}};
+    char title[48];
+    fillText(title, sizeof(title), str("std.day.title"), day_subs, 1);
+    makeTitle(title);
+
+    s_timer_label = rectLabel(layout::kLargeTimer, &ct_font_time_64, CT_COLOR_TEXT, "0:00");
+    rectLabel(layout::kTimerPrompt, &ct_font_jp_20, CT_COLOR_SUBTEXT,
+              pv.remaining_ms == 0 ? str("day.timer_ended") : str("day.prompt.1"));
+
+    rectButton(layout::kFooterLeft,
+               pv.extension_used ? str("day.extension.used") : str("day.extension"),
+               Act::StdDayExtend, !pv.extension_used);
+    rectButton(layout::kFooterRight, str("day.finish"), Act::StdDayFinish, true, true);
+
+    char alive[8];
+    numberText(alive, sizeof(alive), pv.alive_count);
+    const Subst subs[] = {{"alive", alive}};
+    char note[48];
+    fillText(note, sizeof(note), str("std.day.alive"), subs, 1);
+    rectLabel(layout::kSmallNote, &ct_font_jp_20, CT_COLOR_DIM, note);
+}
+
+void buildStdVoteReady()
+{
+    makeTitle(str("std.vote.ready.title"));
+    rectLabel(layout::kBody, &ct_font_jp_22, CT_COLOR_TEXT, str("std.vote.ready.body"));
+    rectButton(layout::kWideButton, str("std.vote.begin"), Act::StdVoteBegin, true, true);
+}
+
+void buildStdVoteSelect(const ws::PublicView &pv)
+{
+    const bool runoff = pv.vote_cycle >= 2;
+    makeTitle(str(runoff ? "std.runoff.vote.title" : "vote.choose.title"));
+    buildStdSeatPage(pv, true);
+    if (runoff) {
+        rectLabel(layout::kSmallNote, &ct_font_jp_20, CT_COLOR_DIM, str("std.runoff.note"));
+    } else {
+        char count[8], alive[8];
+        numberText(count, sizeof(count), pv.voted_count);
+        numberText(alive, sizeof(alive), pv.alive_count);
+        const Subst subs[] = {{"count", count}, {"players", alive}};
+        char note[48];
+        fillText(note, sizeof(note), str("vote.progress"), subs, 2);
+        rectLabel(layout::kSmallNote, &ct_font_jp_20, CT_COLOR_DIM, note);
+    }
+}
+
+void buildStdVoteDone(const ws::PublicView &pv)
+{
+    makeTitle(str("vote.done.title"));
+    const bool last = !stdHasNextActor(pv);
+    rectLabel(layout::kBody, &ct_font_jp_22, CT_COLOR_TEXT,
+              str(last ? "vote.done.last" : "vote.done.body"));
+    rectButton(layout::kWideButton, str(last ? "std.vote.done.last" : "handoff.pass"),
+               Act::StdVotePass, true, true);
+}
+
+void buildStdRunoffReady(const ws::PublicView &pv)
+{
+    s_row_count = 0;
+    addLines(str("std.runoff.body"));
+    addRow(str("std.runoff.candidates"));
+    for (uint8_t t = 0; t < pv.player_count; ++t) {
+        if ((pv.eligible & ws::bit(t)) == 0) {
+            continue;
+        }
+        char label[24];
+        stdSeatLabel(label, sizeof(label), t);
+        addRow(label);
+    }
+    buildRowPages(str("std.runoff.title"), str("std.runoff.start"), Act::StdRunoffStart, true);
+}
+
+void buildStdExecAnnounce(const ws::PublicView &pv)
+{
+    makeTitle(str("std.exec.title"));
+    if (pv.last_executed == ws::NONE) {
+        iconLabel(kStdAnnounceIcon, &ct_font_icons_36, CT_COLOR_ACCENT_HI, kIconCafe);
+        rectLabel(kStdAnnounce, &ct_font_jp_22, CT_COLOR_TEXT, str("std.exec.none"));
+    } else {
+        const int seat = pv.last_executed;
+        iconLabel(kStdAnnounceIcon, &ct_font_icons_36, CT_COLOR_ALERT, seatIcon(seat));
+        char name[24];
+        seatHonorific(name, sizeof(name), seat);
+        rectLabel(kStdBigName, &ct_font_jp_40, CT_COLOR_ALERT, name);
+        rectLabel(kStdAnnounce, &ct_font_jp_22, CT_COLOR_TEXT, str("std.exec.done"));
+    }
+    const bool over = pv.winner != ws::Winner::None;
+    rectButton(layout::kWideButton, str(over ? "std.final.next" : "std.exec.next"),
+               Act::StdExecNext, true, true);
+}
+
+void buildStdFinalReady()
+{
+    makeTitle(str("std.final.ready.title"));
+    rectLabel(layout::kBody, &ct_font_jp_22, CT_COLOR_TEXT, str("std.final.ready.body"));
+    rectButton(layout::kWideButton, str("std.final.reveal"), Act::StdReveal, true, true);
+}
+
+// 最後の全公開。勝った陣営・全員の役職・日ごとの記録を 4 行ずつのページ送りで出す
+void buildStdResult()
+{
+    ws::Summary sum;
+    if (s_std.summary(sum) != ws::Err::Ok) {
+        // 通常は起きない。Revealed のまま残すと次の開始が弾かれるのでお知らせに切り替える
+        s_error_key = "error.storage";
+        s_view = View::Error;
+        buildError();
+        return;
+    }
+
+    const bool village = sum.winner == ws::Winner::Village;
+    const char *title = str(village ? "std.result.village" : "std.result.wolves");
+
+    s_row_count = 0;
+    addLines(str(village ? "std.result.village.body" : "std.result.wolves.body"));
+
+    // 全員の役職（生死も添える）
+    addRow(str("std.result.roles"));
+    for (uint8_t seat = 0; seat < sum.player_count; ++seat) {
+        const ws::Role role = sum.roles[seat];
+        const char *role_text = role == ws::Role::Wolf ? str("role.wolf.name")
+                              : role == ws::Role::Seer ? str("role.seer.name")
+                                                       : str("role.villager.name");
+        const bool alive = (sum.alive & ws::bit(seat)) != 0;
+        const Subst subs[] = {{"name", seatName(seat)}, {"role", role_text}};
+        char line[64];
+        fillText(line, sizeof(line),
+                 str(alive ? "std.result.role_alive" : "std.result.role_dead"), subs, 2);
+        // 席のキャラクターのマークを添える（誰のことか一目で分かるように）
+        addRowIcon(line, seatIcon(seat));
+    }
+
+    // 日ごとの記録（犠牲者・追放・全員の投票・占いの結果）
+    for (uint8_t day = 1; day <= sum.days; ++day) {
+        ws::DayLog d;
+        if (s_std.dayLog(day, d) != ws::Err::Ok) {
+            break;
+        }
+        char num[8];
+        numberText(num, sizeof(num), day);
+        {
+            const Subst subs[] = {{"day", num}};
+            char line[64];
+            fillText(line, sizeof(line), str("std.result.day"), subs, 1);
+            addRow(line);
+        }
+        if (d.victim == ws::NONE) {
+            addRow(str("std.result.no_victim"));
+        } else {
+            const Subst subs[] = {{"name", seatName(d.victim)}};
+            char line[64];
+            fillText(line, sizeof(line), str("std.result.victim"), subs, 1);
+            addRow(line);
+        }
+        if (d.executed == ws::NONE) {
+            addRow(str("std.result.no_executed"));
+        } else {
+            const Subst subs[] = {{"name", seatName(d.executed)}};
+            char line[64];
+            fillText(line, sizeof(line), str("std.result.executed"), subs, 1);
+            addRow(line);
+        }
+        // 占い師が複数いても、それぞれの占い先と結果を並べる
+        if (d.seer_count > 0) {
+            addRow(str("std.result.seer"));
+            for (uint8_t i = 0; i < d.seer_count; ++i) {
+                const ws::SeerRecord &r = d.seers[i];
+                char label[24];
+                stdSeatLabel(label, sizeof(label), r.target);
+                const Subst subs[] = {{"name", seatName(r.seer)}, {"target_label", label}};
+                char line[64];
+                fillText(line, sizeof(line), str("std.result.seer_row"), subs, 2);
+                addRow(line);
+                addRow(str(r.finding == ws::Finding::Wolf ? "std.result.finding_wolf"
+                                                          : "std.result.finding_not"));
+            }
+        }
+        // その日の投票（生きていた人の分だけ）
+        addRow(str("std.result.votes"));
+        for (uint8_t seat = 0; seat < sum.player_count; ++seat) {
+            if (d.first[seat] == ws::NONE) {
+                continue;
+            }
+            char label[24];
+            stdSeatLabel(label, sizeof(label), d.first[seat]);
+            const Subst subs[] = {{"name", seatName(seat)}, {"target_label", label}};
+            char line[64];
+            fillText(line, sizeof(line), str("result.vote_row"), subs, 2);
+            addRow(line);
+        }
+        if (d.had_runoff) {
+            addRow(str("std.result.runoff"));
+            for (uint8_t seat = 0; seat < sum.player_count; ++seat) {
+                if (d.runoff[seat] == ws::NONE) {
+                    continue;
+                }
+                char label[24];
+                stdSeatLabel(label, sizeof(label), d.runoff[seat]);
+                const Subst subs[] = {{"name", seatName(seat)}, {"target_label", label}};
+                char line[64];
+                fillText(line, sizeof(line), str("result.vote_row"), subs, 2);
+                addRow(line);
+            }
+        }
+    }
+
+    buildRowPages(title, str("result.again"), Act::StdResultAgain, true);
 }
 
 // ---------------------------------------------------------------------------
@@ -1342,10 +1916,12 @@ void rebuild()
     lv_obj_clean(s_content);
 
     const PublicView pv = s_engine.publicView();
+    const ws::PublicView sv = s_std.publicView();
     buildTopButtons();
 
     switch (s_view) {
     case View::Lobby:             buildLobby(); break;
+    case View::ModeSelect:        buildModeSelect(); break;
     case View::RebootNotice:      buildRebootNotice(); break;
     case View::Story:
         buildStory(s_doc_page < content::kStoryCount ? s_doc_page : 0);
@@ -1386,14 +1962,95 @@ void rebuild()
     case View::PauseOwner:        buildPauseOwner(pv); break;
     case View::PauseAbortConfirm: buildPauseAbortConfirm(); break;
     case View::Aborted:           buildAborted(); break;
+
+    // --- 通常ルール -------------------------------------------------------
+    case View::StdStory:
+        buildStdStory(s_doc_page < content::kStoryStdCount ? s_doc_page : 0);
+        break;
+    case View::StdBrief:          buildStdBrief(); break;
+    case View::StdNightHandoff:
+        buildStdHandoff(sv, "handoff.night.title", "handoff.night.body", Act::StdNightReceive);
+        break;
+    case View::StdNightBrief:
+        buildPrivate("std.brief.title", "std.brief.hold", "std.brief.next",
+                     Act::StdBriefAck, true, false, nullptr, Act::StdBriefAck);
+        break;
+    case View::StdNightTarget:        buildStdNightTarget(sv); break;
+    case View::StdNightTargetConfirm: buildStdNightTargetConfirm(); break;
+    case View::StdNightResult:
+        buildPrivate("std.night.result.title", "std.night.result.hold",
+                     "std.night.result.next", Act::StdNightAck, false, false,
+                     nullptr, Act::StdNightAck);
+        break;
+    case View::StdNightDone:      buildStdNightDone(sv); break;
+    case View::StdMorningReady:   buildStdTable("std.morning.open", Act::StdMorningOpen); break;
+    case View::StdMorningAnnounce: buildStdMorning(sv); break;
+    case View::StdDayTalk:        buildStdDayTalk(sv); break;
+    case View::StdVoteReady:      buildStdVoteReady(); break;
+    case View::StdVoteHandoff:
+        buildStdHandoff(sv, "vote.handoff.title", "vote.handoff.body", Act::StdVoteReceive);
+        break;
+    case View::StdVoteSelect:     buildStdVoteSelect(sv); break;
+    case View::StdVoteConfirm:
+        buildPrivate("vote.choose.title", "vote.confirm.cover", "vote.confirm.commit",
+                     Act::StdVoteCommit, false, true, "common.change", Act::StdVoteChange);
+        break;
+    case View::StdVoteDone:       buildStdVoteDone(sv); break;
+    case View::StdRunoffReady:    buildStdRunoffReady(sv); break;
+    case View::StdExecReady:      buildStdTable("std.exec.open", Act::StdExecOpen); break;
+    case View::StdExecAnnounce:   buildStdExecAnnounce(sv); break;
+    case View::StdFinalReady:     buildStdFinalReady(); break;
+    case View::StdResult:         buildStdResult(); break;
     }
 }
 
 // ---------------------------------------------------------------------------
 // Engine の状態から画面を決める（revision が変わったときだけ）
 // ---------------------------------------------------------------------------
+// 通常ルールの Phase → 画面
+void adoptStdPhaseView()
+{
+    const ws::PublicView pv = s_std.publicView();
+    if (pv.paused) {
+        if (s_view != View::Pause && s_view != View::PauseOwner &&
+            s_view != View::PauseAbortConfirm) {
+            s_view = View::Pause;
+        }
+        return;
+    }
+    switch (pv.phase) {
+    case ws::Phase::Idle:            s_view = View::Lobby; break;
+    case ws::Phase::NightHandoff:    s_view = View::StdNightHandoff; break;
+    case ws::Phase::NightBrief:      s_view = View::StdNightBrief; break;
+    case ws::Phase::NightTarget:     s_view = View::StdNightTarget; s_page = 0;
+                                     s_pending_target = NONE; break;
+    case ws::Phase::NightResult:     s_view = View::StdNightResult; break;
+    case ws::Phase::NightDone:       s_view = View::StdNightDone; break;
+    case ws::Phase::MorningReady:    s_view = View::StdMorningReady; break;
+    case ws::Phase::MorningAnnounce: s_view = View::StdMorningAnnounce; break;
+    case ws::Phase::DayTalk:         s_view = View::StdDayTalk; break;
+    case ws::Phase::VoteReady:       s_view = View::StdVoteReady; break;
+    case ws::Phase::VoteHandoff:     s_view = View::StdVoteHandoff; s_page = 0; break;
+    case ws::Phase::VoteSelect:      s_view = View::StdVoteSelect; break;
+    case ws::Phase::VoteConfirm:     s_view = View::StdVoteConfirm; break;
+    case ws::Phase::VoteDone:        s_view = View::StdVoteDone; break;
+    case ws::Phase::RunoffReady:     s_view = View::StdRunoffReady; s_page = 0; break;
+    case ws::Phase::ExecutionReady:  s_view = View::StdExecReady; break;
+    case ws::Phase::ExecutionAnnounce: s_view = View::StdExecAnnounce; break;
+    case ws::Phase::FinalReady:      s_view = View::StdFinalReady; break;
+    // NVS への書き込みは数十 ms 止まる。秘密を消してから行いたいので tick に任せる
+    case ws::Phase::Revealed:        s_view = View::StdResult; s_page = 0;
+                                     s_clear_armed_pending = true; s_play_pending = true; break;
+    case ws::Phase::Aborted:         s_view = View::Aborted; s_clear_armed_pending = true; break;
+    }
+}
+
 void adoptPhaseView()
 {
+    if (stdMode()) {
+        adoptStdPhaseView();
+        return;
+    }
     const PublicView pv = s_engine.publicView();
     if (pv.paused) {
         // 一時停止中の小画面（本人確認・中断確認）は維持する
@@ -1421,7 +2078,9 @@ void adoptPhaseView()
     case Phase::RunoffTalk:   s_view = View::RunoffTalk; break;
     case Phase::FinalReady:   s_view = View::FinalReady; break;
     // NVS への書き込みは数十 ms 止まることがある。秘密を消してからにしたいので tick に任せる
-    case Phase::Revealed:     s_view = View::Result; s_page = 0; s_clear_armed_pending = true; break;
+    // （s_play_pending = 結果まで進んだ局を「遊んだ 1 回」として数える。無効になった局は数えない）
+    case Phase::Revealed:     s_view = View::Result; s_page = 0; s_clear_armed_pending = true;
+                              s_play_pending = true; break;
     case Phase::Aborted:      s_view = View::Aborted; s_clear_armed_pending = true; break;
     }
 }
@@ -1429,6 +2088,94 @@ void adoptPhaseView()
 // ---------------------------------------------------------------------------
 // 秘密の表示・消去
 // ---------------------------------------------------------------------------
+// --- 通常ルールの秘密（役職・今夜やること・仲間と仲間の選択・占い結果・投票先）------
+// 呼ばれるのは showSecret() の中だけ。body には秘密が入るので、呼び出し側が必ず消す
+void fillStdSecret(char *body, size_t cap, const char *&role_text, const char *&role_mark,
+                   bool &ok)
+{
+    ok = false;
+    const ws::PublicView pv = s_std.publicView();
+    char label[24];
+    char name[24];
+    label[0] = name[0] = '\0';
+
+    if (s_view == View::StdNightBrief) {
+        ws::Brief b;
+        if (s_std.readBrief(pv.actor, b) != ws::Err::Ok || b.role == ws::Role::Empty) {
+            return;
+        }
+        role_text = b.role == ws::Role::Wolf ? str("role.wolf.name")
+                  : b.role == ws::Role::Seer ? str("role.seer.name")
+                                             : str("role.villager.name");
+        role_mark = b.role == ws::Role::Wolf ? content::kIconWolf
+                  : b.role == ws::Role::Seer ? content::kIconSeer
+                                             : content::kIconVillager;
+        if (b.role == ws::Role::Villager) {
+            std::snprintf(body, cap, "%s", str("std.brief.villager"));
+        } else if (b.role == ws::Role::Seer) {
+            std::snprintf(body, cap, "%s", str("std.brief.seer"));
+        } else if (b.partner_pick != ws::NONE && b.partner_pick_by != ws::NONE &&
+                   !b.first_night) {
+            // 先に操作した仲間の選択を見せる（最終的な襲撃先は後に選んだほうになる）。
+            // 文言側が「仲間の{name}さんは」なので、{name} は敬称なしの名前を入れる
+            std::snprintf(name, sizeof(name), "%s", seatName(b.partner_pick_by));
+            stdSeatLabel(label, sizeof(label), b.partner_pick);
+            const Subst subs[] = {{"name", name}, {"target_label", label}};
+            fillText(body, cap, str("std.brief.wolf.pick"), subs, 2);
+        } else {
+            std::snprintf(body, cap, "%s",
+                          str(b.first_night ? "std.brief.wolf.first" : "std.brief.wolf"));
+            // 仲間は最大 2 人。名前が長いので 1 行に 1 人だけ足す
+            for (uint8_t a = 0; a < pv.player_count; ++a) {
+                if ((b.partners & ws::bit(a)) == 0) {
+                    continue;
+                }
+                std::snprintf(name, sizeof(name), "%s", seatName(a));
+                const Subst subs[] = {{"name", name}};
+                char mate[48];
+                fillText(mate, sizeof(mate), str("std.brief.wolf.mate"), subs, 1);
+                const size_t used = std::strlen(body);
+                std::snprintf(body + used, cap > used ? cap - used : 0, "\n%s", mate);
+            }
+        }
+        ok = true;
+    } else if (s_view == View::StdNightResult) {
+        ws::NightOutcome o;
+        if (s_std.readNightResult(pv.actor, o) != ws::Err::Ok) {
+            return;
+        }
+        if (o.role == ws::Role::Seer && o.finding != ws::Finding::None) {
+            stdSeatLabel(label, sizeof(label), o.target);
+            const Subst subs[] = {{"target_label", label}};
+            fillText(body, cap,
+                     str(o.finding == ws::Finding::Wolf ? "std.night.result.wolf"
+                                                        : "std.night.result.not_wolf"),
+                     subs, 1);
+        } else if (o.role == ws::Role::Wolf) {
+            std::snprintf(body, cap, "%s",
+                          str(o.first_night ? "std.night.result.first" : "std.night.result.attack"));
+        } else {
+            std::snprintf(body, cap, "%s", str("std.night.result.none"));
+        }
+        ok = true;
+    } else if (s_view == View::StdVoteConfirm) {
+        int8_t target = ws::NONE;
+        if (s_std.pendingVote(pv.actor, target) != ws::Err::Ok) {
+            return;
+        }
+        stdSeatLabel(label, sizeof(label), target);
+        const Subst subs[] = {{"target_label", label}};
+        fillText(body, cap, str("vote.confirm.target"), subs, 1);
+        ok = true;
+    }
+
+    // 手元の一時コピー（調べた相手・投票先・仲間の名前）も消す
+    volatile char *w1 = label;
+    for (size_t i = 0; i < sizeof(label); ++i) w1[i] = '\0';
+    volatile char *w2 = name;
+    for (size_t i = 0; i < sizeof(name); ++i) w2[i] = '\0';
+}
+
 void showSecret()
 {
     if (s_secret_label == nullptr) {
@@ -1442,7 +2189,16 @@ void showSecret()
     const char *role_text = nullptr;
     const char *role_mark = nullptr;
 
-    if (s_view == View::RoleCheck) {
+    if (s_view == View::StdNightBrief || s_view == View::StdNightResult ||
+        s_view == View::StdVoteConfirm) {
+        bool ok = false;
+        fillStdSecret(body, sizeof(body), role_text, role_mark, ok);
+        if (!ok) {
+            volatile char *kill = body;
+            for (size_t i = 0; i < sizeof(body); ++i) kill[i] = '\0';
+            return;
+        }
+    } else if (s_view == View::RoleCheck) {
         Role role = Role::Empty;
         if (s_engine.readRole(pv.actor, role) != Err::Ok || role == Role::Empty) {
             return;
@@ -1548,13 +2304,15 @@ void leaveGame(bool to_home)
         neutralize();
         backlightRestoreIfCut(s_fence.epoch());
     }
-    if (s_engine.active()) {
+    if (anyGameActive()) {
         s_engine.abort(s_engine.stamp(), AbortReason::User);
+        s_std.abort(s_std.stamp(), ws::AbortReason::User);
         clearArmed();
     }
     // 終わった局（Revealed / Aborted）でも Engine の中には役職と票が残っている。
-    // active() では拾えないので、離れるときは必ず Idle に戻して消す
+    // active() では拾えないので、離れるときは必ず両方 Idle に戻して消す
     s_engine.reset(s_engine.stamp());
+    s_std.reset(s_std.stamp());
     s_clear_armed_pending = false;
     if (to_home) {
         port().openExistingCafePanel();   // 既にある HOME（カフェ）画面へ戻る
@@ -1630,6 +2388,79 @@ void doStart()
     s_neutral_pending = true;
 }
 
+// 遊び方を切り替える。使わないほうのコアは必ず空にして、役職も票も残さない
+void setMode(Mode m)
+{
+    s_mode = m;
+    if (m == Mode::Standard) {
+        if (s_engine.active()) {
+            s_engine.abort(s_engine.stamp(), AbortReason::User);
+        }
+        s_engine.reset(s_engine.stamp());
+        const ws::Stamp st = s_std.stamp();
+        s_seen_revision = st.revision;
+        s_seen_generation = st.generation;
+    } else {
+        if (s_std.active()) {
+            s_std.abort(s_std.stamp(), ws::AbortReason::User);
+        }
+        s_std.reset(s_std.stamp());
+        const Stamp st = s_engine.stamp();
+        s_seen_revision = st.revision;
+        s_seen_generation = st.generation;
+    }
+    writeLastMode((uint8_t)m);
+}
+
+// 通常ルールの開始。手順は port_contract.hpp の 1)〜7) と同じ
+void doStartStd()
+{
+    if (!ws::validPlayers(s_players)) {
+        showError("error.roster");
+        return;
+    }
+    if (!s_std.active() && s_std.publicView().phase != ws::Phase::Idle) {
+        s_std.reset(s_std.stamp());
+        const ws::Stamp fresh = s_std.stamp();
+        s_seen_revision = fresh.revision;
+        s_seen_generation = fresh.generation;
+    }
+    if (s_std.publicView().phase != ws::Phase::Idle) {
+        showError("error.storage");
+        return;
+    }
+    uint32_t k = 0;
+    if (!ws::uniformBelow(ws::dealCount(s_players), randomWordThunk, nullptr, k)) {
+        showError("error.random");
+        return;
+    }
+    // 「配った」印はワンナイトと共通（電源断の検出に使う公開情報だけ）
+    PublicMeta meta;
+    meta.armed = true;
+    meta.sound = false;
+    meta.players = s_players;
+    meta.discussion_s = 0;
+    meta.flavor_seq = s_flavor_seq + 1;
+    std::array<uint8_t, 20> bytes{};
+    if (!encodeMeta(meta, bytes) || !port().writePublicMetaAndReadBack(bytes)) {
+        volatile uint32_t *kill = &k;
+        *kill = 0;
+        showError("error.storage");
+        return;
+    }
+    s_flavor_seq = meta.flavor_seq;
+    const ws::Err e = s_std.start(s_std.stamp(), s_players, (uint16_t)k,
+                                  port().monotonicNowMs());
+    volatile uint32_t *kill = &k;
+    *kill = 0;
+    if (e != ws::Err::Ok) {
+        clearArmed();
+        showError("error.storage");
+        return;
+    }
+    s_neutral_pending = true;
+}
+
 // ---------------------------------------------------------------------------
 // 入力
 // ---------------------------------------------------------------------------
@@ -1637,6 +2468,23 @@ void targetCb(lv_event_t *e)
 {
     const int target = (int)(intptr_t)lv_event_get_user_data(e);
     const PublicView pv = s_engine.publicView();
+    if (s_view == View::StdNightTarget) {
+        const ws::PublicView sv = s_std.publicView();
+        if (!s_std.legalNightTarget(sv.actor, target)) {
+            ui::showToast(s_screen, str("error.target"));
+            return;
+        }
+        s_pending_target = target;
+        setView(View::StdNightTargetConfirm);
+        return;
+    }
+    if (s_view == View::StdVoteSelect) {
+        const ws::PublicView sv = s_std.publicView();
+        if (s_std.selectVote(s_std.stamp(), sv.actor, target) != ws::Err::Ok) {
+            ui::showToast(s_screen, str("error.target"));
+        }
+        return;
+    }
     if (s_view == View::NightTarget) {
         if (!legalNightTarget(pv.player_count, pv.actor, target)) {
             ui::showToast(s_screen, str("error.target"));
@@ -1674,9 +2522,53 @@ void actionCb(lv_event_t *e)
         if (s_players < MAX_PLAYERS) { ++s_players; s_dirty = true; }
         break;
     case Act::LobbyStart:
-        // 毎回まず世界観のお話から（人狼を知らない人のため）。スキップもできる
+        // 人数のつぎは遊び方を選ぶ（3 人はワンナイトだけ）
+        s_doc_page = 0;
+        setView(View::ModeSelect);
+        break;
+
+    case Act::ModeStd:
+        setMode(Mode::Standard);
+        s_doc_page = 0;
+        setView(View::StdStory);
+        break;
+    case Act::ModeOne:
+        setMode(Mode::OneNight);
         s_doc_page = 0;
         setView(View::Story);
+        break;
+    case Act::ModeBack:
+        setView(View::Lobby);
+        break;
+
+    // --- 通常ルールのお話と約束 -------------------------------------------
+    case Act::StdStoryPrev:
+        if (s_doc_page > 0) { --s_doc_page; s_dirty = true; }
+        else { setView(View::ModeSelect); }
+        break;
+    case Act::StdStoryNext:
+        if (s_doc_page + 1 < content::kStoryStdCount) { ++s_doc_page; s_dirty = true; }
+        else { s_doc_page = 0; setView(View::StdBrief); }
+        break;
+    case Act::StdStorySkip:
+        s_doc_page = 0;
+        setView(View::StdBrief);
+        break;
+    case Act::StdBriefPrev:
+        if (s_doc_page > 0) {
+            --s_doc_page;
+            s_dirty = true;
+        } else {
+            s_doc_page = (uint8_t)(content::kStoryStdCount - 1);
+            setView(View::StdStory);
+        }
+        break;
+    case Act::StdBriefNext:
+        if (s_doc_page + 1 < content::kBriefStdCount) { ++s_doc_page; s_dirty = true; }
+        break;
+    case Act::StdBriefDone:
+        s_doc_page = 0;
+        setView(View::SetupConfirm);
         break;
     case Act::LobbyLeave:
         leaveGame(false);
@@ -1687,9 +2579,9 @@ void actionCb(lv_event_t *e)
         break;
 
     case Act::StoryPrev:
-        // 1 ページ目より前は人数決めへ戻る
+        // 1 ページ目より前は遊び方の選択へ戻る
         if (s_doc_page > 0) { --s_doc_page; s_dirty = true; }
-        else { setView(View::Lobby); }
+        else { setView(View::ModeSelect); }
         break;
     case Act::StoryNext:
         // 最後のページの「次へ」は、そのまま約束（必読）へ進む
@@ -1720,10 +2612,13 @@ void actionCb(lv_event_t *e)
         break;
 
     case Act::SetupBack:
-        // 1 ページ目より前は必読の最後のページへ戻る
+        // 1 ページ目より前は必読の最後のページへ戻る（遊び方ごとに戻り先が違う）
         if (s_doc_page > 0) {
             --s_doc_page;
             s_dirty = true;
+        } else if (stdMode()) {
+            s_doc_page = (uint8_t)(content::kBriefStdCount - 1);
+            setView(View::StdBrief);
         } else {
             s_doc_page = (uint8_t)(content::kMandatoryBriefCount - 1);
             setView(View::Brief);
@@ -1744,7 +2639,7 @@ void actionCb(lv_event_t *e)
         setView(View::SetupConfirm);
         break;
     case Act::RosterOk:
-        doStart();
+        if (stdMode()) { doStartStd(); } else { doStart(); }
         break;
 
     case Act::TutorialPrev:
@@ -1807,13 +2702,22 @@ void actionCb(lv_event_t *e)
         s_engine.extendTalk(st);
         break;
     case Act::DayFinish:
+    case Act::StdDayFinish:
         setView(View::DayFinishConfirm);
         break;
     case Act::DayFinishOk:
-        s_engine.finishTalk(st, true);
+        if (stdMode()) {
+            s_std.finishTalk(s_std.stamp(), true);
+        } else {
+            s_engine.finishTalk(st, true);
+        }
         break;
     case Act::DayFinishNo:
-        setView(pv.phase == Phase::RunoffTalk ? View::RunoffTalk : View::DayTalk);
+        if (stdMode()) {
+            setView(View::StdDayTalk);
+        } else {
+            setView(pv.phase == Phase::RunoffTalk ? View::RunoffTalk : View::DayTalk);
+        }
         break;
 
     case Act::VoteBegin:
@@ -1853,24 +2757,114 @@ void actionCb(lv_event_t *e)
         s_engine.reset(s_engine.stamp());
         s_page = 0;
         break;
+    case Act::StdResultAgain:
+        s_std.reset(s_std.stamp());
+        s_page = 0;
+        break;
     case Act::ResultExit:
         leaveGame(true);
+        break;
+
+    // --- 通常ルールの進行 -------------------------------------------------
+    case Act::StdNightReceive:
+        s_std.receiveNight(s_std.stamp(), s_std.publicView().actor);
+        break;
+    case Act::StdBriefAck:
+        if (s_std.acknowledgeBrief(s_std.stamp(), s_std.publicView().actor) == ws::Err::Unseen) {
+            ui::showToast(s_screen, str("role.cover"));
+        }
+        s_neutral_pending = true;
+        break;
+    case Act::StdTargetOk:
+        if (s_std.chooseNight(s_std.stamp(), s_std.publicView().actor, s_pending_target) !=
+            ws::Err::Ok) {
+            // 人狼が仲間を選んだときもここに来る（仲間の名前は直前の秘密画面に出ている）。
+            // 場面は変わらないので、選び直せるように自分で対象の画面へ戻す
+            ui::showToast(s_screen, str("error.target"));
+            setView(View::StdNightTarget);
+        }
+        s_pending_target = NONE;
+        break;
+    case Act::StdTargetChange:
+        s_pending_target = NONE;
+        setView(View::StdNightTarget);
+        break;
+    case Act::StdNightAck:
+        if (s_std.acknowledgeNightResult(s_std.stamp(), s_std.publicView().actor) ==
+            ws::Err::Unseen) {
+            ui::showToast(s_screen, str("role.cover"));
+        }
+        s_neutral_pending = true;
+        break;
+    case Act::StdNightPass:
+        s_std.passNight(s_std.stamp(), s_std.publicView().actor);
+        break;
+    case Act::StdMorningOpen:
+        s_std.openMorning(s_std.stamp(), true);
+        break;
+    case Act::StdMorningNext:
+        if (s_std.closeMorning(s_std.stamp(), now) != ws::Err::Ok) {
+            ui::showToast(s_screen, str("error.stale"));
+        }
+        break;
+    case Act::StdDayExtend:
+        s_std.extendTalk(s_std.stamp());
+        break;
+    case Act::StdVoteBegin:
+        s_std.beginVote(s_std.stamp());
+        break;
+    case Act::StdVoteReceive:
+        s_std.receiveVote(s_std.stamp(), s_std.publicView().actor);
+        break;
+    case Act::StdVoteCommit:
+        if (s_std.confirmVote(s_std.stamp(), s_std.publicView().actor) == ws::Err::Unseen) {
+            ui::showToast(s_screen, str("vote.confirm.cover"));
+        }
+        s_neutral_pending = true;
+        break;
+    case Act::StdVoteChange:
+        s_std.changeVote(s_std.stamp(), s_std.publicView().actor);
+        s_neutral_pending = true;
+        break;
+    case Act::StdVotePass:
+        s_std.passVote(s_std.stamp(), s_std.publicView().actor);
+        break;
+    case Act::StdRunoffStart:
+        s_std.beginRunoff(s_std.stamp());
+        break;
+    case Act::StdExecOpen:
+        s_std.openExecution(s_std.stamp(), true);
+        break;
+    case Act::StdExecNext:
+        s_std.closeExecution(s_std.stamp());
+        break;
+    case Act::StdReveal:
+        s_std.reveal(s_std.stamp(), true);
         break;
 
     case Act::Pause:
         enterPause();
         break;
-    case Act::PauseResume:
+    case Act::PauseResume: {
         // 秘密の画面に戻るときだけ「本人ですか？」をはさむ
-        if (isPrivateView(s_view) || pv.phase == Phase::RoleCheck ||
-            pv.phase == Phase::NightResult || pv.phase == Phase::VoteConfirm) {
+        const ws::Phase sp = s_std.publicView().phase;
+        const bool secret_phase =
+            stdMode() ? (sp == ws::Phase::NightBrief || sp == ws::Phase::NightResult ||
+                         sp == ws::Phase::VoteConfirm)
+                      : (pv.phase == Phase::RoleCheck || pv.phase == Phase::NightResult ||
+                         pv.phase == Phase::VoteConfirm);
+        if (isPrivateView(s_view) || secret_phase) {
             setView(View::PauseOwner);
+        } else if (stdMode()) {
+            s_std.resume(s_std.stamp(), now);
         } else {
             s_engine.resume(s_engine.stamp(), now);
         }
         break;
+    }
     case Act::PauseResumeOk:
-        s_engine.resume(s_engine.stamp(), now);
+        if (stdMode()) { s_std.resume(s_std.stamp(), now); }
+        else { s_engine.resume(s_engine.stamp(), now); }
         break;
     case Act::PauseResumeNo:
         setView(View::Pause);
@@ -1885,15 +2879,21 @@ void actionCb(lv_event_t *e)
         break;
     case Act::PauseAbortOk:
         // 一時停止中は abort が通らないので、戻してから無効にする
-        s_engine.resume(s_engine.stamp(), now);
-        s_engine.abort(s_engine.stamp(), AbortReason::User);
+        if (stdMode()) {
+            s_std.resume(s_std.stamp(), now);
+            s_std.abort(s_std.stamp(), ws::AbortReason::User);
+        } else {
+            s_engine.resume(s_engine.stamp(), now);
+            s_engine.abort(s_engine.stamp(), AbortReason::User);
+        }
         break;
     case Act::PauseAbortNo:
         setView(View::Pause);
         break;
 
     case Act::AbortedAgain:
-        s_engine.reset(s_engine.stamp());
+        if (stdMode()) { s_std.reset(s_std.stamp()); }
+        else { s_engine.reset(s_engine.stamp()); }
         break;
     case Act::AbortedExit:
         leaveGame(true);
@@ -1905,6 +2905,9 @@ void actionCb(lv_event_t *e)
         if (!s_engine.active()) {
             s_engine.reset(s_engine.stamp());
         }
+        if (!s_std.active()) {
+            s_std.reset(s_std.stamp());
+        }
         setView(View::Lobby);
         break;
     }
@@ -1915,7 +2918,7 @@ void actionCb(lv_event_t *e)
 // ---------------------------------------------------------------------------
 void updateGate(uint64_t now, const TouchSample &sample)
 {
-    if (!isPrivateView(s_view) || s_engine.publicView().paused) {
+    if (!isPrivateView(s_view) || enginePaused()) {
         return;
     }
     bool want = false;
@@ -1937,12 +2940,12 @@ void updateGate(uint64_t now, const TouchSample &sample)
     }
 }
 
-void updateTimer(const PublicView &pv)
+void updateTimer(uint64_t remaining_ms)
 {
     if (s_timer_label == nullptr) {
         return;
     }
-    const uint32_t total_s = (uint32_t)((pv.remaining_ms + 999) / 1000);
+    const uint32_t total_s = (uint32_t)((remaining_ms + 999) / 1000);
     // 20ms ごとに書き換えると毎回描き直しになるので、秒が変わったときだけ触る
     if (total_s == s_shown_seconds) {
         return;
@@ -1958,12 +2961,22 @@ void tickCb(lv_timer_t *t)
     const uint64_t now = port().monotonicNowMs();
     s_last_tick_ms = nowTicks();
 
+    // 動いているのは 1 つだけ。止まっているほうは Idle のままなので tick しても何も起きない
     s_engine.tick(now);
+    s_std.tick(now);
 
-    const Stamp st = s_engine.stamp();
-    if (st.revision != s_seen_revision || st.generation != s_seen_generation) {
-        s_seen_revision = st.revision;
-        s_seen_generation = st.generation;
+    // 版数はモードごとに別（generation / revision の系列が違う）
+    uint64_t rev = 0, gen = 0;
+    if (stdMode()) {
+        const ws::Stamp sst = s_std.stamp();
+        rev = sst.revision; gen = sst.generation;
+    } else {
+        const Stamp ost = s_engine.stamp();
+        rev = ost.revision; gen = ost.generation;
+    }
+    if (rev != s_seen_revision || gen != s_seen_generation) {
+        s_seen_revision = rev;
+        s_seen_generation = gen;
         adoptPhaseView();
         s_dirty = true;
     }
@@ -1979,8 +2992,12 @@ void tickCb(lv_timer_t *t)
         s_neutral_pending = false;
         changed = true;
         // 中立化のあとに Engine を止める（一時停止を押したとき）
-        if (s_view == View::Pause && !s_engine.publicView().paused && s_engine.active()) {
-            s_engine.pause(s_engine.stamp(), now);
+        if (s_view == View::Pause && !enginePaused()) {
+            if (stdMode() && s_std.active()) {
+                s_std.pause(s_std.stamp(), now);
+            } else if (!stdMode() && s_engine.active()) {
+                s_engine.pause(s_engine.stamp(), now);
+            }
         }
     }
     // 監視タスクがバックライトを切っていたら、中立を確かめてから戻す
@@ -1998,6 +3015,21 @@ void tickCb(lv_timer_t *t)
     if (s_clear_armed_pending && !s_secret_on_screen) {
         clearArmed();
         s_clear_armed_pending = false;
+        s_last_tick_ms = nowTicks();
+    }
+    // 遊んだ回数を 1 だけ数える。数えるのは**回数と人数**だけで、役職・投票・勝敗は残さない
+    if (s_play_pending && !s_secret_on_screen) {
+        s_play_pending = false;
+        char note[32];
+        if (stdMode()) {
+            const ws::PublicView sv = s_std.publicView();
+            std::snprintf(note, sizeof(note), "wolf std players=%u days=%u",
+                          (unsigned)sv.player_count, (unsigned)sv.day);
+        } else {
+            std::snprintf(note, sizeof(note), "wolf players=%u",
+                          (unsigned)s_engine.publicView().player_count);
+        }
+        cup::stats::gamePlayed(cup::GameId::Werewolf, note);
         s_last_tick_ms = nowTicks();
     }
 
@@ -2022,19 +3054,20 @@ void tickCb(lv_timer_t *t)
         s_last_touch_ms = gate_now;
     }
 
-    const PublicView pv = s_engine.publicView();
     updateGate(gate_now, sample);
-    updateTimer(pv);
+    updateTimer(stdMode() ? s_std.publicView().remaining_ms
+                          : s_engine.publicView().remaining_ms);
 
     // 1 人が持っている場面で無操作が続いたら自動で一時停止する
-    if (isSoloView(s_view) && !pv.paused && s_last_touch_ms != 0 &&
+    if (isSoloView(s_view) && !enginePaused() && s_last_touch_ms != 0 &&
         gate_now > s_last_touch_ms && gate_now - s_last_touch_ms > rules::kPrivateIdlePauseMs) {
         enterPause();
     }
 
     // 結果を出したまま放置されたらカフェへ戻る（「カフェへ」を押したのと同じ経路）。
     // leaveGame() がこのタイマー自身を消すので、そのあとは何も触らずに抜ける
-    if (s_view == View::Result && s_last_touch_ms != 0 && gate_now > s_last_touch_ms &&
+    if ((s_view == View::Result || s_view == View::StdResult) &&
+        s_last_touch_ms != 0 && gate_now > s_last_touch_ms &&
         gate_now - s_last_touch_ms > rules::kResultIdleCloseMs) {
         leaveGame(true);
         return;
@@ -2081,6 +3114,8 @@ void screenDeletedCb(lv_event_t *e)
     if (lv_event_get_target(e) != s_screen) {
         return;
     }
+    // ゲーム画面を離れたので、自動で暗くする仕組みを元に戻す
+    display::setGameActive(false);
     if (s_tick != nullptr) {
         lv_timer_del(s_tick);
         s_tick = nullptr;
@@ -2094,14 +3129,17 @@ void screenDeletedCb(lv_event_t *e)
     if (backlightIsCut() && s_backlight_recover == nullptr) {
         s_backlight_recover = lv_timer_create(backlightRecoverCb, 300, nullptr);
     }
-    if (s_engine.active()) {
+    if (anyGameActive()) {
         // どの経路で離れても、進行中の局は無効にして秘密を消す
         s_engine.abort(s_engine.stamp(), AbortReason::User);
+        s_std.abort(s_std.stamp(), ws::AbortReason::User);
         clearArmed();
     }
-    // 終わった局でも Engine には役職と票が残るので、必ず Idle に戻して消す
+    // 終わった局でも Engine には役職と票が残るので、必ず両方 Idle に戻して消す
     s_engine.reset(s_engine.stamp());
+    s_std.reset(s_std.stamp());
     s_clear_armed_pending = false;
+    s_play_pending = false;
     s_neutral_pending = false;
     s_dirty = false;
     // 開発用コマンド 'G' が古い画面名を出さないよう、画面の種類も初期値に戻す
@@ -2160,6 +3198,8 @@ lv_obj_t *createGameScreen()
     if (s_backlight_mux == nullptr) {
         s_backlight_mux = xSemaphoreCreateMutex();
     }
+    // 読み物の途中や秘密の受け渡し中に自動で暗くならないようにする
+    display::setGameActive(true);
 
     lv_obj_t *scr = ui::makeScreen();
 
@@ -2181,6 +3221,7 @@ lv_obj_t *createGameScreen()
     s_secret_shown = false;
     s_secret_on_screen = false;
     s_clear_armed_pending = false;
+    s_play_pending = false;
     s_neutral_pending = false;
     s_gate.close();
     if (!s_engine.active()) {
@@ -2188,10 +3229,27 @@ lv_obj_t *createGameScreen()
         // 役職と票もここで消える
         s_engine.reset(s_engine.stamp());
     }
-    const Stamp st = s_engine.stamp();
-    s_seen_revision = st.revision;
-    s_seen_generation = st.generation;
-    if (s_engine.active()) {
+    if (!s_std.active()) {
+        s_std.reset(s_std.stamp());
+    }
+    // 前回選んだ遊び方を思い出す（公開情報。画面には「前回：…」として出すだけ）
+    if (!anyGameActive()) {
+        s_mode = readLastMode() == 1 ? Mode::Standard : Mode::OneNight;
+    } else if (s_std.active()) {
+        s_mode = Mode::Standard;
+    } else {
+        s_mode = Mode::OneNight;
+    }
+    if (stdMode()) {
+        const ws::Stamp st = s_std.stamp();
+        s_seen_revision = st.revision;
+        s_seen_generation = st.generation;
+    } else {
+        const Stamp st = s_engine.stamp();
+        s_seen_revision = st.revision;
+        s_seen_generation = st.generation;
+    }
+    if (anyGameActive()) {
         // 直前の局がまだ生きている（通常は起きない）。画面を状態に合わせる
         adoptPhaseView();
     } else {
@@ -2223,7 +3281,7 @@ lv_obj_t *createGameScreen()
 
 bool gameActive()
 {
-    return s_engine.active();
+    return s_engine.active() || s_std.active();
 }
 
 bool secretOnScreen()
@@ -2234,9 +3292,42 @@ bool secretOnScreen()
 
 void debugPrintPublicState()
 {
+    // 公開情報のみ。役職・占い結果・襲撃先・投票先はここに絶対に載せない。
+    // 通常ルールでは日付・生存人数・直近の発表（誰が抜けたか＝公開情報）も出す
+    if (s_mode == Mode::Standard) {
+        ws::PublicView sv = s_std.publicView();
+        // 犠牲者と追放者は「発表の画面」を開くまでは公開情報ではない。コアは夜・投票の集計が
+        // 終わった時点で値を持つので、発表前（テーブルに置く案内の間）はここで伏せる。
+        // 生存人数も同じ理由で、発表前は前の値が分からないよう 0 にして出す
+        if (sv.phase == ws::Phase::MorningReady) {
+            sv.last_victim = ws::NONE;
+            sv.alive_count = 0;
+        }
+        if (sv.phase == ws::Phase::ExecutionReady) {
+            sv.last_executed = ws::NONE;
+            sv.alive_count = 0;
+            sv.winner = ws::Winner::None;
+        }
+        if (sv.phase == ws::Phase::FinalReady) {
+            sv.winner = ws::Winner::None;   // 勝敗は「結果を見る」を押すまで伏せる
+        }
+        Serial.printf("[WOLF] mode=std view=%u phase=%u day=%u actor=%u players=%u alive=%u "
+                      "cycle=%u voted=%u victim=%d executed=%d winner=%u paused=%u "
+                      "remaining=%lums secret=%u bl_cut=%u lvgl_stack=%u wd_stack=%u\n",
+                      (unsigned)s_view, (unsigned)sv.phase, (unsigned)sv.day,
+                      (unsigned)sv.actor, (unsigned)sv.player_count, (unsigned)sv.alive_count,
+                      (unsigned)sv.vote_cycle, (unsigned)sv.voted_count,
+                      (int)sv.last_victim, (int)sv.last_executed, (unsigned)sv.winner,
+                      (unsigned)sv.paused, (unsigned long)sv.remaining_ms,
+                      (unsigned)secretOnScreen(), (unsigned)backlightIsCut(),
+                      (unsigned)lvgl_port_task_stack_free(),
+                      (unsigned)(s_watchdog != nullptr
+                                     ? uxTaskGetStackHighWaterMark(s_watchdog) * sizeof(StackType_t)
+                                     : 0));
+        return;
+    }
     const PublicView pv = s_engine.publicView();
-    // 公開情報のみ。役職・占い結果・投票先はここに絶対に載せない
-    Serial.printf("[WOLF] view=%u phase=%u actor=%u players=%u cycle=%u paused=%u "
+    Serial.printf("[WOLF] mode=one view=%u phase=%u actor=%u players=%u cycle=%u paused=%u "
                   "remaining=%lums secret=%u bl_cut=%u lvgl_stack=%u wd_stack=%u\n",
                   (unsigned)s_view, (unsigned)pv.phase, (unsigned)pv.actor,
                   (unsigned)pv.player_count, (unsigned)pv.vote_cycle, (unsigned)pv.paused,

@@ -25,7 +25,9 @@
   - content.mandatory_brief  -> coffee::wolf::content::kMandatoryBrief[]
   - local.strings            -> coffee::wolf::content::kLocalStrings[]（findString が優先）
   - local.characters         -> coffee::wolf::content::kSeatCharacters[]
-  - local.story              -> coffee::wolf::content::kStory[]
+  - local.story              -> coffee::wolf::content::kStory[]（ワンナイトのお話）
+  - local.story_std          -> coffee::wolf::content::kStoryStd[]（通常ルールのお話）
+  - local.brief_std          -> coffee::wolf::content::kBriefStd[]（通常ルールの約束）
   - local.role_icons         -> coffee::wolf::content::kIconWolf / kIconSeer / kIconVillager
   - rules.timing_by_players  -> coffee::wolf::rules::kTimingByPlayers[]
   - rules の各種 ms/秒/ページ定数 -> coffee::wolf::rules 名前空間の constexpr
@@ -199,6 +201,12 @@ def gen_header(content: dict, rules: dict, layout: dict, local: dict) -> str:
     a("struct StoryPage { const char *id; const char *title; const char *body; const char *icon; };")
     a("extern const StoryPage kStory[];")
     a("extern const size_t kStoryCount;")
+    a("")
+    a("// 通常ルール（多日制）のお話と、始める前の約束。ワンナイトとは別立てにしてある。")
+    a("extern const StoryPage kStoryStd[];")
+    a("extern const size_t kStoryStdCount;")
+    a("extern const PagedEntry kBriefStd[];")
+    a("extern const size_t kBriefStdCount;")
     a("")
     a("// 役職のマーク（秘密の画面でのみ使う。表示の制御はファーム側の責任）。")
     a("extern const char *const kIconWolf;")
@@ -379,6 +387,27 @@ def gen_source(content: dict, local: dict) -> str:
     a("};")
     a("const size_t kStoryCount = sizeof(kStory) / sizeof(kStory[0]);")
     a("")
+    a("const StoryPage kStoryStd[] = {")
+    story_std = local.get("story_std", [])
+    if not story_std:
+        a('    {"", "", "", ""},')
+    for entry in story_std:
+        a(
+            f"    {{{lit(entry['id'])}, {lit(entry['title'])}, {lit(entry['body'])}, "
+            f"{icon_lit(entry['icon'])}}},   // {entry.get('icon_name', '')}"
+        )
+    a("};")
+    a("const size_t kStoryStdCount = sizeof(kStoryStd) / sizeof(kStoryStd[0]);")
+    a("")
+    a("const PagedEntry kBriefStd[] = {")
+    brief_std = local.get("brief_std", [])
+    if not brief_std:
+        a('    {"", "", ""},')
+    for entry in brief_std:
+        a(f"    {{{lit(entry['id'])}, {lit(entry['title'])}, {lit(entry['body'])}}},")
+    a("};")
+    a("const size_t kBriefStdCount = sizeof(kBriefStd) / sizeof(kBriefStd[0]);")
+    a("")
     role_icons = local.get("role_icons", {})
     for cpp_name, json_key in (("kIconWolf", "wolf"), ("kIconSeer", "seer"),
                                ("kIconVillager", "villager")):
@@ -482,6 +511,8 @@ def main():
     print(f"local strings (overrides+new): {len(local.get('strings', {}))} entries")
     print(f"seat characters: {len(local.get('characters', []))} entries")
     print(f"story pages: {len(local.get('story', []))} entries")
+    print(f"story pages (std): {len(local.get('story_std', []))} entries")
+    print(f"brief pages (std): {len(local.get('brief_std', []))} entries")
     print(f"layout rects: {len(layout['rects'])} entries")
     print(f"total C string literals emitted (approx): {total_strings}")
     print(f"source file size: {os.path.getsize(source_path)} bytes")

@@ -192,7 +192,11 @@ static void leftBoxEventCb(lv_event_t *e)
             recordEvent("refill", prev);
             refreshCups();
             pulse(s_left);
-            showToast("REFILLED: 10 CUPS");
+            // 杯数は設定で 5〜15 に変えられるので、文言も設定値に合わせる
+            // 日本語は 1 文字 3 バイトなので余裕を持たせる
+            char toast[48];
+            snprintf(toast, sizeof(toast), "補充しました：%lu 杯", (unsigned long)cup::maxCups());
+            showToast(toast);
         }
     }
 }
@@ -223,9 +227,9 @@ static void clockTimerCb(lv_timer_t *t)
 
         const uint32_t ymd = (tm.tm_year + 1900) * 10000 + (tm.tm_mon + 1) * 100 + tm.tm_mday;
         const uint32_t prev_left = cup::remaining();
-        const uint32_t before = cup::taken() + prev_left * 1000;
-        cup::checkNewDay(ymd);
-        if (before != cup::taken() + cup::remaining() * 1000) {
+        // 日付が変わったときだけ記録する。イベント名は "newday" のままなので、
+        // 「朝いちばんの残り」を満杯にしても GAS の通知条件（take かつ 3/0 杯）には掛からない
+        if (cup::checkNewDay(ymd)) {
             recordEvent("newday", prev_left);
             refreshCups();
         }
@@ -264,8 +268,9 @@ static lv_obj_t *makeStatBox(lv_obj_t *parent, const char *caption, lv_obj_t **v
     lv_obj_set_size(box, 110, 100);
     lv_obj_clear_flag(box, LV_OBJ_FLAG_SCROLLABLE);
 
-    lv_obj_t *cap = makeLabel(box, &lv_font_montserrat_16, COLOR_SUBTEXT, caption);
-    lv_obj_set_style_text_letter_space(cap, 2, 0);
+    // 見出しは日本語（「今日」「残り」）。HOME 用の日本語フォント ct_font_22 を使う
+    lv_obj_t *cap = makeLabel(box, &ct_font_22, COLOR_SUBTEXT, caption);
+    lv_obj_set_style_text_letter_space(cap, 4, 0);
     lv_obj_align(cap, LV_ALIGN_TOP_MID, 0, 8);
 
     lv_obj_t *val = makeLabel(box, &lv_font_montserrat_48, COLOR_TEXT, "0");
@@ -315,10 +320,10 @@ bool create()
     s_weather = makeLabel(weather_row, &ct_font_30, COLOR_SUBTEXT, "接続中…");
 
     // 中段：本日杯数 / +1 / 残り杯数
-    lv_obj_t *taken_box = makeStatBox(scr, "TODAY", &s_taken);
+    lv_obj_t *taken_box = makeStatBox(scr, "今日", &s_taken);
     lv_obj_align(taken_box, LV_ALIGN_CENTER, -148, 82);
 
-    s_left_box = makeStatBox(scr, "LEFT", &s_left);
+    s_left_box = makeStatBox(scr, "残り", &s_left);
     lv_obj_align(s_left_box, LV_ALIGN_CENTER, 148, 82);
     lv_obj_add_flag(s_left_box, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(s_left_box, leftBoxEventCb, LV_EVENT_ALL, nullptr);

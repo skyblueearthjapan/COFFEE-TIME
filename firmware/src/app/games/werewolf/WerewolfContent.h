@@ -3,7 +3,7 @@
 //   content: content.ja.json (schema_version 2.0.0)
 //   rules:   rules.json (schema_version 2.0.0)
 //   layout:  layout.json (schema_version 2.0.0)
-//   local:   content.local.ja.json (schema_version 2.0.0-local.1)
+//   local:   content.local.ja.json (schema_version 2.0.0-local.2)
 // Re-run: python tools/gen_game_data.py
 #pragma once
 
@@ -53,6 +53,12 @@ const SeatCharacter *findSeatCharacter(int seat);
 struct StoryPage { const char *id; const char *title; const char *body; const char *icon; };
 extern const StoryPage kStory[];
 extern const size_t kStoryCount;
+
+// 通常ルール（多日制）のお話と、始める前の約束。ワンナイトとは別立てにしてある。
+extern const StoryPage kStoryStd[];
+extern const size_t kStoryStdCount;
+extern const PagedEntry kBriefStd[];
+extern const size_t kBriefStdCount;
 
 // 役職のマーク（秘密の画面でのみ使う。表示の制御はファーム側の責任）。
 extern const char *const kIconWolf;

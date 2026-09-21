@@ -49,4 +49,11 @@ EspPort &port();
 // main.cpp から board->begin() の後に 1 回だけ呼ぶ（Board が無いとバックライトを操作できない）
 void setBoard(esp_panel::board::Board *board);
 
+// 前回選んだ遊び方（0 = ワンナイト / 1 = 通常ルール）。
+// PublicMeta の 20 バイトは予備バイトが 0 でないと無効になる形式なので流用せず、
+// 同じ名前空間（ct_wolf）の別のキー "mode" に 1 バイトで持つ。
+// これは公開情報（どちらで遊ぶか）で、秘密は一切含まない
+uint8_t readLastMode();
+void writeLastMode(uint8_t mode);
+
 }  // namespace werewolf

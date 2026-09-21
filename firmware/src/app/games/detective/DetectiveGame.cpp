@@ -6,6 +6,8 @@
 #include <cstdio>
 #include <cstring>
 
+#include "../../CupState.h"
+#include "../../Display.h"
 #include "../../HomeScreen.h"
 #include "../../ui/ScreenManager.h"
 #include "../../ui/UiKit.h"
@@ -932,6 +934,10 @@ void finishStory()
     if (changed) {
         saveProgress();
     }
+    // 遊んだ回数を 1 だけ数える（復習でも数える）。**話の番号だけ**で、答えや正誤は残さない
+    char note[24];
+    std::snprintf(note, sizeof(note), "detective %s", c::kEpisodes[s_episode].case_id);
+    cup::stats::gamePlayed(cup::GameId::Detective, note);
     setView(View::Collect);
 }
 
@@ -1204,6 +1210,8 @@ void screenDeletedCb(lv_event_t *e)
     if (lv_event_get_target(e) != s_screen) {
         return;
     }
+    // ゲーム画面を離れたので、自動で暗くする仕組みを元に戻す
+    display::setGameActive(false);
     if (s_tick != nullptr) {
         lv_timer_del(s_tick);
         s_tick = nullptr;
@@ -1233,6 +1241,8 @@ lv_obj_t *createGameScreen()
         lv_timer_del(s_tick);
         s_tick = nullptr;
     }
+    // 読み物の途中で自動的に暗くならないようにする
+    display::setGameActive(true);
 
     lv_obj_t *scr = ui::makeScreen();
 

@@ -10,11 +10,18 @@
 #include <lvgl.h>
 #include "lvgl_v8_port.h"
 #include "Battery.h"
+#include "Buzzer.h"
 #include "CupState.h"
+#include "Display.h"
 #include "HomeScreen.h"
 #include "NetService.h"
+#include "Settings.h"
+#include "SysInfo.h"
+#include "ui/HistoryScreen.h"
 #include "ui/MainMenu.h"
 #include "ui/ScreenManager.h"
+#include "ui/SettingsScreen.h"
+#include "ui/TodayScreen.h"
 #include "games/detective/DetectiveGame.h"
 #include "games/werewolf/WerewolfGame.h"
 #include "games/werewolf/WerewolfPort.h"
@@ -26,21 +33,6 @@ using namespace esp_panel::drivers;
 using namespace esp_panel::board;
 
 static bool s_ready = false;
-
-static const char *resetReasonText()
-{
-    switch (esp_reset_reason()) {
-    case ESP_RST_POWERON:  return "poweron";
-    case ESP_RST_SW:       return "software";
-    case ESP_RST_PANIC:    return "panic";
-    case ESP_RST_INT_WDT:
-    case ESP_RST_TASK_WDT:
-    case ESP_RST_WDT:      return "watchdog";
-    case ESP_RST_BROWNOUT: return "brownout";
-    case ESP_RST_USB:      return "usb";
-    default:               return "other";
-    }
-}
 
 // 開発用：シリアルで 'S' を受け取ったら画面をそのまま送る（tools/snapshot.py で PNG 化）
 static void sendSnapshot()
@@ -113,6 +105,8 @@ static void setTimeFromSerial()
 void setup()
 {
     Serial.begin(115200);
+    // 起動の理由は今しか読めないので最初に控える（「システム情報」と SD の操作ログで使う）
+    sysinfo::begin();
     // 時刻は日本時間で扱う（Wi-Fi 接続前・RTC から復元した時刻にも適用するため最初に設定）
     setenv("TZ", "JST-9", 1);
     tzset();
@@ -136,8 +130,14 @@ void setup()
         return;
     }
 
-    // 人狼ゲームはバックライトを直接切って覗き見を防ぐため、Board を渡しておく
+    // 人狼ゲームはバックライトを切って覗き見を防ぐため、Board を渡しておく
+    // （実際の消灯・点灯は display:: が行う）
     werewolf::setBoard(board);
+
+    // 設定 →（明るさに使うので）画面 → 操作音 の順に用意する
+    settings::load();
+    display::begin(board);
+    buzzer::begin(board);
 
     // Wi-Fi が無くても日付が分かるよう、時計チップから時刻を復元（I2C は board->begin() で初期化済み）
     const bool rtc_ok = rtc::restoreSystemTime();
@@ -156,7 +156,7 @@ void setup()
     battery::update();
 
     char boot_note[40];
-    snprintf(boot_note, sizeof(boot_note), "reset=%s rtc=%s", resetReasonText(), rtc_ok ? "ok" : "lost");
+    snprintf(boot_note, sizeof(boot_note), "reset=%s rtc=%s", sysinfo::resetReasonId(), rtc_ok ? "ok" : "lost");
     sdlog::event("boot", cup::taken(), cup::remaining(), cup::remaining(), boot_note);
 
     Serial.println("Creating UI");
@@ -204,6 +204,8 @@ void loop()
             home::setWeather(weather);
         }
         cup::saveIfDirty();
+        // 明るさ・自動暗転の面倒を見る（透明な板の出し入れで LVGL を触るのでロックの中）
+        display::poll();
         while (Serial.available() > 0) {
             switch (Serial.read()) {
             case 'S': if (!blockedBySecret()) { sendSnapshot(); } break;
@@ -223,6 +225,15 @@ void loop()
             case '2': if (!blockedBySecret()) { ui::push(werewolf::createEntryScreen); } break;
             case '3': if (!blockedBySecret()) { ui::push(werewolf::createGameScreen); } break;
             case '4': if (!blockedBySecret()) { ui::push(detective::createGameScreen); } break;
+            // 開発用：メニューの中身を直接開く（tools/uiwalk.py で撮るため）
+            case '5': if (!blockedBySecret()) { ui::push(ui::createTodayScreen); } break;
+            case '6': if (!blockedBySecret()) { ui::push(ui::createTodayHourlyScreen); } break;
+            case '7': if (!blockedBySecret()) { ui::push(ui::createHistoryScreen); } break;
+            case '8': if (!blockedBySecret()) { ui::push(ui::createHistoryListScreen); } break;
+            case '9': if (!blockedBySecret()) { ui::push(ui::createSettingsScreen); } break;
+            case 'B': if (!blockedBySecret()) { ui::pushSettingsSub(ui::SettingsSub::Brightness); } break;
+            case 'F': if (!blockedBySecret()) { ui::pushSettingsSub(ui::SettingsSub::TimeSet); } break;
+            case 'I': if (!blockedBySecret()) { ui::pushSettingsSub(ui::SettingsSub::SystemInfo); } break;
             case '0': if (!blockedBySecret()) { ui::goHome(); } break;
             // 開発用：人狼の今の場面を表示（公開情報のみ。役職や投票先は出さない）
             case 'G': werewolf::debugPrintPublicState(); break;

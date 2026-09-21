@@ -9,7 +9,7 @@
  */
 
 const NOTIFY_AT = 3;              // この残り杯数になった瞬間に通知する
-const MAX_CUPS = 10;              // 1 回に作る杯数（端末の上限と合わせる）
+const MAX_CUPS = 10;              // 1 回に作る杯数の既定値。端末が max を送ってきたらそちらを使う（設定で 5〜15 に変えられる）
 const SENDER_NAME = 'CaféTamu';   // メールの差出人として表示される名前（例: 'coffeetime'）
 const LOG_SHEET = 'ログ';
 const CONFIG_SHEET = '設定';
@@ -46,7 +46,7 @@ function setup() {
 
 // 通知メールの動作確認用（エディタから実行）
 function testMail() {
-  sendLowStockMail_({ device: 'test', left: NOTIFY_AT, taken: 7 });
+  sendLowStockMail_({ device: 'test', left: NOTIFY_AT, taken: 7, max: MAX_CUPS });
 }
 
 // ---- ESP32 からの受信 -------------------------------------------------------
@@ -66,7 +66,8 @@ function doPost(e) {
   // デザイン確認用：スクリプト所有者だけに見本メールを送る（ログには残さない）
   if (body.event === 'preview') {
     const left = body.left === undefined ? NOTIFY_AT : Number(body.left);
-    sendLowStockMail_({ left: left, taken: MAX_CUPS - left }, [Session.getEffectiveUser().getEmail()]);
+    const max = maxCups_(body);
+    sendLowStockMail_({ left: left, taken: Math.max(max - left, 0), max: max }, [Session.getEffectiveUser().getEmail()]);
     return json_({ ok: true, preview: true });
   }
 
@@ -103,6 +104,12 @@ function doPost(e) {
 
 // ---- 内部処理 ---------------------------------------------------------------
 
+// 端末から届いた「1 回に作る杯数」。古いファームや見本メールで無いときは既定値
+function maxCups_(ev) {
+  const n = Number(ev && ev.max);
+  return n >= 1 && n <= 30 ? Math.round(n) : MAX_CUPS;
+}
+
 function sendLowStockMail_(ev, overrideTo) {
   let to = overrideTo;
   if (!to) {
@@ -128,7 +135,7 @@ function sendLowStockMail_(ev, overrideTo) {
       : 'コーヒーの残りが ' + ev.left + ' 杯になりました（' + now + '）。\n') +
     '本日これまでに飲まれた杯数: ' + ev.taken + ' 杯\n\n' +
     (empty ? '至急、コーヒーの準備をお願いします。\n' : '次のコーヒーの準備をお願いします。\n') +
-    '作り終えたら、端末の「LEFT」を長押しすると残り ' + MAX_CUPS + ' 杯に戻ります。\n\n' +
+    '作り終えたら、端末の「残り」の数字を長押しすると ' + maxCups_(ev) + ' 杯に戻ります。\n\n' +
     '記録: ' + sheetUrl + '\n';
 
   MailApp.sendEmail({
@@ -145,6 +152,7 @@ function sendLowStockMail_(ev, overrideTo) {
 function lowStockHtml_(ev, now, sheetUrl) {
   const left = Number(ev.left);
   const taken = Number(ev.taken);
+  const max = maxCups_(ev);
   const empty = left === 0;
   const accent = empty ? '#C62828' : '#D9822B';        // 大きな数字
   const bandBg = empty ? '#C62828' : '#FBF1E4';        // 見出し帯
@@ -157,7 +165,7 @@ function lowStockHtml_(ev, now, sheetUrl) {
 
   // 残り杯数のゲージ（残り=濃いブラウン / 飲まれた分=薄いベージュ）
   let gauge = '';
-  for (let i = 0; i < MAX_CUPS; i++) {
+  for (let i = 0; i < max; i++) {
     const full = i < left;
     gauge +=
       '<td style="padding:0 3px;">' +
@@ -215,7 +223,7 @@ function lowStockHtml_(ev, now, sheetUrl) {
   left + '<span style="font-size:24px;color:#8A7461;margin-left:6px;">杯</span></div>' +
   '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:12px auto 0;"><tr>' +
   gauge + '</tr></table>' +
-  '<div style="font-size:12px;color:#A8927E;margin-top:8px;">' + MAX_CUPS + ' 杯中</div>' +
+  '<div style="font-size:12px;color:#A8927E;margin-top:8px;">' + max + ' 杯中</div>' +
   '</td>' +
 
   '<td class="ct-col" width="50%" valign="middle" style="width:50%;padding:28px 36px;font-size:15px;">' +
@@ -233,7 +241,7 @@ function lowStockHtml_(ev, now, sheetUrl) {
   '<div style="background:' + (empty ? '#FDECEA' : '#FBF6EF') + ';border-left:4px solid ' +
   (empty ? '#C62828' : '#C08A5B') + ';border-radius:8px;padding:16px 20px;font-size:15px;line-height:1.8;">' +
   request + '<br>' +
-  '作り終えたら、端末の <b>「LEFT」を長押し</b> すると残り ' + MAX_CUPS + ' 杯に戻ります。' +
+  '作り終えたら、端末の <b>「残り」の数字を長押し</b> すると ' + max + ' 杯に戻ります。' +
   '</div>' +
   '<div style="text-align:center;margin-top:24px;">' +
   '<a href="' + sheetUrl + '" style="display:inline-block;background:#7A4A2A;color:#FFFFFF;' +
