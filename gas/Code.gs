@@ -68,6 +68,11 @@ function doPost(e) {
     return json_(jevPing_(body));
   }
 
+  // AI DUEL（じゃんけん）: Jev への予測の中継と、ラウンドの記録（gas/Duel.gs）。コーヒーのログ・メールには触れない
+  if (body.event === 'duel') {
+    return json_(duelHandle_(body));
+  }
+
   // デザイン確認用：スクリプト所有者だけに見本メールを送る（ログには残さない）
   if (body.event === 'preview') {
     const left = body.left === undefined ? NOTIFY_AT : Number(body.left);

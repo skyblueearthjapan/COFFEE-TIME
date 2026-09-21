@@ -3,7 +3,9 @@
 使い方:
   python tools/gas_call.py jevtest                 Jev（AI）への疎通試験。結果の JSON と所要時間を表示
   python tools/gas_call.py jevtest model=jev-1.13.0
-  python tools/gas_call.py ping-unauthorized       わざと違う合言葉で呼び、doPost が動いているかだけ確かめる
+  python tools/gas_call.py duel                    AI DUEL の予測を 1 回頼む（架空の集計。シートには書かない）
+  python tools/gas_call.py duel withlog=1          上に加えて DuelRounds シートへ guest の試験行を 1 行書く
+  python tools/gas_call.py ping-unauthorized      わざと違う合言葉で呼び、doPost が動いているかだけ確かめる
                                                    （{"ok":false,"error":"unauthorized"} が返れば正常。何も記録されない）
 
 GAS は POST を処理したあと 302 で別ホストへ渡す。転送先は「ヘッダーを引き継がない新しい GET」で読む
@@ -40,6 +42,35 @@ if event == "ping-unauthorized":
 for arg in sys.argv[2:]:
     k, _, v = arg.partition("=")
     payload[k] = int(v) if v.lstrip("-").isdigit() else v
+
+if event == "duel":
+    # 「グーが多く、負けた次はパーに変えがち」な架空の人の集計。シートには書かない（withlog=1 のときだけ guest で 1 行書く）
+    payload["req"] = 1
+    payload["state"] = {
+        "game": "rock_paper_scissors", "round_no": 4, "history_rounds": 83,
+        "overall_counts": {"ROCK": 36, "SCISSORS": 22, "PAPER": 25},
+        "recent20_counts": {"ROCK": 10, "SCISSORS": 4, "PAPER": 6},
+        "first_hand_counts": {"ROCK": 5, "SCISSORS": 1, "PAPER": 2},
+        "previous_round": {"player_hand": "ROCK", "ai_hand": "PAPER", "player_result": "ai_win"},
+        "conditional_next_counts": {
+            "by_hand": {"sample_n": 30, "ROCK": 8, "SCISSORS": 5, "PAPER": 17},
+            "by_hand_result": {"sample_n": 12, "ROCK": 2, "SCISSORS": 1, "PAPER": 9}},
+        "recent_sequence": [
+            {"new_match": True, "history_truncated": False, "round_no": 1,
+             "player_hand": "SCISSORS", "ai_hand": "PAPER", "player_result": "human_win"},
+            {"new_match": False, "history_truncated": False, "round_no": 2,
+             "player_hand": "ROCK", "ai_hand": "SCISSORS", "player_result": "human_win"},
+            {"new_match": False, "history_truncated": False, "round_no": 3,
+             "player_hand": "ROCK", "ai_hand": "PAPER", "player_result": "ai_win"}],
+        "same_hand_streak": 2,
+        "stats_baseline": {"ROCK": 0.30, "SCISSORS": 0.17, "PAPER": 0.53},
+        "notice": "Counts are observations, not certainties. The current hand is not present.",
+    }
+    if payload.pop("withlog", 0):
+        # 実機と同じく「記録だけ」の要求にする（予測の依頼と一緒には送らない）
+        del payload["state"]
+        payload["logs"] = [{"player": "guest", "match": 0, "round": 3, "you": "ROCK", "ai": "PAPER",
+                            "result": "ai_win", "provider": "stats"}]
 
 u = urllib.parse.urlsplit(url)
 started = time.time()

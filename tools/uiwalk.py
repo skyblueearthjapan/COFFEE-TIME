@@ -6,6 +6,9 @@
     tap:<x>,<y>    その座標をタップする（ファームの P コマンド。秘密の表示はできない）
     wait:<秒>      待つ
     snap:<名前>    画面を <名前>.png に保存する
+    expect:<文字>:<文言>  状態表示コマンド（U=DUEL など）を送り、返事に <文言> が無ければ **そこで中止**する。
+                   ゲーム内のタップの前に必ず入れる（例 expect:U:view=result）。HOME でのタップは本物の「＋1」になる
+    watch:<秒>     その間の [DUEL] / [GAS] のログを表示する
   最後に、撮った画面を並べた sheet.png を作る。
 
 例: python tools/uiwalk.py COM8 out key:3 wait:1 snap:lobby tap:240,367 wait:0.6 snap:brief1
@@ -73,6 +76,36 @@ for step in steps:
         time.sleep(0.6)     # 押下 120ms + 離す + 画面の作り直し
     elif kind == "wait":
         time.sleep(float(arg))
+    elif kind == "expect":
+        # いまの画面が想定どおりかを端末に聞く。違えば **それ以降のタップを送らずに止める**
+        # （端末が再起動して HOME に戻っていると、ゲーム用のタップが「＋1」に当たって本物の記録になる）
+        key, _, want = arg.partition(":")
+        s.reset_input_buffer()
+        s.write(key.encode())
+        deadline = time.time() + 45
+        seen = ""
+        while time.time() < deadline:
+            seen = s.readline().decode("utf-8", "replace").strip()
+            # 状態表示の行（view= を含む）だけを返事として扱う。通信の 1 行ログ（[DUEL] req=…）は読み飛ばす
+            if " view=" not in seen:
+                if seen.startswith(("[DUEL]", "[GAS]")):
+                    print(time.strftime("%H:%M:%S"), seen)
+                continue
+            if want in seen:
+                break
+            if seen.startswith(("[DUEL]", "[ESP]", "[DET]", "[WOLF]")):
+                sys.exit(f"expect failed: wanted '{want}', device says: {seen}")
+        else:
+            sys.exit(f"expect failed: no answer for key {key}")
+    elif kind == "watch":
+        # <秒> の間、ゲームと通信の 1 行ログだけを表示する（Wi-Fi の名前が出る行は通さない）
+        deadline = time.time() + float(arg)
+        s.timeout = 0.5
+        while time.time() < deadline:
+            line = s.readline().decode("utf-8", "replace").strip()
+            if line.startswith(("[DUEL]", "[GAS]")):
+                print(time.strftime("%H:%M:%S"), line)
+        s.timeout = 5
     elif kind == "snap":
         shots.append((arg, snapshot(out_dir / f"{arg}.png")))
         print("snap", arg)

@@ -76,6 +76,10 @@ $CONV --size 44 --font weathericons.ttf \
 #   メニューのます目（ui/MainMenu.cpp・ui/MenuIcons.h）:
 #     E541 local_cafe(今日の状況) E26B bar_chart(履歴) E8B8 settings(設定)
 #     EA28 sports_esports(ゲーム)
+#   AI DUEL の 8 つのアイコン ＋ ゲスト（games/duel/DuelGame.cpp。54 だけに入れる）:
+#     EFEF coffee(カップ)  E3EA grain(まめ)   E838 star(ほし)    E51C dark_mode(つき)
+#     E430 wb_sunny(たいよう) EA35 eco(はっぱ) E2BD cloud(くも)  E8B8 settings(はぐるま)
+#     E7FD person(ゲスト。8 人のだれでもない印)
 #   設定の行・システム情報・時刻合わせ（ui/MenuIcons.h）:
 #     E1AE brightness_medium  E1AD brightness_low  E1AC brightness_high
 #     EF44 bedtime  E8B5 schedule  E050 volume_up  E430 wb_sunny  E63E wifi
@@ -86,13 +90,22 @@ dl MaterialIconsRound-Regular.otf \
 ICONS_WOLF="0xE51C,0xE541,0xE666,0xE7F4,0xE838,0xE88A,0xE8F4,0xE91D,0xEA19,0xEA35,0xEA53,0xEAAC,0xEF5E,0xEFEF,0xEFF0,0xF00C,0xF233"
 ICONS_MENU="0xE050,0xE1A4,0xE1AC,0xE1AD,0xE1AE,0xE26B,0xE430,0xE5C5,0xE5C7,0xE5CC,0xE623,0xE63E,0xE88E,0xE8B5,0xE8B8,0xEA28,0xEF44,0xF053"
 ICONS_TILE="0xE1AE,0xE26B,0xE541,0xE8B8,0xEA28"
+ICONS_DUEL="0xE2BD,0xE3EA,0xE430,0xE51C,0xE7FD,0xE838,0xEA35,0xEFEF"
 # lv_font_conv が OTF を読めない場合は同じフォルダーの MaterialIcons-Regular.ttf に差し替える
 ICON_FONT=MaterialIconsRound-Regular.otf
 $CONV --size 36 --font "$ICON_FONT" -r "$ICONS_WOLF,$ICONS_MENU" \
     -o "$OUT/ct_font_icons_36.c" --lv-font-name ct_font_icons_36
-$CONV --size 54 --font "$ICON_FONT" -r "$ICONS_TILE" \
+$CONV --size 54 --font "$ICON_FONT" -r "$ICONS_TILE,$ICONS_DUEL" \
     -o "$OUT/ct_font_icons_54.c" --lv-font-name ct_font_icons_54
 $CONV --size 88 --font "$ICON_FONT" -r "$ICONS_WOLF" \
     -o "$OUT/ct_font_icons_88.c" --lv-font-name ct_font_icons_88
+
+# AI DUEL の じゃんけんの手（Font Awesome Free 6.7.2 Solid by Fonticons, Inc.,
+# フォント部分は SIL OFL 1.1。https://fontawesome.com/license/free）。
+# 使う 3 個だけを収録する（日本語フォントには混ぜない）:
+#   F255 hand-back-fist(グー)  F257 hand-scissors(チョキ)  F256 hand(パー)
+dl fa-solid-900.ttf https://unpkg.com/@fortawesome/fontawesome-free@6.7.2/webfonts/fa-solid-900.ttf
+$CONV --size 54 --font fa-solid-900.ttf -r 0xF255,0xF256,0xF257 \
+    -o "$OUT/ct_font_hands_54.c" --lv-font-name ct_font_hands_54
 
 echo "fonts written to $OUT"

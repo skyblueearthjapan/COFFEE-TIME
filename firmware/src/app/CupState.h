@@ -18,8 +18,8 @@ namespace cup {
 enum class GameId : uint8_t {
     Werewolf = 0,   // 閉店後の人狼会
     Detective = 1,  // 喫茶「余白」の事件簿
-    Esper = 2,      // エスパー対決（未実装）
-    Duel = 3,       // AI DUEL（未実装）
+    Esper = 2,      // エスパー対決
+    Duel = 3,       // AI DUEL
 };
 constexpr size_t kGameCount = 4;
 

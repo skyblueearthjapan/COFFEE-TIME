@@ -23,6 +23,7 @@
 #include "ui/SettingsScreen.h"
 #include "ui/TodayScreen.h"
 #include "games/detective/DetectiveGame.h"
+#include "games/duel/DuelGame.h"
 #include "games/esper/EsperGame.h"
 #include "games/werewolf/WerewolfGame.h"
 #include "games/werewolf/WerewolfPort.h"
@@ -240,6 +241,11 @@ void loop()
             case 'G': werewolf::debugPrintPublicState(); break;
             // 開発用：探偵の今の場面を表示（画面・話・ページ・既読・ヒント段階）
             case 'D': detective::debugPrintPublicState(); break;
+            // 開発用：AI DUEL の今の場面を表示（画面・アイコン・回数・点数・相手の種類）。
+            // **プレイヤーが手を選ぶ前に AI の手は出さない**（後出しに見えないようにするため）
+            case 'U': duel::debugPrintPublicState(); break;
+            // 開発用：エスパーの今の場面を表示（画面・モード・問数・残り候補数）
+            case 'V': esper::debugPrintPublicState(); break;
             // 開発用：探偵の記録を消す（試験で「初回の結果」を使い切らないため）
             case 'X': detective::debugResetProgress(); break;
             case 'C': setTimeFromSerial(); break;    // PC の時計から時刻を設定（tools/settime.py）

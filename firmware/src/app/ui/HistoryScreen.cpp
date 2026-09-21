@@ -32,16 +32,17 @@ constexpr Rect kPill[4] = {
 constexpr Rect kNoData{70, 170, 340, 60};
 
 // --- ゲームの表の配置 -------------------------------------------------------
+// 4 行（AI DUEL を足した）になったので、行の高さと間隔を詰めて
+// 切り替えの丸ボタン（y=336）の上に注記まで収めた
 constexpr int16_t kGameRowX = 84;
 constexpr int16_t kGameRowW = 316;
-constexpr int16_t kGameRowH = 44;
-constexpr int16_t kGameRowTop = 140;
-constexpr int16_t kGameRowStep = 52;
-constexpr Rect kGameHeadToday{200, 104, 66, 26};
-constexpr Rect kGameHeadWeek{266, 104, 66, 26};
-constexpr Rect kGameHeadTotal{332, 104, 62, 26};
-// ゲームが 3 行になったので、注記は 3 行目（y 244〜288）の下へ下げた
-constexpr Rect kGameNote{70, 296, 340, 26};
+constexpr int16_t kGameRowH = 40;
+constexpr int16_t kGameRowTop = 126;
+constexpr int16_t kGameRowStep = 45;
+constexpr Rect kGameHeadToday{200, 98, 66, 26};
+constexpr Rect kGameHeadWeek{266, 98, 66, 26};
+constexpr Rect kGameHeadTotal{332, 98, 62, 26};
+constexpr Rect kGameNote{70, 304, 340, 26};
 
 // --- 一覧の配置 -------------------------------------------------------------
 constexpr int kRowsPerPage = 5;
@@ -54,13 +55,14 @@ constexpr Rect kPageNext{288, 306, 96, 42};
 
 const char *const kWeekdays[] = {"日", "月", "火", "水", "木", "金", "土"};
 
-// 表に出すゲーム。**実装済みのものだけ**（AI DUEL は作ってから行を足す）
+// 表に出すゲーム。**実装済みのものだけ**
 struct GameRow {
     cup::GameId id;
     const char *name;
 };
 // 並び順はゲーム一覧と同じ（ユーザー指定: AI DUEL → エスパー → 探偵 → 人狼）
 const GameRow kGameRows[] = {
+    {cup::GameId::Duel, "AI DUEL"},
     {cup::GameId::Esper, "エスパー"},
     {cup::GameId::Detective, "事件簿"},
     {cup::GameId::Werewolf, "人狼会"},

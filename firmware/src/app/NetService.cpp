@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
+#include <esp_heap_caps.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <WiFiMulti.h>
@@ -10,6 +11,7 @@
 #include <esp_random.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
+#include <freertos/semphr.h>
 #include <time.h>
 
 #include "RtcClock.h"
@@ -67,9 +69,33 @@ static bool s_time_configured = false;
 static uint32_t s_next_weather_ms = 0;
 static wl_status_t s_last_status = WL_IDLE_STATUS;
 
+// --- GAS への「1 件だけ」の依頼箱（ゲームに依存しない）----------------------
+//
+// LVGL タスクが gasRequest で預け、loop() 側の pollGasRequest が送受信し、
+// LVGL タスクが gasTakeResult で受け取る。LVGL 側は必ず待ち時間 0 で錠を取り、
+// 取れなければ「今回は見送り」にする。**LVGL のコールバックは絶対に待たない**。
+enum class GasSlot : uint8_t {
+    Idle = 0,     // 空
+    Pending,      // 依頼を預かった（まだ送っていない）
+    Sending,      // loop 側が送信中
+    Cancelled,    // 送信中に捨てられた。返事が来ても使わない
+    Done,         // 返事が揃った
+};
+
+static SemaphoreHandle_t s_gas_lock = nullptr;
+static volatile GasSlot s_gas_slot = GasSlot::Idle;
+// 投げっぱなしの依頼（返事を取りに来ない）。送り終えたら箱をすぐ空ける
+static bool s_gas_detached = false;
+static uint32_t s_gas_req = 0;
+static uint32_t s_gas_started_ms = 0;
+static char s_gas_body[kGasRequestMax];        // 預かった依頼（LVGL タスクが書く）
+static char s_gas_sending[kGasRequestMax];     // 送信用に写したもの（loop だけが触る）
+static GasResult s_gas_result;
+
 void begin()
 {
     s_reports = xQueueCreate(kReportQueueLen, sizeof(Report));
+    s_gas_lock = xSemaphoreCreateMutex();
     s_boot_id = esp_random();
     uint8_t mac[6];
     WiFi.macAddress(mac);
@@ -240,6 +266,9 @@ static bool sendReport(const Report &r)
     if (status == HTTP_CODE_FOUND || status == HTTP_CODE_MOVED_PERMANENTLY || status == HTTP_CODE_SEE_OTHER) {
         const String location = http.header("Location");
         http.end();
+        // 1 本目の TLS（内蔵メモリを約 35KB 使う）を先に手放す。end() だけでは keep-alive で握ったままになり、
+        // 2 本目の接続でメモリが足りず失敗する（2026-09-22 実機: tls=-16、空き 62KB / 最大の連続 31KB）
+        client.stop();
         WiFiClientSecure client2;
         client2.setInsecure();
         HTTPClient http2;
@@ -279,6 +308,217 @@ static void pollReports()
     }
 }
 
+// ---------------------------------------------------------------------------
+// GAS への「1 件だけ」の依頼（AI DUEL の予測など）
+//
+// 送り方は sendReport とまったく同じ（POST → 302 は新しい接続で GET）。
+// **URL・合言葉・本文はログに出さない**。出すのは依頼番号と HTTP の番号と所要時間だけ。
+//
+// GAS は Jev の呼び出しとシートへの書き込みを**全部終えてから** 302 を返すので、
+// POST 側に時間がかかる（実測 4.0〜5.7 秒・端末の電波が弱いと 5.5 秒）。
+// 2026-09-22 の実機試験では POST 4.5 秒で毎回間に合わず、全ラウンドが統計 AI に
+// 落ちていた。そこで POST 6.5 秒 + 転送先の GET 5 秒 = 往復 11.5 秒までを上限にする。
+// ゲーム側はさらに 9 秒で見切って端末内の統計 AI に切り替えるので、
+// 遅れて届いた返事は依頼番号で捨てられる。
+// ---------------------------------------------------------------------------
+static bool sendGas(const char *body, GasResult &out)
+{
+    // 依頼の本文（`{ … }`）に token と device を足して 1 つの JSON にする
+    const char *start = strchr(body, '{');
+    const char *end = strrchr(body, '}');
+    if (start == nullptr || end == nullptr || end <= start) {
+        return false;
+    }
+    String payload;
+    payload.reserve(strlen(body) + 96);
+    payload += "{\"token\":\"";
+    payload += GAS_TOKEN;
+    payload += "\",\"device\":\"";
+    payload += s_device_id;
+    payload += "\"";
+    for (const char *q = start + 1; q < end; ++q) {
+        if (q == start + 1) {
+            // 中身が空（`{}`）なら何も足さない
+            const char *probe = q;
+            while (probe < end && (*probe == ' ' || *probe == '\n' || *probe == '\t')) {
+                ++probe;
+            }
+            if (probe >= end) {
+                break;
+            }
+            payload += ',';
+        }
+        payload += *q;
+    }
+    payload += '}';
+
+    WiFiClientSecure client;
+    client.setInsecure();
+    HTTPClient http;
+    // setTimeout は**読み取りの待ち時間だけ**。つなぐところで止まらないよう別に上限を付ける
+    http.setConnectTimeout(3000);
+    http.setTimeout(6500);      // GAS は Jev とシート書き込みを終えてから 302 を返す
+    if (!http.begin(client, GAS_URL)) {
+        return false;
+    }
+    const char *collect[] = {"Location"};
+    http.collectHeaders(collect, 1);
+    http.addHeader("Content-Type", "application/json");
+    int status = http.POST(payload);
+    if (status < 0) {
+        // つながらなかった理由の手がかり（TLS のエラー番号と、内蔵メモリの空き / 最大の連続領域）。
+        // TLS は内蔵メモリを数十 KB 使うので、空きが足りないと接続の段階で失敗する
+        char tls[64] = "";
+        const int tls_code = client.lastError(tls, sizeof(tls));
+        Serial.printf("[GAS] req=%lu connect failed: tls=%d heap=%u/%u rssi=%d\n", (unsigned long)out.req,
+                      tls_code, (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
+                      (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL), (int)WiFi.RSSI());
+    }
+    String resp;
+    if (status == HTTP_CODE_FOUND || status == HTTP_CODE_MOVED_PERMANENTLY ||
+        status == HTTP_CODE_SEE_OTHER) {
+        const String location = http.header("Location");
+        http.end();
+        // 1 本目の TLS（内蔵メモリを約 35KB 使う）を先に手放す。end() だけでは keep-alive で握ったままになり、
+        // 2 本目の接続でメモリが足りず失敗する（2026-09-22 実機: tls=-16、空き 62KB / 最大の連続 31KB）
+        client.stop();
+        WiFiClientSecure client2;
+        client2.setInsecure();
+        HTTPClient http2;
+        http2.setConnectTimeout(3000);
+        http2.setTimeout(5000);   // 3.5 秒では電波が弱いとき (-91dBm) に最初の 2 回が読み取り時間切れ (-11) になった
+        if (location.isEmpty() || !http2.begin(client2, location)) {
+            Serial.printf("[GAS] req=%lu redirect unusable (location %u bytes)\n", (unsigned long)out.req,
+                          (unsigned)location.length());
+            return false;
+        }
+        status = http2.GET();
+        if (status < 0) {
+            char tls[64] = "";
+            const int tls_code = client2.lastError(tls, sizeof(tls));
+            Serial.printf("[GAS] req=%lu redirect GET failed: tls=%d heap=%u/%u rssi=%d\n",
+                          (unsigned long)out.req, tls_code,
+                          (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
+                          (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL), (int)WiFi.RSSI());
+        }
+        resp = status > 0 ? http2.getString() : String();
+        http2.end();
+    } else {
+        resp = status > 0 ? http.getString() : String();
+        http.end();
+    }
+    out.status = status;
+    out.ok = status == HTTP_CODE_OK && resp.length() > 0;
+    strlcpy(out.body, resp.c_str(), sizeof(out.body));
+    Serial.printf("[GAS] req=%lu -> HTTP %d (%u bytes)\n", (unsigned long)out.req, status,
+                  (unsigned)resp.length());
+    return out.ok;
+}
+
+bool gasReady()
+{
+    return strlen(GAS_URL) > 0 && WiFi.status() == WL_CONNECTED;
+}
+
+bool gasRequest(uint32_t req, const char *body_json, bool detached)
+{
+    if (s_gas_lock == nullptr || body_json == nullptr || !gasReady()) {
+        return false;
+    }
+    const size_t length = strlen(body_json);
+    if (length == 0 || length >= kGasRequestMax) {
+        return false;
+    }
+    // LVGL のコールバックから呼ばれるので**絶対に待たない**。取れなければ見送る
+    if (xSemaphoreTake(s_gas_lock, 0) != pdTRUE) {
+        return false;
+    }
+    bool accepted = false;
+    if (s_gas_slot == GasSlot::Idle) {
+        memcpy(s_gas_body, body_json, length + 1);
+        s_gas_req = req;
+        s_gas_started_ms = millis();
+        s_gas_detached = detached;
+        s_gas_slot = GasSlot::Pending;
+        accepted = true;
+    }
+    xSemaphoreGive(s_gas_lock);
+    return accepted;
+}
+
+bool gasTakeResult(GasResult &out)
+{
+    if (s_gas_lock == nullptr || xSemaphoreTake(s_gas_lock, 0) != pdTRUE) {
+        return false;
+    }
+    bool got = false;
+    if (s_gas_slot == GasSlot::Done) {
+        out = s_gas_result;
+        s_gas_slot = GasSlot::Idle;
+        got = true;
+    }
+    xSemaphoreGive(s_gas_lock);
+    return got;
+}
+
+bool gasCancel()
+{
+    if (s_gas_lock == nullptr) {
+        return false;
+    }
+    // 錠を握るのは memcpy の間だけなので 2ms あれば十分取れる。
+    // 取れなかったときは false を返し、呼び出し側が「捨てた」と決めつけないようにする
+    if (xSemaphoreTake(s_gas_lock, pdMS_TO_TICKS(2)) != pdTRUE) {
+        return false;
+    }
+    if (s_gas_slot == GasSlot::Pending || s_gas_slot == GasSlot::Done) {
+        s_gas_slot = GasSlot::Idle;
+    } else if (s_gas_slot == GasSlot::Sending) {
+        s_gas_slot = GasSlot::Cancelled;
+    }
+    xSemaphoreGive(s_gas_lock);
+    return true;
+}
+
+static void pollGasRequest()
+{
+    if (s_gas_lock == nullptr || strlen(GAS_URL) == 0) {
+        return;
+    }
+    if (xSemaphoreTake(s_gas_lock, portMAX_DELAY) != pdTRUE) {
+        return;
+    }
+    if (s_gas_slot != GasSlot::Pending) {
+        xSemaphoreGive(s_gas_lock);
+        return;
+    }
+    // 送信中は錠を離す（LVGL 側が待ち時間 0 で錠を取れるようにするため）
+    strlcpy(s_gas_sending, s_gas_body, sizeof(s_gas_sending));
+    GasResult result;
+    result.req = s_gas_req;
+    const uint32_t started = s_gas_started_ms;
+    const bool detached = s_gas_detached;
+    s_gas_slot = GasSlot::Sending;
+    xSemaphoreGive(s_gas_lock);
+
+    sendGas(s_gas_sending, result);
+    result.elapsed_ms = millis() - started;
+
+    xSemaphoreTake(s_gas_lock, portMAX_DELAY);
+    if (s_gas_slot != GasSlot::Sending) {
+        s_gas_slot = GasSlot::Idle;     // 待っている間に画面が閉じた。返事は捨てる
+    } else if (detached) {
+        // 投げっぱなしの依頼。誰も取りに来ないので、ここで結果を 1 行出して箱を空ける
+        s_gas_slot = GasSlot::Idle;
+        Serial.printf("[GAS] req=%lu detached %s %lums\n", (unsigned long)result.req,
+                      result.ok ? "ok" : "failed", (unsigned long)result.elapsed_ms);
+    } else {
+        s_gas_result = result;
+        s_gas_slot = GasSlot::Done;
+    }
+    xSemaphoreGive(s_gas_lock);
+}
+
 bool poll(Weather &out)
 {
     // 未接続なら 10 秒ごとに周囲をスキャンして、登録済みの Wi-Fi に接続を試みる
@@ -313,7 +553,9 @@ bool poll(Weather &out)
         s_time_configured = true;
     }
 
+    // コーヒーの記録が先。ゲームの依頼は残りの時間で行う（記録の再送は妨げない）
     pollReports();
+    pollGasRequest();
 
     if ((int32_t)(millis() - s_next_weather_ms) < 0) {
         return false;
