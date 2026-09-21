@@ -61,8 +61,9 @@ lv_obj_t *makeBackButton(lv_obj_t *parent, const char *text = "もどる");
 // 一時メッセージ（同じ画面に重複して出さない。2 秒で消える）
 void showToast(lv_obj_t *parent, const char *text);
 
-// 横長のメニュー項目。cb が nullptr なら「準備中」の見た目（押せない）
+// 横長のメニュー項目。cb が nullptr なら「準備中」の見た目（押せない）。
+// height は行の高さ（ゲーム一覧は 5 段になったので既定より低くしている）
 lv_obj_t *makeMenuItem(lv_obj_t *parent, const char *text, lv_event_cb_t cb, void *user_data,
-                       int y_offset, bool enabled = true);
+                       int y_offset, bool enabled = true, int height = 62);
 
 }  // namespace ui

@@ -82,6 +82,12 @@ enum class GasSlot : uint8_t {
     Done,         // 返事が揃った
 };
 
+// ゲーム中は Wi-Fi の省電力（受信の間引き）を切る。LVGL タスクが旗を立て、loop 側の poll() が切り替える。
+// 入れたままだと GAS の転送先からの返事が 5 秒待っても届かない失敗が 10 回に 3〜5 回起きた（2026-09-22 実機。
+// 切ると 8 回に 1 回）。電池の持ちと引き換えなので、ゲームの画面が開いている間と、GAS とやり取りする間だけにする
+static volatile bool s_want_low_latency = false;
+static bool s_low_latency = false;
+
 static SemaphoreHandle_t s_gas_lock = nullptr;
 static volatile GasSlot s_gas_slot = GasSlot::Idle;
 // 投げっぱなしの依頼（返事を取りに来ない）。送り終えたら箱をすぐ空ける
@@ -231,7 +237,18 @@ void reportEvent(const char *event, uint32_t taken, uint32_t left, uint32_t prev
     }
 }
 
+static bool sendReportInner(const Report &r);
+
+// コーヒーの記録も同じ作り（POST → 転送先を GET）なので、送る間だけ Wi-Fi の省電力を切る
 static bool sendReport(const Report &r)
+{
+    WiFi.setSleep(false);
+    const bool ok = sendReportInner(r);
+    WiFi.setSleep(!s_want_low_latency);
+    return ok;
+}
+
+static bool sendReportInner(const Report &r)
 {
     JsonDocument doc;
     doc["token"] = GAS_TOKEN;
@@ -382,27 +399,41 @@ static bool sendGas(const char *body, GasResult &out)
         // 1 本目の TLS（内蔵メモリを約 35KB 使う）を先に手放す。end() だけでは keep-alive で握ったままになり、
         // 2 本目の接続でメモリが足りず失敗する（2026-09-22 実機: tls=-16、空き 62KB / 最大の連続 31KB）
         client.stop();
-        WiFiClientSecure client2;
-        client2.setInsecure();
-        HTTPClient http2;
-        http2.setConnectTimeout(3000);
-        http2.setTimeout(5000);   // 3.5 秒では電波が弱いとき (-91dBm) に最初の 2 回が読み取り時間切れ (-11) になった
-        if (location.isEmpty() || !http2.begin(client2, location)) {
-            Serial.printf("[GAS] req=%lu redirect unusable (location %u bytes)\n", (unsigned long)out.req,
-                          (unsigned)location.length());
+        if (location.isEmpty()) {
+            Serial.printf("[GAS] req=%lu redirect unusable (no location)\n", (unsigned long)out.req);
             return false;
         }
-        status = http2.GET();
-        if (status < 0) {
-            char tls[64] = "";
-            const int tls_code = client2.lastError(tls, sizeof(tls));
-            Serial.printf("[GAS] req=%lu redirect GET failed: tls=%d heap=%u/%u rssi=%d\n",
-                          (unsigned long)out.req, tls_code,
-                          (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
-                          (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL), (int)WiFi.RSSI());
+        // 転送先（結果の置き場）を読む。ここだけ返事が来ない失敗 (-11) がときどき起きる（省電力を切っても 8 回に 1 回）。
+        // GAS 側の処理は POST の時点で済んでいるので、POST からやり直さずに**読み取りだけ**を新しい接続でもう 1 回試す。
+        // ふだんの読み取りは 1.5 秒以内に終わるので、1 回目の待ちは 3 秒に詰めてある（合計の上限は変えない）
+        static constexpr uint32_t kGetReadMs[2] = {3000, 4000};
+        for (int attempt = 0; attempt < 2; ++attempt) {
+            WiFiClientSecure client2;
+            client2.setInsecure();
+            HTTPClient http2;
+            http2.setConnectTimeout(3000);
+            http2.setTimeout(kGetReadMs[attempt]);
+            if (!http2.begin(client2, location)) {
+                Serial.printf("[GAS] req=%lu redirect unusable (location %u bytes)\n", (unsigned long)out.req,
+                              (unsigned)location.length());
+                return false;
+            }
+            status = http2.GET();
+            if (status < 0) {
+                char tls[64] = "";
+                const int tls_code = client2.lastError(tls, sizeof(tls));
+                Serial.printf("[GAS] req=%lu redirect GET failed (try %d): http=%d tls=%d heap=%u/%u rssi=%d\n",
+                              (unsigned long)out.req, attempt + 1, status, tls_code,
+                              (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
+                              (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL), (int)WiFi.RSSI());
+            }
+            resp = status > 0 ? http2.getString() : String();
+            http2.end();
+            client2.stop();
+            if (status > 0) {
+                break;
+            }
         }
-        resp = status > 0 ? http2.getString() : String();
-        http2.end();
     } else {
         resp = status > 0 ? http.getString() : String();
         http.end();
@@ -413,6 +444,11 @@ static bool sendGas(const char *body, GasResult &out)
     Serial.printf("[GAS] req=%lu -> HTTP %d (%u bytes)\n", (unsigned long)out.req, status,
                   (unsigned)resp.length());
     return out.ok;
+}
+
+void setLowLatency(bool on)
+{
+    s_want_low_latency = on;
 }
 
 bool gasReady()
@@ -501,7 +537,11 @@ static void pollGasRequest()
     s_gas_slot = GasSlot::Sending;
     xSemaphoreGive(s_gas_lock);
 
+    // やり取りの間だけ Wi-Fi の省電力（受信の間引き）を切る。入れたままだと、GAS の転送先からの返事が
+    // 5 秒待っても届かない失敗 (-11) が 10 回に 3〜5 回起きた（2026-09-22 実機。電波は -52dBm で十分だった）
+    WiFi.setSleep(false);
     sendGas(s_gas_sending, result);
+    WiFi.setSleep(!s_want_low_latency);     // ゲーム中（setLowLatency(true)）なら切ったままにする
     result.elapsed_ms = millis() - started;
 
     xSemaphoreTake(s_gas_lock, portMAX_DELAY);
@@ -521,6 +561,11 @@ static void pollGasRequest()
 
 bool poll(Weather &out)
 {
+    if (s_low_latency != s_want_low_latency && WiFi.status() == WL_CONNECTED) {
+        s_low_latency = s_want_low_latency;
+        WiFi.setSleep(!s_low_latency);
+        Serial.printf("[NET] Wi-Fi power save %s\n", s_low_latency ? "off (game)" : "on");
+    }
     // 未接続なら 10 秒ごとに周囲をスキャンして、登録済みの Wi-Fi に接続を試みる
     if (WiFi.status() != WL_CONNECTED && (int32_t)(millis() - s_next_wifi_try_ms) >= 0) {
         s_next_wifi_try_ms = millis() + 10000;

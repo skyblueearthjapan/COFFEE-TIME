@@ -1,0 +1,140 @@
+{
+  "size": [
+    480,
+    480
+  ],
+  "center": [
+    240,
+    240
+  ],
+  "safe_radius": 232,
+  "board": {
+    "x": 84,
+    "y": 84,
+    "w": 312,
+    "h": 312,
+    "cell6": 52,
+    "cell8": 39
+  },
+  "board_controls": [
+    {
+      "id": "title",
+      "x": 160,
+      "y": 24,
+      "w": 160,
+      "h": 22,
+      "font": 16
+    },
+    {
+      "id": "score",
+      "x": 132,
+      "y": 50,
+      "w": 216,
+      "h": 28,
+      "font": 20
+    },
+    {
+      "id": "menu",
+      "x": 132,
+      "y": 400,
+      "w": 48,
+      "h": 44,
+      "font": 16
+    },
+    {
+      "id": "place",
+      "x": 188,
+      "y": 402,
+      "w": 104,
+      "h": 52,
+      "font": 20
+    },
+    {
+      "id": "choices",
+      "x": 300,
+      "y": 400,
+      "w": 48,
+      "h": 44,
+      "font": 16
+    }
+  ],
+  "card_page": {
+    "text": {
+      "x": 112,
+      "y": 100,
+      "w": 256,
+      "h": 224,
+      "font": 24,
+      "line_height": 32
+    },
+    "left": {
+      "x": 130,
+      "y": 350,
+      "w": 100,
+      "h": 64
+    },
+    "right": {
+      "x": 250,
+      "y": 350,
+      "w": 100,
+      "h": 64
+    }
+  },
+  "list_page": {
+    "choices": [
+      {
+        "x": 130,
+        "y": 140,
+        "w": 100,
+        "h": 78
+      },
+      {
+        "x": 250,
+        "y": 140,
+        "w": 100,
+        "h": 78
+      },
+      {
+        "x": 130,
+        "y": 230,
+        "w": 100,
+        "h": 78
+      },
+      {
+        "x": 250,
+        "y": 230,
+        "w": 100,
+        "h": 78
+      }
+    ],
+    "prev": {
+      "x": 138,
+      "y": 334,
+      "w": 88,
+      "h": 60
+    },
+    "next": {
+      "x": 254,
+      "y": 334,
+      "w": 88,
+      "h": 60
+    },
+    "back": {
+      "x": 190,
+      "y": 400,
+      "w": 100,
+      "h": 48
+    }
+  },
+  "colors": {
+    "background": "#F2EADF",
+    "board": "#245548",
+    "grid": "#C7D3C8",
+    "black": "#17201C",
+    "white": "#F9F5EB",
+    "accent": "#D7A94C"
+  },
+  "auto_rotate": false,
+  "coordinate_origin": "top-left A1",
+  "cell_boundaries": "left/top inclusive, right/bottom exclusive"
+}

@@ -14,14 +14,21 @@
  */
 namespace cup {
 
-// ゲームの種類。**並びは NVS に保存されるので絶対に変えない**（未実装の 2 つも席を空けてある）
+// ゲームの種類。**並びは NVS に保存されるので絶対に変えない**
 enum class GameId : uint8_t {
     Werewolf = 0,   // 閉店後の人狼会
     Detective = 1,  // 喫茶「余白」の事件簿
     Esper = 2,      // エスパー対決
     Duel = 3,       // AI DUEL
+    Reversi = 4,    // リバーシ（JEV REVERSI）
 };
-constexpr size_t kGameCount = 4;
+constexpr size_t kGameCount = 5;
+
+// **0〜3 番だけが `cup/today` と `cup_hist/days` の塊に入る。**
+// 杯数の記録（いちばん大事なデータ）と同じ塊なので、形を 1 バイトも変えない。
+// 4 番から先は別の名前空間 `cup_ext` に置き、下の関数からは同じように読める
+// （docs/REVERSI_PLAN.md §2 のディレクター判断）
+constexpr size_t kLegacyGameCount = 4;
 
 // 「今日の状況」の中身。時刻が分からない間に押された分は unknown に入れ、
 // 時間帯のグラフ (hour) には入れない

@@ -1,0 +1,73 @@
+{
+  "schema_version": "1.0.0",
+  "rules_version": "1.0.0",
+  "game_id": "jev_reversi",
+  "menu_slot": 5,
+  "sizes": [
+    6,
+    8
+  ],
+  "default_size": 6,
+  "default_human": "B",
+  "default_mode": "jev",
+  "mode_ids": [
+    "jev",
+    "jev_pro",
+    "casual",
+    "local"
+  ],
+  "piece_ids": {
+    "empty": 0,
+    "black": 1,
+    "white": 2
+  },
+  "move_sources": {
+    "H": 0,
+    "J": 1,
+    "L": 2,
+    "F": 3
+  },
+  "max_events": 128,
+  "automatic_pass_ms": 700,
+  "ai_animation_ms": 180,
+  "idle_pause_ms": 120000,
+  "screen_dim_ms": 30000,
+  "api_connect_timeout_ms": 5000,
+  "api_total_timeout_ms": 15000,
+  "provider_timeout_seconds": 8,
+  "lease_ms": 20000,
+  "poll_intervals_ms": [
+    1000,
+    2000,
+    4000
+  ],
+  "max_polls": 3,
+  "probability_sum_tolerance": 0.001,
+  "argmax_tolerance": 1e-06,
+  "sampling_total": 1000000,
+  "request_bytes_limit": 8192,
+  "response_bytes_limit": 16384,
+  "provider_chars_limit": 32768,
+  "game_decision_limit": 60,
+  "device_daily_call_limit": 300,
+  "device_min_reservation_interval_ms": 1000,
+  "decision_retention_days": 90,
+  "result_retention_days": 180,
+  "decision_rows_cap": 10000,
+  "result_rows_cap": 2000,
+  "pending_outbox_limit": 4,
+  "resume_slots": 1,
+  "active_game_retention_days": 7,
+  "default_model": "jev-1.13.0",
+  "prompt_version": "rev-prompt-1.0.0",
+  "features_version": "rev-features-1.0.0",
+  "local_policy_version": "rev-local-1ply-1.0.0",
+  "out_of_scope": [
+    "two_human_players",
+    "live_spectator_arena",
+    "ranked_personal_profile",
+    "undo_after_commit",
+    "win_probability_display",
+    "multi_device_resume"
+  ]
+}

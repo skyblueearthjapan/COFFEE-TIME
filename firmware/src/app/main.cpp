@@ -25,6 +25,7 @@
 #include "games/detective/DetectiveGame.h"
 #include "games/duel/DuelGame.h"
 #include "games/esper/EsperGame.h"
+#include "games/reversi/ReversiGame.h"
 #include "games/werewolf/WerewolfGame.h"
 #include "games/werewolf/WerewolfPort.h"
 #include "games/werewolf/WerewolfUI.h"
@@ -247,6 +248,9 @@ void loop()
             case 'U': duel::debugPrintPublicState(); break;
             // 開発用：エスパーの今の場面を表示（画面・モード・問数・残り候補数）
             case 'V': esper::debugPrintPublicState(); break;
+            // 開発用：リバーシの今の場面を表示（画面・盤・手番・枚数・直前の手）。
+            // **盤面は公開情報**なので、そのまま出してよい（人狼の秘密とは違う）
+            case 'J': reversi::debugPrintPublicState(); break;
             // 開発用：探偵の記録を消す（試験で「初回の結果」を使い切らないため）
             case 'X': detective::debugResetProgress(); break;
             case 'C': setTimeFromSerial(); break;    // PC の時計から時刻を設定（tools/settime.py）

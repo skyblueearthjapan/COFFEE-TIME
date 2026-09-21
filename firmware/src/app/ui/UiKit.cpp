@@ -236,10 +236,10 @@ void showToast(lv_obj_t *parent, const char *text)
 }
 
 lv_obj_t *makeMenuItem(lv_obj_t *parent, const char *text, lv_event_cb_t cb, void *user_data,
-                       int y_offset, bool enabled)
+                       int y_offset, bool enabled, int height)
 {
     lv_obj_t *btn = lv_btn_create(parent);
-    lv_obj_set_size(btn, 300, 62);
+    lv_obj_set_size(btn, 300, height);
     lv_obj_align(btn, LV_ALIGN_CENTER, 0, y_offset);
     lv_obj_set_style_radius(btn, 16, 0);
     lv_obj_set_style_bg_color(btn, CT_COLOR_PANEL, 0);

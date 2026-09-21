@@ -1,4 +1,5 @@
 #include "Display.h"
+#include "NetService.h"
 
 #include <Arduino.h>
 #include <esp_timer.h>
@@ -140,6 +141,7 @@ bool dimmed()
 void setGameActive(bool active)
 {
     s_game_active = active;
+    net::setLowLatency(active);     // ゲーム中は Wi-Fi の省電力も切る（通信を使わないゲームでも害はない）
     if (active) {
         noteActivity();
     }

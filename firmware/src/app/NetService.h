@@ -19,6 +19,9 @@ void begin();
 // 新しい天気を取得したら true を返し、out に格納する
 bool poll(Weather &out);
 bool wifiConnected();
+// ゲームの画面が開いている間は true にする（display::setGameActive が呼ぶ）。Wi-Fi の省電力を切って、
+// GAS とのやり取りの取りこぼしを減らす。どのタスクから呼んでもよい（実際の切り替えは poll() が行う）
+void setLowLatency(bool on);
 void debugScan();          // 開発用：周囲の Wi-Fi をスキャンしてログに出す
 bool timeSynced();
 
@@ -56,7 +59,9 @@ void reportEvent(const char *event, uint32_t taken, uint32_t left, uint32_t prev
 //
 // 依頼の本文（JSON）の上限。AI DUEL の state は直近 12 件の履歴を含めて実測 2.5KB ほど
 constexpr size_t kGasRequestMax = 3584;
-constexpr size_t kGasResultMax = 512;       // 応答の本文の上限（超えたら切る）
+// 応答の本文の上限（超えたら切る）。AI DUEL の返事は 200 バイト前後だが、
+// JEV REVERSI は合法手すべての確率が入るので、8×8 の広い局面で 500 バイトを超える
+constexpr size_t kGasResultMax = 768;
 
 struct GasResult {
     uint32_t req = 0;           // gasRequest に渡した依頼番号

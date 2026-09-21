@@ -32,17 +32,17 @@ constexpr Rect kPill[4] = {
 constexpr Rect kNoData{70, 170, 340, 60};
 
 // --- ゲームの表の配置 -------------------------------------------------------
-// 4 行（AI DUEL を足した）になったので、行の高さと間隔を詰めて
+// 5 行（リバーシを足した）になったので、見出しの行を上げ、行の高さと間隔を詰めて
 // 切り替えの丸ボタン（y=336）の上に注記まで収めた
 constexpr int16_t kGameRowX = 84;
 constexpr int16_t kGameRowW = 316;
-constexpr int16_t kGameRowH = 40;
-constexpr int16_t kGameRowTop = 126;
-constexpr int16_t kGameRowStep = 45;
-constexpr Rect kGameHeadToday{200, 98, 66, 26};
-constexpr Rect kGameHeadWeek{266, 98, 66, 26};
-constexpr Rect kGameHeadTotal{332, 98, 62, 26};
-constexpr Rect kGameNote{70, 304, 340, 26};
+constexpr int16_t kGameRowH = 36;
+constexpr int16_t kGameRowTop = 110;
+constexpr int16_t kGameRowStep = 40;
+constexpr Rect kGameHeadToday{200, 86, 66, 22};
+constexpr Rect kGameHeadWeek{266, 86, 66, 22};
+constexpr Rect kGameHeadTotal{332, 86, 62, 22};
+constexpr Rect kGameNote{70, 308, 340, 24};
 
 // --- 一覧の配置 -------------------------------------------------------------
 constexpr int kRowsPerPage = 5;
@@ -60,12 +60,13 @@ struct GameRow {
     cup::GameId id;
     const char *name;
 };
-// 並び順はゲーム一覧と同じ（ユーザー指定: AI DUEL → エスパー → 探偵 → 人狼）
+// 並び順はゲーム一覧と同じ（AI DUEL → エスパー → 探偵 → 人狼 → リバーシ）
 const GameRow kGameRows[] = {
     {cup::GameId::Duel, "AI DUEL"},
     {cup::GameId::Esper, "エスパー"},
     {cup::GameId::Detective, "事件簿"},
     {cup::GameId::Werewolf, "人狼会"},
+    {cup::GameId::Reversi, "リバーシ"},
 };
 constexpr int kGameRowCount = (int)(sizeof(kGameRows) / sizeof(kGameRows[0]));
 
