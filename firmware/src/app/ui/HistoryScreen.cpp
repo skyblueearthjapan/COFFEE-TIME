@@ -40,7 +40,8 @@ constexpr int16_t kGameRowStep = 52;
 constexpr Rect kGameHeadToday{200, 104, 66, 26};
 constexpr Rect kGameHeadWeek{266, 104, 66, 26};
 constexpr Rect kGameHeadTotal{332, 104, 62, 26};
-constexpr Rect kGameNote{70, 254, 340, 26};
+// ゲームが 3 行になったので、注記は 3 行目（y 244〜288）の下へ下げた
+constexpr Rect kGameNote{70, 296, 340, 26};
 
 // --- 一覧の配置 -------------------------------------------------------------
 constexpr int kRowsPerPage = 5;
@@ -53,7 +54,7 @@ constexpr Rect kPageNext{288, 306, 96, 42};
 
 const char *const kWeekdays[] = {"日", "月", "火", "水", "木", "金", "土"};
 
-// 表に出すゲーム。**実装済みのものだけ**（エスパー・DUEL は作ってから行を足す）
+// 表に出すゲーム。**実装済みのものだけ**（AI DUEL は作ってから行を足す）
 struct GameRow {
     cup::GameId id;
     const char *name;
@@ -61,6 +62,7 @@ struct GameRow {
 const GameRow kGameRows[] = {
     {cup::GameId::Werewolf, "人狼会"},
     {cup::GameId::Detective, "事件簿"},
+    {cup::GameId::Esper, "エスパー"},
 };
 constexpr int kGameRowCount = (int)(sizeof(kGameRows) / sizeof(kGameRows[0]));
 

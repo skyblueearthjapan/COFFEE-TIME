@@ -1,0 +1,46 @@
+{
+  "catalog_version": "ai-esper-ja-1.0.0",
+  "source_sha256": "6c0024e43cf76ae82d711c4ee42867c8b482f043294dff768ac062533e6650f3",
+  "candidate_count": 128,
+  "question_count": 146,
+  "matrix_cells": 18688,
+  "signatures_unique": 128,
+  "collision_pairs": [],
+  "test_scope": "Python reference only. Jev / firmware / display / power are NOT tested.",
+  "modes": {
+    "easy": {
+      "candidates": 8,
+      "max_questions": 5,
+      "deterministic_games": 8,
+      "random_safe_games": 240,
+      "canonical_success_rate": 1.0,
+      "min_questions": 2,
+      "max_questions_observed": 4,
+      "mean_questions": 3.125,
+      "greedy_worst_depth": 4
+    },
+    "normal": {
+      "candidates": 32,
+      "max_questions": 7,
+      "deterministic_games": 32,
+      "random_safe_games": 960,
+      "canonical_success_rate": 1.0,
+      "min_questions": 4,
+      "max_questions_observed": 7,
+      "mean_questions": 5.156,
+      "greedy_worst_depth": 7
+    },
+    "hard": {
+      "candidates": 128,
+      "max_questions": 10,
+      "deterministic_games": 128,
+      "random_safe_games": 3840,
+      "canonical_success_rate": 1.0,
+      "min_questions": 5,
+      "max_questions_observed": 10,
+      "mean_questions": 7.25,
+      "greedy_worst_depth": 10
+    }
+  },
+  "reference_game_count": 5208
+}

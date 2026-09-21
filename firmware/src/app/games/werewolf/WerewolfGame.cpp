@@ -930,7 +930,8 @@ void buildBrief()
                   str("common.understood"), Act::BriefDone, page + 1 >= total);
 }
 
-// 通常ルールのお話（6 ページ）。作りはワンナイトと同じで、文言だけ差し替える
+// 通常ルールのお話。ページ数は content::kStoryStdCount に従う（JSON を足せば増える）。
+// 作りも文の運びもワンナイトと同じで、多日制で変わるところだけ差し替えてある
 void buildStdStory(size_t page)
 {
     const content::StoryPage &entry = content::kStoryStd[page];
@@ -940,7 +941,7 @@ void buildStdStory(size_t page)
     iconLabel(kStoryIcon, &ct_font_icons_36, CT_COLOR_ACCENT_HI, entry.icon);
 }
 
-// 通常ルールの約束（4 ページ）。2 ページ目にこの人数の配役を差し込む
+// 通常ルールの約束。ページ数は content::kBriefStdCount に従う。2 ページ目に配役を差し込む
 void buildStdBrief()
 {
     const size_t total = content::kBriefStdCount;
@@ -2088,7 +2089,7 @@ void adoptPhaseView()
 // ---------------------------------------------------------------------------
 // 秘密の表示・消去
 // ---------------------------------------------------------------------------
-// --- 通常ルールの秘密（役職・今夜やること・仲間と仲間の選択・占い結果・投票先）------
+// --- 通常ルールの秘密（役職・今夜やること・仲間の名前・占い結果・襲撃・投票先）------
 // 呼ばれるのは showSecret() の中だけ。body には秘密が入るので、呼び出し側が必ず消す
 void fillStdSecret(char *body, size_t cap, const char *&role_text, const char *&role_mark,
                    bool &ok)
@@ -2114,17 +2115,10 @@ void fillStdSecret(char *body, size_t cap, const char *&role_text, const char *&
             std::snprintf(body, cap, "%s", str("std.brief.villager"));
         } else if (b.role == ws::Role::Seer) {
             std::snprintf(body, cap, "%s", str("std.brief.seer"));
-        } else if (b.partner_pick != ws::NONE && b.partner_pick_by != ws::NONE &&
-                   !b.first_night) {
-            // 先に操作した仲間の選択を見せる（最終的な襲撃先は後に選んだほうになる）。
-            // 文言側が「仲間の{name}さんは」なので、{name} は敬称なしの名前を入れる
-            std::snprintf(name, sizeof(name), "%s", seatName(b.partner_pick_by));
-            stdSeatLabel(label, sizeof(label), b.partner_pick);
-            const Subst subs[] = {{"name", name}, {"target_label", label}};
-            fillText(body, cap, str("std.brief.wolf.pick"), subs, 2);
         } else {
-            std::snprintf(body, cap, "%s",
-                          str(b.first_night ? "std.brief.wolf.first" : "std.brief.wolf"));
+            // この画面は初日の夜にしか出ない（コアが 2 日目以降は NightTarget へ進む）。
+            // 仲間の名前を知らせるのもここだけ。仲間が何を選んだかは誰にも見せない
+            std::snprintf(body, cap, "%s", str("std.brief.wolf.first"));
             // 仲間は最大 2 人。名前が長いので 1 行に 1 人だけ足す
             for (uint8_t a = 0; a < pv.player_count; ++a) {
                 if ((b.partners & ws::bit(a)) == 0) {
@@ -2144,6 +2138,8 @@ void fillStdSecret(char *body, size_t cap, const char *&role_text, const char *&
         if (s_std.readNightResult(pv.actor, o) != ws::Err::Ok) {
             return;
         }
+        // 2 日目以降は「今夜のあなた」をはさまないので、役職のおさらいもここで見せる
+        // （文言の 1 行目が「あなたは〇〇。」）。押している間だけ出る秘密であることは同じ
         if (o.role == ws::Role::Seer && o.finding != ws::Finding::None) {
             stdSeatLabel(label, sizeof(label), o.target);
             const Subst subs[] = {{"target_label", label}};
@@ -2154,6 +2150,8 @@ void fillStdSecret(char *body, size_t cap, const char *&role_text, const char *&
         } else if (o.role == ws::Role::Wolf) {
             std::snprintf(body, cap, "%s",
                           str(o.first_night ? "std.night.result.first" : "std.night.result.attack"));
+        } else if (o.role == ws::Role::Villager) {
+            std::snprintf(body, cap, "%s", str("std.night.result.villager"));
         } else {
             std::snprintf(body, cap, "%s", str("std.night.result.none"));
         }
@@ -2778,7 +2776,7 @@ void actionCb(lv_event_t *e)
     case Act::StdTargetOk:
         if (s_std.chooseNight(s_std.stamp(), s_std.publicView().actor, s_pending_target) !=
             ws::Err::Ok) {
-            // 人狼が仲間を選んだときもここに来る（仲間の名前は直前の秘密画面に出ている）。
+            // 人狼が仲間を選んだときもここに来る（仲間の名前は初日の夜に伝えてある）。
             // 場面は変わらないので、選び直せるように自分で対象の画面へ戻す
             ui::showToast(s_screen, str("error.target"));
             setView(View::StdNightTarget);

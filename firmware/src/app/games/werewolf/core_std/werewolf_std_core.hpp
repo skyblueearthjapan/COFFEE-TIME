@@ -183,9 +183,9 @@ enum class Winner : uint8_t { None, Village, Wolves };
 enum class Phase : uint8_t {
     Idle,
     NightHandoff,       // 手渡し（生きている人だけを席順に回す）
-    NightBrief,         // 秘密: 今夜のあなた（役職・今夜やること・仲間と仲間の選択）
+    NightBrief,         // 秘密: 今夜のあなた（役職・今夜やること・仲間の名前）★初日の夜だけ
     NightTarget,        // 夜の行動: 1 人選ぼう（全員同じ画面）
-    NightResult,        // 秘密: 夜の結果
+    NightResult,        // 秘密: 夜の結果（役職のおさらいもここに出す）
     NightDone,          // 隠しました → 次の人へ
     MorningReady,       // 公開の前の「端末をテーブルに置こう」
     MorningAnnounce,    // 朝の発表（昨夜の犠牲者）
@@ -231,16 +231,19 @@ struct PublicView {
     Stamp stamp{1, 0};
 };
 
-// 秘密。手番の本人だけが、その場面でだけ読める
+// 秘密。手番の本人だけが、その場面でだけ読める。
+// 2026-09-21（ユーザーの声「役職は変わらないのに毎晩出るのは無駄」）以降、
+// この案内は**初日の夜だけ**。2 日目以降の夜は手渡しのあとすぐ対象選択に進み、
+// 役職のおさらいは夜の結果（NightOutcome）の中で見せる
 struct Brief {
     Role role = Role::Empty;
-    uint8_t day = 0;
-    bool first_night = false;      // 初日は襲撃なし
+    uint8_t day = 0;               // 常に 1（初日の夜にしか読めない）
+    bool first_night = false;      // 初日は襲撃なし。常に true
     Mask partners = 0;             // 人狼のときだけ: 自分以外の人狼の席
-    int8_t partner_pick = NONE;    // 今夜すでに選んだ仲間の襲撃先
-    int8_t partner_pick_by = NONE; // その仲間の席
 };
 
+// 夜の結果。2 日目以降は「今夜のあなた」をはさまないので、役職のおさらい（role）は
+// ここに載せて、手番の本人にだけ見せる
 struct NightOutcome {
     Role role = Role::Empty;
     bool first_night = false;
@@ -367,30 +370,30 @@ public:
     // -----------------------------------------------------------------------
     // 夜
     // -----------------------------------------------------------------------
+    // 初日の夜だけ「今夜のあなた」をはさむ。2 日目以降は手渡しのあとすぐ対象選択へ。
+    // どの役職も同じ手順を踏むことは変わらない（画面の数は夜ごとに全員そろっている）
     Err receiveNight(Stamp s, uint8_t actor) {
         Err e = check(s, Phase::NightHandoff, actor); if (e != Err::Ok) return e;
         viewed_brief_ = viewed_result_ = false;
-        setPhase(Phase::NightBrief);
+        setPhase(day_ == 1 ? Phase::NightBrief : Phase::NightTarget);
         return Err::Ok;
     }
 
-    // SecretGate が新しい押下を認めたときだけ描画側が呼ぶ。役職の一覧を返す口は作らない
+    // SecretGate が新しい押下を認めたときだけ描画側が呼ぶ。役職の一覧を返す口は作らない。
+    // 読めるのは初日の夜だけ（2 日目以降は NightBrief にならないので Err::Phase）
     Err readBrief(uint8_t actor, Brief &out) {
         if (paused_) return Err::Paused;
-        if (phase_ != Phase::NightBrief) return Err::Phase;
+        if (phase_ != Phase::NightBrief || day_ != 1) return Err::Phase;
         if (actor != actor_ || !aliveSeat(actor)) return Err::Seat;
         out = Brief{};
         out.role = roles_[actor];
         out.day = day_;
-        out.first_night = (day_ == 1);
+        out.first_night = true;
         if (out.role == Role::Wolf) {
-            // 仲間は生死を問わず知っている（初日に顔を合わせているため）
+            // 仲間の名前を知るのは初日の夜だけ（以後は覚えておいてもらう）
             for (uint8_t a = 0; a < n_; ++a) {
                 if (a != actor && roles_[a] == Role::Wolf) out.partners |= bit(a);
             }
-            // 席順で先に操作した生存中の仲間の選択を見せる（最終的な襲撃先は後の人の選択）
-            out.partner_pick = wolf_pick_;
-            out.partner_pick_by = wolf_pick_by_;
         }
         viewed_brief_ = true;
         return Err::Ok;
@@ -411,9 +414,9 @@ public:
         if (roles_[actor] == Role::Wolf && roles_[t] == Role::Wolf) return Err::Target;
         night_target_[actor] = static_cast<int8_t>(t);
         if (roles_[actor] == Role::Wolf) {
-            // 後に操作した生存中の人狼の選択で上書きする（= 最終的な襲撃先）
+            // 後に操作した生存中の人狼の選択で上書きする（= 最終的な襲撃先）。
+            // 誰が選んだかは誰にも見せないので持たない
             wolf_pick_ = static_cast<int8_t>(t);
-            wolf_pick_by_ = static_cast<int8_t>(actor);
         }
         viewed_result_ = false;
         setPhase(Phase::NightResult);
@@ -611,7 +614,7 @@ public:
         voted_count_ = 0;
         eligible_ = alive_;
         last_victim_ = NONE;
-        wolf_pick_ = wolf_pick_by_ = NONE;
+        wolf_pick_ = NONE;
         for (auto &t : night_target_) t = NONE;
         actor_ = firstLiving();
         setPhase(Phase::NightHandoff);
@@ -702,7 +705,7 @@ private:
     std::array<Votes, 2> votes_{};
     std::array<DayLog, MAX_DAYS> log_{};
     int8_t pending_vote_ = NONE;
-    int8_t wolf_pick_ = NONE, wolf_pick_by_ = NONE;
+    int8_t wolf_pick_ = NONE;   // 今夜の襲撃先。誰の選択かは残さない
 
     // --- 公開・進行 ---
     Phase phase_ = Phase::Idle;
@@ -843,7 +846,7 @@ private:
             d.seer_count = 0; d.victim = NONE; d.executed = NONE; d.had_runoff = false;
         }
         pending_vote_ = pending_execution_ = NONE;
-        wolf_pick_ = wolf_pick_by_ = NONE;
+        wolf_pick_ = NONE;
         last_victim_ = last_executed_ = NONE;
         viewed_brief_ = viewed_result_ = viewed_vote_ = false;
     }

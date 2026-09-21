@@ -23,6 +23,7 @@
 #include "ui/SettingsScreen.h"
 #include "ui/TodayScreen.h"
 #include "games/detective/DetectiveGame.h"
+#include "games/esper/EsperGame.h"
 #include "games/werewolf/WerewolfGame.h"
 #include "games/werewolf/WerewolfPort.h"
 #include "games/werewolf/WerewolfUI.h"

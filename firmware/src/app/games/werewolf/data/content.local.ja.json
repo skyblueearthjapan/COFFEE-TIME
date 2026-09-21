@@ -1,7 +1,7 @@
 {
   "schema_version": "2.0.0-local.2",
   "base": "content.ja.json",
-  "note": "設計書の正本（content.ja.json / rules.json / layout.json）は無改変のまま残し、この重ね書きファイルで席のキャラクター・世界観のお話・追加の文言を足す。strings は同じ鍵で正本を上書きする（content::findString が先にこちらを見る）。icon は Material Icons Round の符号位置（16進）で、生成時に UTF-8 のバイト列へ変換される。日本語のフォント一覧には入らない。2026-09-21: 通常ルール（多日制）の文言・お話・約束を追加し、両モード共通の見出しを「いま何をする場面か」が分かる文に差し替えた。",
+  "note": "設計書の正本（content.ja.json / rules.json / layout.json）は無改変のまま残し、この重ね書きファイルで席のキャラクター・世界観のお話・追加の文言を足す。strings は同じ鍵で正本を上書きする（content::findString が先にこちらを見る）。icon は Material Icons Round の符号位置（16進）で、生成時に UTF-8 のバイト列へ変換される。日本語のフォント一覧には入らない。2026-09-21: 通常ルール（多日制）の文言・お話・約束を追加し、両モード共通の見出しを「いま何をする場面か」が分かる文に差し替えた。2026-09-21（遊んだあとの指摘）: 役職の案内は初日の夜だけにし、役職のおさらいを夜の結果へ移した。人狼の「仲間の選択」は誰にも見せないので文言ごと削除した。",
   "text_limits": {
     "fullwidth_cells_per_line": 13,
     "secret_body_lines": 4,
@@ -89,42 +89,49 @@
       "title": "閉店後の人狼会",
       "icon": "ef5e",
       "icon_name": "nightlight_round",
-      "body": "閉店後の喫茶「余白」。\n常連の中に、人に化けた\n「人狼」がいるらしい。"
+      "body": "閉店後の喫茶「余白」。\n常連たちの中に、\n人に化けた「人狼」が\nまぎれているらしい。"
     },
     {
       "id": "T2",
-      "title": "通常ルールです",
+      "title": "閉店後の人狼会",
       "icon": "e91d",
       "icon_name": "pets",
-      "body": "このモードは、決着まで\n何日も続きます。\n夜ごとに、ひとり\n消えていきます。"
+      "body": "人狼は、人のふりをして\nうそをつく。そして夜ごとに\n常連をひとりずつ\nおそっていく。"
     },
     {
       "id": "T3",
-      "title": "1日の流れ",
-      "icon": "e430",
-      "icon_name": "wb_sunny",
-      "body": "朝に犠牲者を知り、\n昼に話し合い、\n投票で1人を追放。\nこれを毎日くり返す。"
+      "title": "閉店後の人狼会",
+      "icon": "f233",
+      "icon_name": "groups",
+      "body": "村人は、話し合いと投票で\n人狼を見つけ出す。\n毎日ひとりを追放して、\n人狼を追いつめよう。"
     },
     {
       "id": "T4",
-      "title": "占い師のこと",
+      "title": "閉店後の人狼会",
       "icon": "e8f4",
       "icon_name": "visibility",
-      "body": "占い師は毎晩、\n生きている人をひとり\n占えます。"
+      "body": "占い師は、毎晩ひとりだけ\n正体を占える。\nその結果が\n推理の手がかりになる。"
     },
     {
       "id": "T5",
-      "title": "勝ち負け",
-      "icon": "f233",
-      "icon_name": "groups",
-      "body": "人狼を全員追放できたら\n村の勝ち。\n人狼の数が村と\n同じになったら人狼の勝ち。"
+      "title": "閉店後の人狼会",
+      "icon": "e430",
+      "icon_name": "wb_sunny",
+      "body": "夜におそわれた人と、\n投票で追放された人は\nゲームから抜ける。\n役職は最後まで秘密。"
     },
     {
       "id": "T6",
-      "title": "抜けた人のこと",
-      "icon": "e541",
-      "icon_name": "local_cafe",
-      "body": "抜けた人の役職は\n最後まで伏せたまま。\n終わったら全部\n公開します。"
+      "title": "閉店後の人狼会",
+      "icon": "e838",
+      "icon_name": "star",
+      "body": "人狼をすべて追放すれば\n村の勝ち。人狼の数が\n村の人数に並んだら\n人狼の勝ち。"
+    },
+    {
+      "id": "T7",
+      "title": "通常ルールです",
+      "icon": "e8b5",
+      "icon_name": "schedule",
+      "body": "このモードは、\n決着がつくまで\n何日も続きます。"
     }
   ],
   "brief_std": [
@@ -145,6 +152,11 @@
     },
     {
       "id": "B4",
+      "title": "夜の進み方",
+      "body": "役職を見せるのは\n最初の夜だけ。\n襲撃は2日目の夜から。\n夜は相手選びだけです。"
+    },
+    {
+      "id": "B5",
       "title": "時間のこと",
       "body": "話し合いは人数で決まる\n時間まで。+1分の延長は\n1日1回だけ。\n1局120分で終わります。"
     }
@@ -192,10 +204,8 @@
     "std.brief.next": "覚えました",
     "std.brief.villager": "次の画面では、誰かを\n選ぶふりをするだけ。\n何も起きません。",
     "std.brief.seer": "次の画面で選んだ人が\n人狼かどうか分かります。\n生きている人を\nひとり選ぼう。",
-    "std.brief.wolf.first": "初日は襲撃なし。\n次の画面は選ぶふりだけ。",
-    "std.brief.wolf": "次の画面で、今夜\nおそう相手を選ぼう。",
+    "std.brief.wolf.first": "初日は襲撃なし。選ぶ\nふりだけ。次の夜から\n本当におそいます。",
     "std.brief.wolf.mate": "仲間：{name}さん",
-    "std.brief.wolf.pick": "仲間の{name}さんは\n{target_label}を選んだよ。\nあとに選んだほうが\n今夜の襲撃先になる。",
 
     "std.night.target.title": "夜の行動：1人選ぼう",
     "std.night.target.note": "効くのは占い師と人狼",
@@ -204,10 +214,11 @@
     "std.night.result.title": "夜の結果",
     "std.night.result.hold": "押して確認",
     "std.night.result.next": "確認しました",
-    "std.night.result.wolf": "{target_label}は\n人狼です。\n覚えておこう。",
-    "std.night.result.not_wolf": "{target_label}は\n人狼ではありません。\n覚えておこう。",
-    "std.night.result.attack": "今夜おそう相手を\n決めました。\n朝に分かります。",
-    "std.night.result.first": "初日は襲撃なし。\n何も起きません。",
+    "std.night.result.wolf": "あなたは占い師。\n{target_label}は\n人狼です。\n覚えておこう。",
+    "std.night.result.not_wolf": "あなたは占い師。\n{target_label}は\n人狼ではありません。\n覚えておこう。",
+    "std.night.result.attack": "あなたは人狼。\n今夜おそう相手を\n決めました。\n朝に分かります。",
+    "std.night.result.first": "あなたは人狼。\n初日は襲撃なし。\n何も起きません。",
+    "std.night.result.villager": "あなたは村人。\n今夜は何も\n起きませんでした。",
     "std.night.result.none": "あなたに分かることは\nありません。",
     "std.night.done.last": "朝の発表へ",
 

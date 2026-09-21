@@ -1,0 +1,3410 @@
+{
+  "schema_version": "1.0",
+  "catalog_version": "ai-esper-ja-1.0.0",
+  "matrix_convention": "scope内はyes_idsのみY、それ以外N。scope外U。Uの残候補がある質問は出題不可。",
+  "modes": {
+    "easy": {
+      "label_ja": "EASY",
+      "item_ids": [
+        "D01",
+        "D04",
+        "D15",
+        "D20",
+        "D23",
+        "D25",
+        "D30",
+        "D31"
+      ],
+      "max_questions": 5,
+      "max_skips": 2
+    },
+    "normal": {
+      "label_ja": "NORMAL",
+      "item_ids": [
+        "D01",
+        "D02",
+        "D03",
+        "D04",
+        "D05",
+        "D06",
+        "D07",
+        "D08",
+        "D09",
+        "D10",
+        "D11",
+        "D12",
+        "D13",
+        "D14",
+        "D15",
+        "D16",
+        "D17",
+        "D18",
+        "D19",
+        "D20",
+        "D21",
+        "D22",
+        "D23",
+        "D24",
+        "D25",
+        "D26",
+        "D27",
+        "D28",
+        "D29",
+        "D30",
+        "D31",
+        "D32"
+      ],
+      "max_questions": 7,
+      "max_skips": 2
+    },
+    "hard": {
+      "label_ja": "HARD",
+      "item_ids": [
+        "D01",
+        "D02",
+        "D03",
+        "D04",
+        "D05",
+        "D06",
+        "D07",
+        "D08",
+        "D09",
+        "D10",
+        "D11",
+        "D12",
+        "D13",
+        "D14",
+        "D15",
+        "D16",
+        "D17",
+        "D18",
+        "D19",
+        "D20",
+        "D21",
+        "D22",
+        "D23",
+        "D24",
+        "D25",
+        "D26",
+        "D27",
+        "D28",
+        "D29",
+        "D30",
+        "D31",
+        "D32",
+        "F01",
+        "F02",
+        "F03",
+        "F04",
+        "F05",
+        "F06",
+        "F07",
+        "F08",
+        "F09",
+        "F10",
+        "F11",
+        "F12",
+        "F13",
+        "F14",
+        "F15",
+        "F16",
+        "F17",
+        "F18",
+        "F19",
+        "F20",
+        "F21",
+        "F22",
+        "F23",
+        "F24",
+        "F25",
+        "F26",
+        "F27",
+        "F28",
+        "F29",
+        "F30",
+        "F31",
+        "F32",
+        "O01",
+        "O02",
+        "O03",
+        "O04",
+        "O05",
+        "O06",
+        "O07",
+        "O08",
+        "O09",
+        "O10",
+        "O11",
+        "O12",
+        "O13",
+        "O14",
+        "O15",
+        "O16",
+        "O17",
+        "O18",
+        "O19",
+        "O20",
+        "O21",
+        "O22",
+        "O23",
+        "O24",
+        "O25",
+        "O26",
+        "O27",
+        "O28",
+        "O29",
+        "O30",
+        "O31",
+        "O32",
+        "T01",
+        "T02",
+        "T03",
+        "T04",
+        "T05",
+        "T06",
+        "T07",
+        "T08",
+        "T09",
+        "T10",
+        "T11",
+        "T12",
+        "T13",
+        "T14",
+        "T15",
+        "T16",
+        "T17",
+        "T18",
+        "T19",
+        "T20",
+        "T21",
+        "T22",
+        "T23",
+        "T24",
+        "T25",
+        "T26",
+        "T27",
+        "T28",
+        "T29",
+        "T30",
+        "T31",
+        "T32"
+      ],
+      "max_questions": 10,
+      "max_skips": 2
+    }
+  },
+  "items": [
+    {
+      "id": "D01",
+      "group": "D",
+      "name_ja": "ホットブラック",
+      "name_en": "Hot black coffee",
+      "definition_ja": "砂糖・ミルクなし。温かい通常量の黒いコーヒー。エスプレッソではない。"
+    },
+    {
+      "id": "D02",
+      "group": "D",
+      "name_ja": "アイスブラック",
+      "name_en": "Iced black coffee",
+      "definition_ja": "砂糖・ミルクなし。氷入りの冷たい黒いコーヒー。"
+    },
+    {
+      "id": "D03",
+      "group": "D",
+      "name_ja": "ホットカフェラテ",
+      "name_en": "Hot cafe latte",
+      "definition_ja": "コーヒーと牛乳。無糖で温かい。厚い泡やチョコはない。"
+    },
+    {
+      "id": "D04",
+      "group": "D",
+      "name_ja": "アイスカフェラテ",
+      "name_en": "Iced cafe latte",
+      "definition_ja": "コーヒーと牛乳。無糖で冷たい。チョコはない。"
+    },
+    {
+      "id": "D05",
+      "group": "D",
+      "name_ja": "エスプレッソ",
+      "name_en": "Espresso",
+      "definition_ja": "砂糖・ミルクなし。温かい、非常に少量の濃いコーヒー。"
+    },
+    {
+      "id": "D06",
+      "group": "D",
+      "name_ja": "カプチーノ",
+      "name_en": "Cappuccino",
+      "definition_ja": "温かい無糖のコーヒーと牛乳。表面に厚いミルクの泡。"
+    },
+    {
+      "id": "D07",
+      "group": "D",
+      "name_ja": "ホットカフェモカ",
+      "name_en": "Hot cafe mocha",
+      "definition_ja": "温かいコーヒー・牛乳・チョコの甘い飲み物。"
+    },
+    {
+      "id": "D08",
+      "group": "D",
+      "name_ja": "アイスカフェモカ",
+      "name_en": "Iced cafe mocha",
+      "definition_ja": "冷たいコーヒー・牛乳・チョコの甘い飲み物。"
+    },
+    {
+      "id": "D09",
+      "group": "D",
+      "name_ja": "ホットストレート紅茶",
+      "name_en": "Hot plain black tea",
+      "definition_ja": "温かい紅茶。砂糖・牛乳・レモンなし。"
+    },
+    {
+      "id": "D10",
+      "group": "D",
+      "name_ja": "アイスストレート紅茶",
+      "name_en": "Iced plain black tea",
+      "definition_ja": "冷たい紅茶。砂糖・牛乳・レモンなし。"
+    },
+    {
+      "id": "D11",
+      "group": "D",
+      "name_ja": "ホットミルクティー",
+      "name_en": "Hot sweet milk tea",
+      "definition_ja": "温かい紅茶と牛乳。砂糖入り。レモンなし。"
+    },
+    {
+      "id": "D12",
+      "group": "D",
+      "name_ja": "アイスミルクティー",
+      "name_en": "Iced sweet milk tea",
+      "definition_ja": "冷たい紅茶と牛乳。砂糖入り。レモンなし。"
+    },
+    {
+      "id": "D13",
+      "group": "D",
+      "name_ja": "ホットレモンティー",
+      "name_en": "Hot sweet lemon tea",
+      "definition_ja": "温かい紅茶とレモン。砂糖入り。牛乳なし。"
+    },
+    {
+      "id": "D14",
+      "group": "D",
+      "name_ja": "アイスレモンティー",
+      "name_en": "Iced sweet lemon tea",
+      "definition_ja": "冷たい紅茶とレモン。砂糖入り。牛乳なし。"
+    },
+    {
+      "id": "D15",
+      "group": "D",
+      "name_ja": "ホット緑茶",
+      "name_en": "Hot green tea",
+      "definition_ja": "温かい無糖の薄緑色の緑茶。牛乳なし。茶葉を湯で出したもの。"
+    },
+    {
+      "id": "D16",
+      "group": "D",
+      "name_ja": "アイス緑茶",
+      "name_en": "Iced green tea",
+      "definition_ja": "冷たい無糖の薄緑色の緑茶。牛乳なし。茶葉を水や湯で出したもの。"
+    },
+    {
+      "id": "D17",
+      "group": "D",
+      "name_ja": "ホットほうじ茶",
+      "name_en": "Hot roasted green tea",
+      "definition_ja": "茶色い、温かい無糖のほうじ茶。焙煎した茶葉。牛乳なし。"
+    },
+    {
+      "id": "D18",
+      "group": "D",
+      "name_ja": "冷たい麦茶",
+      "name_en": "Cold barley tea",
+      "definition_ja": "冷たい無糖の茶色い麦茶。原料は麦で、茶葉ではない。"
+    },
+    {
+      "id": "D19",
+      "group": "D",
+      "name_ja": "ホット抹茶ラテ",
+      "name_en": "Hot sweet matcha latte",
+      "definition_ja": "温かい抹茶と牛乳。緑色で甘い。粉末の抹茶を使用。"
+    },
+    {
+      "id": "D20",
+      "group": "D",
+      "name_ja": "冷たい水",
+      "name_en": "Cold still water",
+      "definition_ja": "無色透明の冷たい水。炭酸・味・砂糖なし。"
+    },
+    {
+      "id": "D21",
+      "group": "D",
+      "name_ja": "白湯",
+      "name_en": "Hot plain water",
+      "definition_ja": "無色透明の温かい湯。炭酸・味・砂糖なし。"
+    },
+    {
+      "id": "D22",
+      "group": "D",
+      "name_ja": "無糖炭酸水",
+      "name_en": "Plain sparkling water",
+      "definition_ja": "無色透明で冷たい炭酸水。甘さやレモンの味なし。"
+    },
+    {
+      "id": "D23",
+      "group": "D",
+      "name_ja": "コーラ",
+      "name_en": "Cola",
+      "definition_ja": "黒っぽい冷たい炭酸飲料。甘い。無糖版ではない。"
+    },
+    {
+      "id": "D24",
+      "group": "D",
+      "name_ja": "レモンソーダ",
+      "name_en": "Clear lemon soda",
+      "definition_ja": "無色透明で冷たい、甘いレモン味の炭酸飲料。紅茶ではない。"
+    },
+    {
+      "id": "D25",
+      "group": "D",
+      "name_ja": "オレンジジュース",
+      "name_en": "Orange juice",
+      "definition_ja": "冷たいオレンジの果汁。オレンジ色。牛乳・炭酸なし。"
+    },
+    {
+      "id": "D26",
+      "group": "D",
+      "name_ja": "りんごジュース",
+      "name_en": "Filtered apple juice",
+      "definition_ja": "冷たい、透明感のある薄い黄褐色のりんご果汁。牛乳・炭酸なし。"
+    },
+    {
+      "id": "D27",
+      "group": "D",
+      "name_ja": "ぶどうジュース",
+      "name_en": "Purple grape juice",
+      "definition_ja": "冷たい紫色のぶどう果汁。牛乳・炭酸なし。"
+    },
+    {
+      "id": "D28",
+      "group": "D",
+      "name_ja": "トマトジュース",
+      "name_en": "Tomato juice",
+      "definition_ja": "冷たい赤色のトマト果汁。砂糖・牛乳・炭酸なし。"
+    },
+    {
+      "id": "D29",
+      "group": "D",
+      "name_ja": "ホットミルク",
+      "name_en": "Hot plain milk",
+      "definition_ja": "温かい白い牛乳のみ。砂糖・コーヒー・茶・チョコなし。"
+    },
+    {
+      "id": "D30",
+      "group": "D",
+      "name_ja": "冷たい牛乳",
+      "name_en": "Cold plain milk",
+      "definition_ja": "冷たい白い牛乳のみ。砂糖・コーヒー・茶・チョコなし。"
+    },
+    {
+      "id": "D31",
+      "group": "D",
+      "name_ja": "ホットココア",
+      "name_en": "Hot sweet cocoa",
+      "definition_ja": "温かい、牛乳とココアの甘い飲み物。コーヒーなし。"
+    },
+    {
+      "id": "D32",
+      "group": "D",
+      "name_ja": "飲むヨーグルト",
+      "name_en": "Sweet yogurt drink",
+      "definition_ja": "冷たい白い、甘酸っぱい乳製品の飲み物。発酵させたもの。"
+    },
+    {
+      "id": "F01",
+      "group": "F",
+      "name_ja": "トースト",
+      "name_en": "Plain toast",
+      "definition_ja": "焼いた四角い食パン1枚。具・ジャム・クリームなし。"
+    },
+    {
+      "id": "F02",
+      "group": "F",
+      "name_ja": "クロワッサン",
+      "name_en": "Plain croissant",
+      "definition_ja": "三日月形で何層もの生地があるパン。中に具はない。"
+    },
+    {
+      "id": "F03",
+      "group": "F",
+      "name_ja": "あんパン",
+      "name_en": "Red bean bun",
+      "definition_ja": "丸いパンの中に甘いあんこ。揚げていない。"
+    },
+    {
+      "id": "F04",
+      "group": "F",
+      "name_ja": "カレーパン",
+      "name_en": "Fried curry bun",
+      "definition_ja": "パンの中にカレー。表面はパン粉で、油で揚げている。"
+    },
+    {
+      "id": "F05",
+      "group": "F",
+      "name_ja": "ハムチーズサンド",
+      "name_en": "Ham and cheese sandwich",
+      "definition_ja": "食パンでハムとチーズを挟んだ三角形のサンドイッチ。"
+    },
+    {
+      "id": "F06",
+      "group": "F",
+      "name_ja": "ベーグル",
+      "name_en": "Plain bagel",
+      "definition_ja": "中央に穴がある輪形のパン。甘い砂糖衣なし。揚げていない。"
+    },
+    {
+      "id": "F07",
+      "group": "F",
+      "name_ja": "リングドーナツ",
+      "name_en": "Sugar ring doughnut",
+      "definition_ja": "中央に穴がある甘い菓子。油で揚げ、砂糖をまぶしている。"
+    },
+    {
+      "id": "F08",
+      "group": "F",
+      "name_ja": "パンケーキ",
+      "name_en": "Plain pancake",
+      "definition_ja": "フライパンで焼く平たい円形の甘い生地。格子模様なし。"
+    },
+    {
+      "id": "F09",
+      "group": "F",
+      "name_ja": "ワッフル",
+      "name_en": "Plain waffle",
+      "definition_ja": "表面に格子状の凹凸がある、焼いた甘い生地。"
+    },
+    {
+      "id": "F10",
+      "group": "F",
+      "name_ja": "バタークッキー",
+      "name_en": "Plain butter cookie",
+      "definition_ja": "小さな円形の、焼いた硬めの甘い菓子。チョコの粒なし。"
+    },
+    {
+      "id": "F11",
+      "group": "F",
+      "name_ja": "チョコチップクッキー",
+      "name_en": "Chocolate chip cookie",
+      "definition_ja": "焼いた硬めの甘い菓子。小さなチョコの粒がある。"
+    },
+    {
+      "id": "F12",
+      "group": "F",
+      "name_ja": "板チョコ",
+      "name_en": "Chocolate bar",
+      "definition_ja": "茶色い四角い板状のチョコ。パンやスポンジ生地なし。"
+    },
+    {
+      "id": "F13",
+      "group": "F",
+      "name_ja": "チーズケーキ",
+      "name_en": "Cheesecake slice",
+      "definition_ja": "チーズ味の、三角形に切ったケーキ。果物やチョコなし。"
+    },
+    {
+      "id": "F14",
+      "group": "F",
+      "name_ja": "いちごショートケーキ",
+      "name_en": "Strawberry shortcake slice",
+      "definition_ja": "白いクリーム・スポンジ・赤いいちごがある三角形のケーキ。"
+    },
+    {
+      "id": "F15",
+      "group": "F",
+      "name_ja": "チョコケーキ",
+      "name_en": "Chocolate sponge cake slice",
+      "definition_ja": "茶色いスポンジとチョコクリームの三角形のケーキ。"
+    },
+    {
+      "id": "F16",
+      "group": "F",
+      "name_ja": "バニラアイス",
+      "name_en": "Vanilla ice cream",
+      "definition_ja": "白い、凍った甘い乳製品。器入り。コーンは含めない。"
+    },
+    {
+      "id": "F17",
+      "group": "F",
+      "name_ja": "レモンシャーベット",
+      "name_en": "Lemon sorbet",
+      "definition_ja": "乳製品なしの、凍った甘酸っぱいレモン味の菓子。器入り。"
+    },
+    {
+      "id": "F18",
+      "group": "F",
+      "name_ja": "カスタードプリン",
+      "name_en": "Custard pudding",
+      "definition_ja": "黄色い卵と牛乳のやわらかい甘い菓子。底にカラメル。凍っていない。"
+    },
+    {
+      "id": "F19",
+      "group": "F",
+      "name_ja": "いちごゼリー",
+      "name_en": "Strawberry jelly",
+      "definition_ja": "赤く透明感のある、ぷるぷるした甘いいちご味の菓子。乳製品なし。"
+    },
+    {
+      "id": "F20",
+      "group": "F",
+      "name_ja": "プレーンヨーグルト",
+      "name_en": "Plain spoonable yogurt",
+      "definition_ja": "白い発酵乳。無糖で、スプーンで食べる。凍っていない。"
+    },
+    {
+      "id": "F21",
+      "group": "F",
+      "name_ja": "バナナ",
+      "name_en": "Whole banana",
+      "definition_ja": "黄色い皮のある細長く曲がった生の果物。丸ごと1本。"
+    },
+    {
+      "id": "F22",
+      "group": "F",
+      "name_ja": "りんご",
+      "name_en": "Whole red apple",
+      "definition_ja": "赤い皮のある丸い生の果物。切らずに丸ごと1個。"
+    },
+    {
+      "id": "F23",
+      "group": "F",
+      "name_ja": "みかん",
+      "name_en": "Whole mandarin",
+      "definition_ja": "オレンジ色の皮を手でむける丸い生の果物。中は房に分かれる。"
+    },
+    {
+      "id": "F24",
+      "group": "F",
+      "name_ja": "ぶどう",
+      "name_en": "Purple grape bunch",
+      "definition_ja": "紫色の小さな丸い実が房についた生の果物。"
+    },
+    {
+      "id": "F25",
+      "group": "F",
+      "name_ja": "いちご",
+      "name_en": "Whole strawberry",
+      "definition_ja": "赤い生の果物1粒。表面に小さな粒があり、緑のへたがある。"
+    },
+    {
+      "id": "F26",
+      "group": "F",
+      "name_ja": "おにぎり",
+      "name_en": "Seaweed rice ball",
+      "definition_ja": "白いご飯を三角形にして黒い海苔を巻いたもの。中に具なし。"
+    },
+    {
+      "id": "F27",
+      "group": "F",
+      "name_ja": "しょうゆせんべい",
+      "name_en": "Soy rice cracker",
+      "definition_ja": "米から作った平たい円形の硬い菓子。しょうゆ味。揚げていない。"
+    },
+    {
+      "id": "F28",
+      "group": "F",
+      "name_ja": "ポテトチップス",
+      "name_en": "Salted potato chips",
+      "definition_ja": "薄く切ったじゃがいもを油で揚げた、塩味の菓子。"
+    },
+    {
+      "id": "F29",
+      "group": "F",
+      "name_ja": "塩ポップコーン",
+      "name_en": "Salted popcorn",
+      "definition_ja": "とうもろこしの粒を加熱してはじかせた、白く不規則な塩味の菓子。"
+    },
+    {
+      "id": "F30",
+      "group": "F",
+      "name_ja": "素焼きアーモンド",
+      "name_en": "Roasted almonds",
+      "definition_ja": "茶色く細長い木の実。殻なしで、砂糖や塩を加えず焼いたもの。"
+    },
+    {
+      "id": "F31",
+      "group": "F",
+      "name_ja": "ミントキャンディ",
+      "name_en": "Hard mint candy",
+      "definition_ja": "白い硬い砂糖菓子。ミント味。包み紙は含めない。"
+    },
+    {
+      "id": "F32",
+      "group": "F",
+      "name_ja": "ソーセージパン",
+      "name_en": "Baked sausage roll",
+      "definition_ja": "パンにソーセージがのったもの。焼いたパンで、揚げていない。"
+    },
+    {
+      "id": "O01",
+      "group": "O",
+      "name_ja": "マグカップ",
+      "name_en": "Ceramic mug",
+      "definition_ja": "白い陶器の飲み物用カップ。取っ手が1つ。中身は空。"
+    },
+    {
+      "id": "O02",
+      "group": "O",
+      "name_ja": "ガラスコップ",
+      "name_en": "Clear drinking glass",
+      "definition_ja": "無色透明のガラス製コップ。取っ手なし。中身は空。"
+    },
+    {
+      "id": "O03",
+      "group": "O",
+      "name_ja": "紙コップ",
+      "name_en": "Disposable paper cup",
+      "definition_ja": "白い紙製の使い捨てコップ。取っ手・ふたなし。中身は空。"
+    },
+    {
+      "id": "O04",
+      "group": "O",
+      "name_ja": "保温ボトル",
+      "name_en": "Insulated steel bottle",
+      "definition_ja": "金属製の保温用ボトル。ねじ式ふた付き。中身は空。"
+    },
+    {
+      "id": "O05",
+      "group": "O",
+      "name_ja": "ソーサー",
+      "name_en": "Ceramic saucer",
+      "definition_ja": "白い陶器の小皿。カップの下に敷く。カップ自体は含めない。"
+    },
+    {
+      "id": "O06",
+      "group": "O",
+      "name_ja": "ティースプーン",
+      "name_en": "Metal teaspoon",
+      "definition_ja": "小さい金属製のスプーン。先端が浅いくぼみ。"
+    },
+    {
+      "id": "O07",
+      "group": "O",
+      "name_ja": "フォーク",
+      "name_en": "Metal fork",
+      "definition_ja": "金属製で先に数本のとがった歯がある食器。"
+    },
+    {
+      "id": "O08",
+      "group": "O",
+      "name_ja": "割り箸",
+      "name_en": "Disposable wooden chopsticks",
+      "definition_ja": "木製の細長い棒2本で食べ物を挟む。紙袋なし。"
+    },
+    {
+      "id": "O09",
+      "group": "O",
+      "name_ja": "コーヒードリッパー",
+      "name_en": "Manual coffee dripper",
+      "definition_ja": "手で湯を注ぐ樹脂製の円すい形器具。底に穴。電気不要。"
+    },
+    {
+      "id": "O10",
+      "group": "O",
+      "name_ja": "ペーパーフィルター",
+      "name_en": "Coffee paper filter",
+      "definition_ja": "ドリッパーに入れる茶色い紙。円すい形。コーヒー粉なし。"
+    },
+    {
+      "id": "O11",
+      "group": "O",
+      "name_ja": "手回しミル",
+      "name_en": "Manual coffee grinder",
+      "definition_ja": "豆を挽く金属製の手回し器具。回すハンドルあり。電気不要。"
+    },
+    {
+      "id": "O12",
+      "group": "O",
+      "name_ja": "電気ケトル",
+      "name_en": "Electric kettle",
+      "definition_ja": "取っ手と注ぎ口があり、電気で水を沸かす器具。"
+    },
+    {
+      "id": "O13",
+      "group": "O",
+      "name_ja": "電子レンジ",
+      "name_en": "Microwave oven",
+      "definition_ja": "扉のある箱形の電気器具。庫内の食べ物を温める。"
+    },
+    {
+      "id": "O14",
+      "group": "O",
+      "name_ja": "トレー",
+      "name_en": "Serving tray",
+      "definition_ja": "食器をまとめて運ぶ平たい樹脂製のお盆。電気不要。"
+    },
+    {
+      "id": "O15",
+      "group": "O",
+      "name_ja": "コースター",
+      "name_en": "Cork coaster",
+      "definition_ja": "コップの下に敷く平たい円形のコルク。小皿ではない。"
+    },
+    {
+      "id": "O16",
+      "group": "O",
+      "name_ja": "紙ナプキン",
+      "name_en": "Paper napkin",
+      "definition_ja": "口や手を拭く白い四角い紙1枚。箱はない。"
+    },
+    {
+      "id": "O17",
+      "group": "O",
+      "name_ja": "箱ティッシュ",
+      "name_en": "Tissue box",
+      "definition_ja": "白い薄紙を1枚ずつ引き出す箱全体。紙1枚だけではない。"
+    },
+    {
+      "id": "O18",
+      "group": "O",
+      "name_ja": "食器用スポンジ",
+      "name_en": "Dish sponge",
+      "definition_ja": "食器洗い用の、やわらかく水を吸うスポンジ。洗剤は含めない。"
+    },
+    {
+      "id": "O19",
+      "group": "O",
+      "name_ja": "食器用洗剤",
+      "name_en": "Dish soap pump bottle",
+      "definition_ja": "食器用の液体洗剤が入ったポンプ式ボトル。飲み物ではない。"
+    },
+    {
+      "id": "O20",
+      "group": "O",
+      "name_ja": "ペダル式ごみ箱",
+      "name_en": "Pedal waste bin",
+      "definition_ja": "足でペダルを踏んでふたを開ける床置きの容器。"
+    },
+    {
+      "id": "O21",
+      "group": "O",
+      "name_ja": "ボールペン",
+      "name_en": "Ballpoint pen",
+      "definition_ja": "インクで書く樹脂製の筆記具。鉛筆ではない。"
+    },
+    {
+      "id": "O22",
+      "group": "O",
+      "name_ja": "鉛筆",
+      "name_en": "Wooden pencil",
+      "definition_ja": "木に黒い芯が入った筆記具。削って使う。消しゴム付きではない。"
+    },
+    {
+      "id": "O23",
+      "group": "O",
+      "name_ja": "消しゴム",
+      "name_en": "Rubber eraser",
+      "definition_ja": "鉛筆の線を消す白いゴム。紙のケースなし。"
+    },
+    {
+      "id": "O24",
+      "group": "O",
+      "name_ja": "リングノート",
+      "name_en": "Spiral notebook",
+      "definition_ja": "複数の紙を金属リングで綴じたノート。紙は粘着しない。"
+    },
+    {
+      "id": "O25",
+      "group": "O",
+      "name_ja": "付せん",
+      "name_en": "Sticky note pad",
+      "definition_ja": "端に粘着剤があり、貼ってはがせる黄色い紙の束。"
+    },
+    {
+      "id": "O26",
+      "group": "O",
+      "name_ja": "ホチキス",
+      "name_en": "Desktop stapler",
+      "definition_ja": "金属の針で紙をまとめる机上用具。手で押して使う。"
+    },
+    {
+      "id": "O27",
+      "group": "O",
+      "name_ja": "透明テープ",
+      "name_en": "Clear tape roll",
+      "definition_ja": "透明な粘着テープの輪。テープ台や刃は含めない。"
+    },
+    {
+      "id": "O28",
+      "group": "O",
+      "name_ja": "はさみ",
+      "name_en": "Office scissors",
+      "definition_ja": "指を入れる輪と2枚の金属の刃で紙などを切る手道具。"
+    },
+    {
+      "id": "O29",
+      "group": "O",
+      "name_ja": "ノートパソコン",
+      "name_en": "Laptop computer",
+      "definition_ja": "画面とキーボードがあり、折りたためる持ち運び用PC。"
+    },
+    {
+      "id": "O30",
+      "group": "O",
+      "name_ja": "マウス",
+      "name_en": "Wireless computer mouse",
+      "definition_ja": "机上で動かしてPCのポインターを操作する電池式機器。画面なし。"
+    },
+    {
+      "id": "O31",
+      "group": "O",
+      "name_ja": "スマートフォン",
+      "name_en": "Smartphone",
+      "definition_ja": "電話とタッチ画面がある、片手サイズの板状の電子機器。"
+    },
+    {
+      "id": "O32",
+      "group": "O",
+      "name_ja": "卓上電卓",
+      "name_en": "Desk calculator",
+      "definition_ja": "数字キーと小さな画面がある計算専用の電子機器。"
+    },
+    {
+      "id": "T01",
+      "group": "T",
+      "name_ja": "デジタルノギス",
+      "name_en": "Digital caliper",
+      "definition_ja": "スライドする口とデジタル画面があり、外径・内径などを測る道具。"
+    },
+    {
+      "id": "T02",
+      "group": "T",
+      "name_ja": "マイクロメーター",
+      "name_en": "Mechanical micrometer",
+      "definition_ja": "C字形フレームとねじ式の軸で、厚さや外径を測る。画面なし。"
+    },
+    {
+      "id": "T03",
+      "group": "T",
+      "name_ja": "巻尺",
+      "name_en": "Retractable tape measure",
+      "definition_ja": "目盛り付きの金属テープをケースから引き出して長さを測る。"
+    },
+    {
+      "id": "T04",
+      "group": "T",
+      "name_ja": "金属定規",
+      "name_en": "Straight steel ruler",
+      "definition_ja": "まっすぐな金属板に目盛りがある、巻き取らない定規。"
+    },
+    {
+      "id": "T05",
+      "group": "T",
+      "name_ja": "水平器",
+      "name_en": "Bubble spirit level",
+      "definition_ja": "透明な小窓の中に液体と気泡があり、水平を確かめる。"
+    },
+    {
+      "id": "T06",
+      "group": "T",
+      "name_ja": "スコヤ",
+      "name_en": "Machinist square",
+      "definition_ja": "金属製のL字形で、直角を確かめる道具。長さ用の目盛りなし。"
+    },
+    {
+      "id": "T07",
+      "group": "T",
+      "name_ja": "プラスドライバー",
+      "name_en": "Phillips screwdriver",
+      "definition_ja": "先端が十字形。ねじを回す細長い手道具。"
+    },
+    {
+      "id": "T08",
+      "group": "T",
+      "name_ja": "マイナスドライバー",
+      "name_en": "Flathead screwdriver",
+      "definition_ja": "先端が平たい一文字形。ねじを回す細長い手道具。"
+    },
+    {
+      "id": "T09",
+      "group": "T",
+      "name_ja": "六角レンチ",
+      "name_en": "L shaped hex key",
+      "definition_ja": "六角形の断面を持つL字の棒。六角穴付きねじを回す。"
+    },
+    {
+      "id": "T10",
+      "group": "T",
+      "name_ja": "モンキーレンチ",
+      "name_en": "Adjustable wrench",
+      "definition_ja": "開いた口の幅を調整できる、ナットなどを回す手道具。"
+    },
+    {
+      "id": "T11",
+      "group": "T",
+      "name_ja": "スパナ",
+      "name_en": "Fixed open ended spanner",
+      "definition_ja": "開いた口の幅が固定された、ナットなどを回す手道具。"
+    },
+    {
+      "id": "T12",
+      "group": "T",
+      "name_ja": "ラチェットレンチ",
+      "name_en": "Socket ratchet wrench",
+      "definition_ja": "ソケットを付け、往復動作で一方向に回せる手道具。トルク設定なし。"
+    },
+    {
+      "id": "T13",
+      "group": "T",
+      "name_ja": "ペンチ",
+      "name_en": "Combination pliers",
+      "definition_ja": "短く平たいあごで物を挟む手道具。根元には線を切る部分もある。"
+    },
+    {
+      "id": "T14",
+      "group": "T",
+      "name_ja": "ニッパー",
+      "name_en": "Diagonal cutters",
+      "definition_ja": "電線などを切ることが主目的の、2本の柄がある手道具。"
+    },
+    {
+      "id": "T15",
+      "group": "T",
+      "name_ja": "ラジオペンチ",
+      "name_en": "Long nose pliers",
+      "definition_ja": "長く細いあごで、小さな物を挟む手道具。"
+    },
+    {
+      "id": "T16",
+      "group": "T",
+      "name_ja": "金属ハンマー",
+      "name_en": "Steel hammer",
+      "definition_ja": "金属製の頭で叩く手道具。頭はゴムではない。"
+    },
+    {
+      "id": "T17",
+      "group": "T",
+      "name_ja": "ゴムハンマー",
+      "name_en": "Rubber mallet",
+      "definition_ja": "ゴム製の頭で叩く手道具。"
+    },
+    {
+      "id": "T18",
+      "group": "T",
+      "name_ja": "金属やすり",
+      "name_en": "Metal file",
+      "definition_ja": "表面の細かい刃で金属を削る、まっすぐな手道具。"
+    },
+    {
+      "id": "T19",
+      "group": "T",
+      "name_ja": "Cクランプ",
+      "name_en": "C clamp",
+      "definition_ja": "C字形の枠とねじで材料を挟んで固定する。作業台への常設はしない。"
+    },
+    {
+      "id": "T20",
+      "group": "T",
+      "name_ja": "卓上万力",
+      "name_en": "Bench vise",
+      "definition_ja": "作業台に取り付け、ねじで2つの口を動かして材料を固定する。"
+    },
+    {
+      "id": "T21",
+      "group": "T",
+      "name_ja": "充電ドリル",
+      "name_en": "Cordless drill",
+      "definition_ja": "電池で先端を回して穴を開ける、ピストル形の電動工具。"
+    },
+    {
+      "id": "T22",
+      "group": "T",
+      "name_ja": "ディスクグラインダー",
+      "name_en": "Electric angle grinder",
+      "definition_ja": "円盤を高速で回して研削する、コード付きの電動工具。"
+    },
+    {
+      "id": "T23",
+      "group": "T",
+      "name_ja": "トルクレンチ",
+      "name_en": "Click torque wrench",
+      "definition_ja": "締付けトルクを設定し、所定の力で合図する手動レンチ。"
+    },
+    {
+      "id": "T24",
+      "group": "T",
+      "name_ja": "デジタルテスター",
+      "name_en": "Digital multimeter",
+      "definition_ja": "画面と2本の測定リードがあり、電圧などを測る電池式計器。"
+    },
+    {
+      "id": "T25",
+      "group": "T",
+      "name_ja": "保護ヘルメット",
+      "name_en": "White safety helmet",
+      "definition_ja": "頭にかぶる白い硬い保護具。顔の窓や耳当てはない。"
+    },
+    {
+      "id": "T26",
+      "group": "T",
+      "name_ja": "保護メガネ",
+      "name_en": "Clear safety glasses",
+      "definition_ja": "透明なレンズで目を守る保護具。顔全体は覆わない。"
+    },
+    {
+      "id": "T27",
+      "group": "T",
+      "name_ja": "軍手",
+      "name_en": "Cotton work gloves",
+      "definition_ja": "布製で、手の指を包む作業用手袋1組。"
+    },
+    {
+      "id": "T28",
+      "group": "T",
+      "name_ja": "イヤーマフ",
+      "name_en": "Hearing protection earmuffs",
+      "definition_ja": "左右の耳をカップ状の部品で覆う、バンド付き保護具。"
+    },
+    {
+      "id": "T29",
+      "group": "T",
+      "name_ja": "自動遮光溶接面",
+      "name_en": "Auto darkening welding helmet",
+      "definition_ja": "顔全体を覆い、目の前に自動で暗くなる窓がある電池式保護具。"
+    },
+    {
+      "id": "T30",
+      "group": "T",
+      "name_ja": "安全靴",
+      "name_en": "Steel toe safety shoes",
+      "definition_ja": "足に履く、つま先に保護部がある作業用の靴1足。"
+    },
+    {
+      "id": "T31",
+      "group": "T",
+      "name_ja": "六角ボルト",
+      "name_en": "Hex head bolt",
+      "definition_ja": "六角形の頭と、外側にねじ山がある金属部品。"
+    },
+    {
+      "id": "T32",
+      "group": "T",
+      "name_ja": "六角ナット",
+      "name_en": "Hex nut",
+      "definition_ja": "六角形の外形と、内側にねじ山がある穴を持つ金属部品。"
+    }
+  ],
+  "questions": [
+    {
+      "id": "Q001",
+      "text_ja": "食べ物か飲み物ですか？",
+      "meaning_en": "Is it food or a drink intended for people to consume?",
+      "scope_groups": [
+        "D",
+        "F",
+        "O",
+        "T"
+      ],
+      "yes_ids": [
+        "D01",
+        "D02",
+        "D03",
+        "D04",
+        "D05",
+        "D06",
+        "D07",
+        "D08",
+        "D09",
+        "D10",
+        "D11",
+        "D12",
+        "D13",
+        "D14",
+        "D15",
+        "D16",
+        "D17",
+        "D18",
+        "D19",
+        "D20",
+        "D21",
+        "D22",
+        "D23",
+        "D24",
+        "D25",
+        "D26",
+        "D27",
+        "D28",
+        "D29",
+        "D30",
+        "D31",
+        "D32",
+        "F01",
+        "F02",
+        "F03",
+        "F04",
+        "F05",
+        "F06",
+        "F07",
+        "F08",
+        "F09",
+        "F10",
+        "F11",
+        "F12",
+        "F13",
+        "F14",
+        "F15",
+        "F16",
+        "F17",
+        "F18",
+        "F19",
+        "F20",
+        "F21",
+        "F22",
+        "F23",
+        "F24",
+        "F25",
+        "F26",
+        "F27",
+        "F28",
+        "F29",
+        "F30",
+        "F31",
+        "F32"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q001"
+    },
+    {
+      "id": "Q002",
+      "text_ja": "飲み物ですか？",
+      "meaning_en": "Is it a drink, not an empty container?",
+      "scope_groups": [
+        "D",
+        "F",
+        "O",
+        "T"
+      ],
+      "yes_ids": [
+        "D01",
+        "D02",
+        "D03",
+        "D04",
+        "D05",
+        "D06",
+        "D07",
+        "D08",
+        "D09",
+        "D10",
+        "D11",
+        "D12",
+        "D13",
+        "D14",
+        "D15",
+        "D16",
+        "D17",
+        "D18",
+        "D19",
+        "D20",
+        "D21",
+        "D22",
+        "D23",
+        "D24",
+        "D25",
+        "D26",
+        "D27",
+        "D28",
+        "D29",
+        "D30",
+        "D31",
+        "D32"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q002"
+    },
+    {
+      "id": "Q003",
+      "text_ja": "工場の道具や保護具ですか？",
+      "meaning_en": "Is it in the workshop tools, protective equipment or fasteners collection?",
+      "scope_groups": [
+        "D",
+        "F",
+        "O",
+        "T"
+      ],
+      "yes_ids": [
+        "T01",
+        "T02",
+        "T03",
+        "T04",
+        "T05",
+        "T06",
+        "T07",
+        "T08",
+        "T09",
+        "T10",
+        "T11",
+        "T12",
+        "T13",
+        "T14",
+        "T15",
+        "T16",
+        "T17",
+        "T18",
+        "T19",
+        "T20",
+        "T21",
+        "T22",
+        "T23",
+        "T24",
+        "T25",
+        "T26",
+        "T27",
+        "T28",
+        "T29",
+        "T30",
+        "T31",
+        "T32"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q003"
+    },
+    {
+      "id": "Q004",
+      "text_ja": "電気や電池で動きますか？",
+      "meaning_en": "Does the depicted item use mains power, a battery or solar electricity?",
+      "scope_groups": [
+        "D",
+        "F",
+        "O",
+        "T"
+      ],
+      "yes_ids": [
+        "O12",
+        "O13",
+        "O29",
+        "O30",
+        "O31",
+        "O32",
+        "T01",
+        "T21",
+        "T22",
+        "T24",
+        "T29"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q004"
+    },
+    {
+      "id": "Q005",
+      "text_ja": "身につけるものですか？",
+      "meaning_en": "Is it worn on the body as protective equipment?",
+      "scope_groups": [
+        "D",
+        "F",
+        "O",
+        "T"
+      ],
+      "yes_ids": [
+        "T25",
+        "T26",
+        "T27",
+        "T28",
+        "T29",
+        "T30"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q005"
+    },
+    {
+      "id": "Q006",
+      "text_ja": "文字や数字の画面がありますか？",
+      "meaning_en": "Does it have a display for text or numbers?",
+      "scope_groups": [
+        "D",
+        "F",
+        "O",
+        "T"
+      ],
+      "yes_ids": [
+        "O29",
+        "O31",
+        "O32",
+        "T01",
+        "T24"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q006"
+    },
+    {
+      "id": "Q007",
+      "text_ja": "主に紙でできていますか？",
+      "meaning_en": "Is its depicted main material paper, including a tissue box?",
+      "scope_groups": [
+        "O",
+        "T"
+      ],
+      "yes_ids": [
+        "O03",
+        "O10",
+        "O16",
+        "O17",
+        "O24",
+        "O25"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q007"
+    },
+    {
+      "id": "Q008",
+      "text_ja": "長さや厚さを測りますか？",
+      "meaning_en": "Is its main role measuring length, diameter or thickness?",
+      "scope_groups": [
+        "O",
+        "T"
+      ],
+      "yes_ids": [
+        "T01",
+        "T02",
+        "T03",
+        "T04"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q008"
+    },
+    {
+      "id": "Q009",
+      "text_ja": "温めるための電気器具ですか？",
+      "meaning_en": "Is its main role electrically heating water or food?",
+      "scope_groups": [
+        "O",
+        "T"
+      ],
+      "yes_ids": [
+        "O12",
+        "O13"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q009"
+    },
+    {
+      "id": "Q010",
+      "text_ja": "物を切る・削る道具ですか？",
+      "meaning_en": "Does it have an intended cutting or material-removing function?",
+      "scope_groups": [
+        "O",
+        "T"
+      ],
+      "yes_ids": [
+        "O28",
+        "T13",
+        "T14",
+        "T18",
+        "T21",
+        "T22"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q010"
+    },
+    {
+      "id": "Q101",
+      "text_ja": "温かい飲み物ですか？",
+      "meaning_en": "Is this drink served hot?",
+      "scope_groups": [
+        "D"
+      ],
+      "yes_ids": [
+        "D01",
+        "D03",
+        "D05",
+        "D06",
+        "D07",
+        "D09",
+        "D11",
+        "D13",
+        "D15",
+        "D17",
+        "D19",
+        "D21",
+        "D29",
+        "D31"
+      ],
+      "help_ja": "容器ではなく中身を考えます。砂糖・温度・牛乳は候補の説明どおりです。牛乳だけの自然な甘みは「甘い飲み物」に含めません。",
+      "family": "Q101"
+    },
+    {
+      "id": "Q102",
+      "text_ja": "コーヒーが入っていますか？",
+      "meaning_en": "Does the drink contain coffee?",
+      "scope_groups": [
+        "D"
+      ],
+      "yes_ids": [
+        "D01",
+        "D02",
+        "D03",
+        "D04",
+        "D05",
+        "D06",
+        "D07",
+        "D08"
+      ],
+      "help_ja": "容器ではなく中身を考えます。砂糖・温度・牛乳は候補の説明どおりです。牛乳だけの自然な甘みは「甘い飲み物」に含めません。",
+      "family": "Q102"
+    },
+    {
+      "id": "Q103",
+      "text_ja": "牛乳や乳製品が入っていますか？",
+      "meaning_en": "Does the drink contain milk or fermented dairy?",
+      "scope_groups": [
+        "D"
+      ],
+      "yes_ids": [
+        "D03",
+        "D04",
+        "D06",
+        "D07",
+        "D08",
+        "D11",
+        "D12",
+        "D19",
+        "D29",
+        "D30",
+        "D31",
+        "D32"
+      ],
+      "help_ja": "容器ではなく中身を考えます。砂糖・温度・牛乳は候補の説明どおりです。牛乳だけの自然な甘みは「甘い飲み物」に含めません。",
+      "family": "Q103"
+    },
+    {
+      "id": "Q104",
+      "text_ja": "紅茶が入っていますか？",
+      "meaning_en": "Does the drink contain black tea?",
+      "scope_groups": [
+        "D"
+      ],
+      "yes_ids": [
+        "D09",
+        "D10",
+        "D11",
+        "D12",
+        "D13",
+        "D14"
+      ],
+      "help_ja": "容器ではなく中身を考えます。砂糖・温度・牛乳は候補の説明どおりです。牛乳だけの自然な甘みは「甘い飲み物」に含めません。",
+      "family": "Q104"
+    },
+    {
+      "id": "Q105",
+      "text_ja": "甘い飲み物ですか？",
+      "meaning_en": "Is it deliberately sweet, including fruit sweetness?",
+      "scope_groups": [
+        "D"
+      ],
+      "yes_ids": [
+        "D07",
+        "D08",
+        "D11",
+        "D12",
+        "D13",
+        "D14",
+        "D19",
+        "D23",
+        "D24",
+        "D25",
+        "D26",
+        "D27",
+        "D31",
+        "D32"
+      ],
+      "help_ja": "容器ではなく中身を考えます。砂糖・温度・牛乳は候補の説明どおりです。牛乳だけの自然な甘みは「甘い飲み物」に含めません。",
+      "family": "Q105"
+    },
+    {
+      "id": "Q106",
+      "text_ja": "炭酸の泡がありますか？",
+      "meaning_en": "Is the drink carbonated?",
+      "scope_groups": [
+        "D"
+      ],
+      "yes_ids": [
+        "D22",
+        "D23",
+        "D24"
+      ],
+      "help_ja": "容器ではなく中身を考えます。砂糖・温度・牛乳は候補の説明どおりです。牛乳だけの自然な甘みは「甘い飲み物」に含めません。",
+      "family": "Q106"
+    },
+    {
+      "id": "Q107",
+      "text_ja": "無色透明ですか？",
+      "meaning_en": "Is it colorless and transparent?",
+      "scope_groups": [
+        "D"
+      ],
+      "yes_ids": [
+        "D20",
+        "D21",
+        "D22",
+        "D24"
+      ],
+      "help_ja": "容器ではなく中身を考えます。砂糖・温度・牛乳は候補の説明どおりです。牛乳だけの自然な甘みは「甘い飲み物」に含めません。",
+      "family": "Q107"
+    },
+    {
+      "id": "Q108",
+      "text_ja": "茶葉や抹茶を使っていますか？",
+      "meaning_en": "Does it contain tea leaves or matcha, excluding barley?",
+      "scope_groups": [
+        "D"
+      ],
+      "yes_ids": [
+        "D09",
+        "D10",
+        "D11",
+        "D12",
+        "D13",
+        "D14",
+        "D15",
+        "D16",
+        "D17",
+        "D19"
+      ],
+      "help_ja": "容器ではなく中身を考えます。砂糖・温度・牛乳は候補の説明どおりです。牛乳だけの自然な甘みは「甘い飲み物」に含めません。",
+      "family": "Q108"
+    },
+    {
+      "id": "Q109",
+      "text_ja": "レモン味がついていますか？",
+      "meaning_en": "Is lemon an explicit flavor?",
+      "scope_groups": [
+        "D"
+      ],
+      "yes_ids": [
+        "D13",
+        "D14",
+        "D24"
+      ],
+      "help_ja": "容器ではなく中身を考えます。砂糖・温度・牛乳は候補の説明どおりです。牛乳だけの自然な甘みは「甘い飲み物」に含めません。",
+      "family": "Q109"
+    },
+    {
+      "id": "Q110",
+      "text_ja": "チョコやココア入りですか？",
+      "meaning_en": "Does it contain chocolate or cocoa?",
+      "scope_groups": [
+        "D"
+      ],
+      "yes_ids": [
+        "D07",
+        "D08",
+        "D31"
+      ],
+      "help_ja": "容器ではなく中身を考えます。砂糖・温度・牛乳は候補の説明どおりです。牛乳だけの自然な甘みは「甘い飲み物」に含めません。",
+      "family": "Q110"
+    },
+    {
+      "id": "Q111",
+      "text_ja": "果物の果汁が主役ですか？",
+      "meaning_en": "Is it a fruit juice drink, excluding tomato and lemon-flavored drinks?",
+      "scope_groups": [
+        "D"
+      ],
+      "yes_ids": [
+        "D25",
+        "D26",
+        "D27"
+      ],
+      "help_ja": "容器ではなく中身を考えます。砂糖・温度・牛乳は候補の説明どおりです。牛乳だけの自然な甘みは「甘い飲み物」に含めません。",
+      "family": "Q111"
+    },
+    {
+      "id": "Q112",
+      "text_ja": "中身が白い飲み物ですか？",
+      "meaning_en": "Is the liquid white rather than brown or green?",
+      "scope_groups": [
+        "D"
+      ],
+      "yes_ids": [
+        "D29",
+        "D30",
+        "D32"
+      ],
+      "help_ja": "容器ではなく中身を考えます。砂糖・温度・牛乳は候補の説明どおりです。牛乳だけの自然な甘みは「甘い飲み物」に含めません。",
+      "family": "Q112"
+    },
+    {
+      "id": "Q113",
+      "text_ja": "緑色の飲み物ですか？",
+      "meaning_en": "Is the drink green?",
+      "scope_groups": [
+        "D"
+      ],
+      "yes_ids": [
+        "D15",
+        "D16",
+        "D19"
+      ],
+      "help_ja": "容器ではなく中身を考えます。砂糖・温度・牛乳は候補の説明どおりです。牛乳だけの自然な甘みは「甘い飲み物」に含めません。",
+      "family": "Q113"
+    },
+    {
+      "id": "Q114",
+      "text_ja": "麦を使っていますか？",
+      "meaning_en": "Is barley the base ingredient?",
+      "scope_groups": [
+        "D"
+      ],
+      "yes_ids": [
+        "D18"
+      ],
+      "help_ja": "容器ではなく中身を考えます。砂糖・温度・牛乳は候補の説明どおりです。牛乳だけの自然な甘みは「甘い飲み物」に含めません。",
+      "family": "Q114"
+    },
+    {
+      "id": "Q115",
+      "text_ja": "乳製品を発酵させていますか？",
+      "meaning_en": "Is the drink made from fermented dairy?",
+      "scope_groups": [
+        "D"
+      ],
+      "yes_ids": [
+        "D32"
+      ],
+      "help_ja": "容器ではなく中身を考えます。砂糖・温度・牛乳は候補の説明どおりです。牛乳だけの自然な甘みは「甘い飲み物」に含めません。",
+      "family": "Q115"
+    },
+    {
+      "id": "Q116",
+      "text_ja": "表面に厚いミルクの泡がありますか？",
+      "meaning_en": "Does it have a deliberately thick milk-foam layer?",
+      "scope_groups": [
+        "D"
+      ],
+      "yes_ids": [
+        "D06"
+      ],
+      "help_ja": "容器ではなく中身を考えます。砂糖・温度・牛乳は候補の説明どおりです。牛乳だけの自然な甘みは「甘い飲み物」に含めません。",
+      "family": "Q116"
+    },
+    {
+      "id": "Q117",
+      "text_ja": "ごく少量の濃いコーヒーですか？",
+      "meaning_en": "Is it a small concentrated espresso serving?",
+      "scope_groups": [
+        "D"
+      ],
+      "yes_ids": [
+        "D05"
+      ],
+      "help_ja": "容器ではなく中身を考えます。砂糖・温度・牛乳は候補の説明どおりです。牛乳だけの自然な甘みは「甘い飲み物」に含めません。",
+      "family": "Q117"
+    },
+    {
+      "id": "Q118",
+      "text_ja": "茶葉を焙煎した飲み物ですか？",
+      "meaning_en": "Is it made from roasted tea leaves, not roasted coffee or barley?",
+      "scope_groups": [
+        "D"
+      ],
+      "yes_ids": [
+        "D17"
+      ],
+      "help_ja": "容器ではなく中身を考えます。砂糖・温度・牛乳は候補の説明どおりです。牛乳だけの自然な甘みは「甘い飲み物」に含めません。",
+      "family": "Q118"
+    },
+    {
+      "id": "Q119",
+      "text_ja": "粉末の抹茶を使っていますか？",
+      "meaning_en": "Does it use powdered matcha?",
+      "scope_groups": [
+        "D"
+      ],
+      "yes_ids": [
+        "D19"
+      ],
+      "help_ja": "容器ではなく中身を考えます。砂糖・温度・牛乳は候補の説明どおりです。牛乳だけの自然な甘みは「甘い飲み物」に含めません。",
+      "family": "Q119"
+    },
+    {
+      "id": "Q120",
+      "text_ja": "オレンジの果汁ですか？",
+      "meaning_en": "Is the principal fruit orange?",
+      "scope_groups": [
+        "D"
+      ],
+      "yes_ids": [
+        "D25"
+      ],
+      "help_ja": "容器ではなく中身を考えます。砂糖・温度・牛乳は候補の説明どおりです。牛乳だけの自然な甘みは「甘い飲み物」に含めません。",
+      "family": "Q120"
+    },
+    {
+      "id": "Q121",
+      "text_ja": "りんごの果汁ですか？",
+      "meaning_en": "Is the principal fruit apple?",
+      "scope_groups": [
+        "D"
+      ],
+      "yes_ids": [
+        "D26"
+      ],
+      "help_ja": "容器ではなく中身を考えます。砂糖・温度・牛乳は候補の説明どおりです。牛乳だけの自然な甘みは「甘い飲み物」に含めません。",
+      "family": "Q121"
+    },
+    {
+      "id": "Q122",
+      "text_ja": "ぶどうの果汁ですか？",
+      "meaning_en": "Is the principal fruit grape?",
+      "scope_groups": [
+        "D"
+      ],
+      "yes_ids": [
+        "D27"
+      ],
+      "help_ja": "容器ではなく中身を考えます。砂糖・温度・牛乳は候補の説明どおりです。牛乳だけの自然な甘みは「甘い飲み物」に含めません。",
+      "family": "Q122"
+    },
+    {
+      "id": "Q123",
+      "text_ja": "トマトが原料ですか？",
+      "meaning_en": "Is tomato the principal ingredient?",
+      "scope_groups": [
+        "D"
+      ],
+      "yes_ids": [
+        "D28"
+      ],
+      "help_ja": "容器ではなく中身を考えます。砂糖・温度・牛乳は候補の説明どおりです。牛乳だけの自然な甘みは「甘い飲み物」に含めません。",
+      "family": "Q123"
+    },
+    {
+      "id": "Q124",
+      "text_ja": "色が黒っぽいですか？",
+      "meaning_en": "Is the drink visually dark black or dark brown?",
+      "scope_groups": [
+        "D"
+      ],
+      "yes_ids": [
+        "D01",
+        "D02",
+        "D05",
+        "D23"
+      ],
+      "help_ja": "容器ではなく中身を考えます。砂糖・温度・牛乳は候補の説明どおりです。牛乳だけの自然な甘みは「甘い飲み物」に含めません。",
+      "family": "Q124"
+    },
+    {
+      "id": "Q201",
+      "text_ja": "パンが主役の食べ物ですか？",
+      "meaning_en": "Is bread the main component?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F01",
+        "F02",
+        "F03",
+        "F04",
+        "F05",
+        "F06",
+        "F32"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q201"
+    },
+    {
+      "id": "Q202",
+      "text_ja": "甘いおやつですか？",
+      "meaning_en": "Is it a sweet snack or fresh sweet fruit?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F03",
+        "F07",
+        "F08",
+        "F09",
+        "F10",
+        "F11",
+        "F12",
+        "F13",
+        "F14",
+        "F15",
+        "F16",
+        "F17",
+        "F18",
+        "F19",
+        "F21",
+        "F22",
+        "F23",
+        "F24",
+        "F25",
+        "F31"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q202"
+    },
+    {
+      "id": "Q203",
+      "text_ja": "生の果物そのものですか？",
+      "meaning_en": "Is it a whole fresh fruit, not a cake or processed food?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F21",
+        "F22",
+        "F23",
+        "F24",
+        "F25"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q203"
+    },
+    {
+      "id": "Q204",
+      "text_ja": "凍った食べ物ですか？",
+      "meaning_en": "Is it frozen?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F16",
+        "F17"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q204"
+    },
+    {
+      "id": "Q205",
+      "text_ja": "チョコが使われていますか？",
+      "meaning_en": "Does it contain chocolate?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F11",
+        "F12",
+        "F15"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q205"
+    },
+    {
+      "id": "Q206",
+      "text_ja": "米から作っていますか？",
+      "meaning_en": "Is rice its base ingredient?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F26",
+        "F27"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q206"
+    },
+    {
+      "id": "Q207",
+      "text_ja": "油で揚げていますか？",
+      "meaning_en": "Is it deep-fried?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F04",
+        "F07",
+        "F28"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q207"
+    },
+    {
+      "id": "Q208",
+      "text_ja": "中央に穴があいた輪形ですか？",
+      "meaning_en": "Is it ring-shaped with a hole in the center?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F06",
+        "F07"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q208"
+    },
+    {
+      "id": "Q209",
+      "text_ja": "三角形に切ったケーキですか？",
+      "meaning_en": "Is it a triangular cake slice?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F13",
+        "F14",
+        "F15"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q209"
+    },
+    {
+      "id": "Q210",
+      "text_ja": "具がパンの中か上にありますか？",
+      "meaning_en": "Does the bread contain a filling or hold ham, cheese or sausage?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F03",
+        "F04",
+        "F05",
+        "F32"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q210"
+    },
+    {
+      "id": "Q211",
+      "text_ja": "やわらかくスプーンで食べますか？",
+      "meaning_en": "Is it served in a dish and normally eaten with a spoon?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F16",
+        "F17",
+        "F18",
+        "F19",
+        "F20"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q211"
+    },
+    {
+      "id": "Q212",
+      "text_ja": "いちごか、いちご味の食品ですか？",
+      "meaning_en": "Does it feature strawberry or strawberry flavor?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F14",
+        "F19",
+        "F25"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q212"
+    },
+    {
+      "id": "Q213",
+      "text_ja": "チーズが使われていますか？",
+      "meaning_en": "Does it contain cheese?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F05",
+        "F13"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q213"
+    },
+    {
+      "id": "Q214",
+      "text_ja": "小さな焼きクッキーですか？",
+      "meaning_en": "Is it a small baked cookie?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F10",
+        "F11"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q214"
+    },
+    {
+      "id": "Q215",
+      "text_ja": "三日月形で層のあるパンですか？",
+      "meaning_en": "Is it a crescent-shaped layered pastry?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F02"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q215"
+    },
+    {
+      "id": "Q216",
+      "text_ja": "甘いあんこが入っていますか？",
+      "meaning_en": "Does it contain sweet red bean paste?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F03"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q216"
+    },
+    {
+      "id": "Q217",
+      "text_ja": "カレーが入っていますか？",
+      "meaning_en": "Does it contain curry?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F04"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q217"
+    },
+    {
+      "id": "Q218",
+      "text_ja": "ハムをパンで挟んでいますか？",
+      "meaning_en": "Does it sandwich ham between bread?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F05"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q218"
+    },
+    {
+      "id": "Q219",
+      "text_ja": "ソーセージがのっていますか？",
+      "meaning_en": "Does the bread carry a sausage?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F32"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q219"
+    },
+    {
+      "id": "Q220",
+      "text_ja": "表面に格子の凹凸がありますか？",
+      "meaning_en": "Does the batter have a waffle grid pattern?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F09"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q220"
+    },
+    {
+      "id": "Q221",
+      "text_ja": "フライパンで丸く焼きますか？",
+      "meaning_en": "Is it round batter cooked in a frying pan?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F08"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q221"
+    },
+    {
+      "id": "Q222",
+      "text_ja": "四角い食パンを焼いたものですか？",
+      "meaning_en": "Is it a plain toasted bread slice?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F01"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q222"
+    },
+    {
+      "id": "Q223",
+      "text_ja": "茶色い板状のお菓子ですか？",
+      "meaning_en": "Is it a brown chocolate slab rather than baked dough?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F12"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q223"
+    },
+    {
+      "id": "Q224",
+      "text_ja": "底にカラメルがありますか？",
+      "meaning_en": "Does it have a caramel layer beneath custard?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F18"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q224"
+    },
+    {
+      "id": "Q225",
+      "text_ja": "透明感のあるゼリーですか？",
+      "meaning_en": "Is it translucent fruit jelly?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F19"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q225"
+    },
+    {
+      "id": "Q226",
+      "text_ja": "無糖の発酵乳ですか？",
+      "meaning_en": "Is it unsweetened spoonable fermented milk?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F20"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q226"
+    },
+    {
+      "id": "Q227",
+      "text_ja": "レモン味で乳製品なしですか？",
+      "meaning_en": "Is it a lemon-flavored frozen dessert without dairy?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F17"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q227"
+    },
+    {
+      "id": "Q228",
+      "text_ja": "黄色く細長い果物ですか？",
+      "meaning_en": "Is it a long yellow fruit?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F21"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q228"
+    },
+    {
+      "id": "Q229",
+      "text_ja": "赤い皮の丸い果物ですか？",
+      "meaning_en": "Is it a round fruit with red skin, not a strawberry?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F22"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q229"
+    },
+    {
+      "id": "Q230",
+      "text_ja": "皮をむくと房に分かれますか？",
+      "meaning_en": "Does the fruit divide into citrus segments after peeling?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F23"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q230"
+    },
+    {
+      "id": "Q231",
+      "text_ja": "小さな実が房についていますか？",
+      "meaning_en": "Does it consist of small fruits in a bunch?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F24"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q231"
+    },
+    {
+      "id": "Q232",
+      "text_ja": "黒い海苔を巻いていますか？",
+      "meaning_en": "Is it wrapped with black seaweed?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F26"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q232"
+    },
+    {
+      "id": "Q233",
+      "text_ja": "じゃがいもを薄く切っていますか？",
+      "meaning_en": "Is it made of thinly sliced potato?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F28"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q233"
+    },
+    {
+      "id": "Q234",
+      "text_ja": "とうもろこしをはじかせますか？",
+      "meaning_en": "Is it popped corn?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F29"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q234"
+    },
+    {
+      "id": "Q235",
+      "text_ja": "茶色く細長い木の実ですか？",
+      "meaning_en": "Is it an elongated brown tree nut?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F30"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q235"
+    },
+    {
+      "id": "Q236",
+      "text_ja": "ミント味の硬い砂糖菓子ですか？",
+      "meaning_en": "Is it a hard mint sugar candy?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F31"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q236"
+    },
+    {
+      "id": "Q301",
+      "text_ja": "飲み物を入れる空の容器ですか？",
+      "meaning_en": "Is it an empty drinking vessel?",
+      "scope_groups": [
+        "O"
+      ],
+      "yes_ids": [
+        "O01",
+        "O02",
+        "O03",
+        "O04"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q301"
+    },
+    {
+      "id": "Q302",
+      "text_ja": "コーヒーを淹れる道具ですか？",
+      "meaning_en": "Is it specifically used to prepare coffee?",
+      "scope_groups": [
+        "O"
+      ],
+      "yes_ids": [
+        "O09",
+        "O10",
+        "O11"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q302"
+    },
+    {
+      "id": "Q303",
+      "text_ja": "食べる時に手で使う食器ですか？",
+      "meaning_en": "Is it a hand-held eating utensil?",
+      "scope_groups": [
+        "O"
+      ],
+      "yes_ids": [
+        "O06",
+        "O07",
+        "O08"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q303"
+    },
+    {
+      "id": "Q304",
+      "text_ja": "何かの下に敷くものですか？",
+      "meaning_en": "Does it sit underneath cups or tableware?",
+      "scope_groups": [
+        "O"
+      ],
+      "yes_ids": [
+        "O05",
+        "O14",
+        "O15"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q304"
+    },
+    {
+      "id": "Q305",
+      "text_ja": "拭く・洗う・捨てる時に使いますか？",
+      "meaning_en": "Is it used for wiping, washing or disposing of waste?",
+      "scope_groups": [
+        "O"
+      ],
+      "yes_ids": [
+        "O16",
+        "O17",
+        "O18",
+        "O19",
+        "O20"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q305"
+    },
+    {
+      "id": "Q306",
+      "text_ja": "書く・消す・メモする用具ですか？",
+      "meaning_en": "Is it for writing, erasing or taking notes?",
+      "scope_groups": [
+        "O"
+      ],
+      "yes_ids": [
+        "O21",
+        "O22",
+        "O23",
+        "O24",
+        "O25"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q306"
+    },
+    {
+      "id": "Q307",
+      "text_ja": "紙を留める・貼る・切る用具ですか？",
+      "meaning_en": "Is it used to fasten, tape or cut paper?",
+      "scope_groups": [
+        "O"
+      ],
+      "yes_ids": [
+        "O26",
+        "O27",
+        "O28"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q307"
+    },
+    {
+      "id": "Q308",
+      "text_ja": "パソコン・電話・計算の機器ですか？",
+      "meaning_en": "Is it a computing, phone or calculator device?",
+      "scope_groups": [
+        "O"
+      ],
+      "yes_ids": [
+        "O29",
+        "O30",
+        "O31",
+        "O32"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q308"
+    },
+    {
+      "id": "Q309",
+      "text_ja": "取っ手がついたカップですか？",
+      "meaning_en": "Is it a handled cup?",
+      "scope_groups": [
+        "O"
+      ],
+      "yes_ids": [
+        "O01"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q309"
+    },
+    {
+      "id": "Q310",
+      "text_ja": "透明なガラスの容器ですか？",
+      "meaning_en": "Is it a clear glass vessel?",
+      "scope_groups": [
+        "O"
+      ],
+      "yes_ids": [
+        "O02"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q310"
+    },
+    {
+      "id": "Q311",
+      "text_ja": "ふたを閉めて保温できますか？",
+      "meaning_en": "Is it an insulated bottle with a closable lid?",
+      "scope_groups": [
+        "O"
+      ],
+      "yes_ids": [
+        "O04"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q311"
+    },
+    {
+      "id": "Q312",
+      "text_ja": "先が浅いくぼみになっていますか？",
+      "meaning_en": "Does the utensil have a small shallow bowl at the end?",
+      "scope_groups": [
+        "O"
+      ],
+      "yes_ids": [
+        "O06"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q312"
+    },
+    {
+      "id": "Q313",
+      "text_ja": "先に何本かの歯がありますか？",
+      "meaning_en": "Does the utensil have several fork tines?",
+      "scope_groups": [
+        "O"
+      ],
+      "yes_ids": [
+        "O07"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q313"
+    },
+    {
+      "id": "Q314",
+      "text_ja": "木の棒を2本使いますか？",
+      "meaning_en": "Does it use a pair of wooden sticks?",
+      "scope_groups": [
+        "O"
+      ],
+      "yes_ids": [
+        "O08"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q314"
+    },
+    {
+      "id": "Q315",
+      "text_ja": "手でハンドルを回しますか？",
+      "meaning_en": "Does a hand crank drive it?",
+      "scope_groups": [
+        "O"
+      ],
+      "yes_ids": [
+        "O11"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q315"
+    },
+    {
+      "id": "Q316",
+      "text_ja": "湯を注ぐ円すい形の器具ですか？",
+      "meaning_en": "Is it a cone dripper for pouring water through?",
+      "scope_groups": [
+        "O"
+      ],
+      "yes_ids": [
+        "O09"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q316"
+    },
+    {
+      "id": "Q317",
+      "text_ja": "小さな陶器の皿ですか？",
+      "meaning_en": "Is it a small ceramic saucer?",
+      "scope_groups": [
+        "O"
+      ],
+      "yes_ids": [
+        "O05"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q317"
+    },
+    {
+      "id": "Q318",
+      "text_ja": "食器をまとめて運びますか？",
+      "meaning_en": "Is it a tray for carrying several dishes?",
+      "scope_groups": [
+        "O"
+      ],
+      "yes_ids": [
+        "O14"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q318"
+    },
+    {
+      "id": "Q319",
+      "text_ja": "主な素材はコルクですか？",
+      "meaning_en": "Is its main material cork?",
+      "scope_groups": [
+        "O"
+      ],
+      "yes_ids": [
+        "O15"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q319"
+    },
+    {
+      "id": "Q320",
+      "text_ja": "水を吸うスポンジですか？",
+      "meaning_en": "Is it a water-absorbing dish sponge?",
+      "scope_groups": [
+        "O"
+      ],
+      "yes_ids": [
+        "O18"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q320"
+    },
+    {
+      "id": "Q321",
+      "text_ja": "ポンプで液体を出しますか？",
+      "meaning_en": "Does it dispense cleaning liquid with a pump?",
+      "scope_groups": [
+        "O"
+      ],
+      "yes_ids": [
+        "O19"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q321"
+    },
+    {
+      "id": "Q322",
+      "text_ja": "足でふたを開けますか？",
+      "meaning_en": "Does a foot pedal open its lid?",
+      "scope_groups": [
+        "O"
+      ],
+      "yes_ids": [
+        "O20"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q322"
+    },
+    {
+      "id": "Q323",
+      "text_ja": "箱から紙を引き出しますか？",
+      "meaning_en": "Does tissue paper pull out of a box?",
+      "scope_groups": [
+        "O"
+      ],
+      "yes_ids": [
+        "O17"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q323"
+    },
+    {
+      "id": "Q324",
+      "text_ja": "インクで線を書きますか？",
+      "meaning_en": "Does it write with ink?",
+      "scope_groups": [
+        "O"
+      ],
+      "yes_ids": [
+        "O21"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q324"
+    },
+    {
+      "id": "Q325",
+      "text_ja": "木を削って芯を出しますか？",
+      "meaning_en": "Do you sharpen wood to expose the writing core?",
+      "scope_groups": [
+        "O"
+      ],
+      "yes_ids": [
+        "O22"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q325"
+    },
+    {
+      "id": "Q326",
+      "text_ja": "鉛筆の線を消しますか？",
+      "meaning_en": "Does it erase pencil marks?",
+      "scope_groups": [
+        "O"
+      ],
+      "yes_ids": [
+        "O23"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q326"
+    },
+    {
+      "id": "Q327",
+      "text_ja": "紙がリングで綴じられていますか？",
+      "meaning_en": "Are pages bound by a metal spiral?",
+      "scope_groups": [
+        "O"
+      ],
+      "yes_ids": [
+        "O24"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q327"
+    },
+    {
+      "id": "Q328",
+      "text_ja": "貼ってはがせるメモですか？",
+      "meaning_en": "Is it a removable adhesive note pad?",
+      "scope_groups": [
+        "O"
+      ],
+      "yes_ids": [
+        "O25"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q328"
+    },
+    {
+      "id": "Q329",
+      "text_ja": "金属の針で紙を留めますか？",
+      "meaning_en": "Does it staple paper with metal staples?",
+      "scope_groups": [
+        "O"
+      ],
+      "yes_ids": [
+        "O26"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q329"
+    },
+    {
+      "id": "Q330",
+      "text_ja": "透明な粘着テープの輪ですか？",
+      "meaning_en": "Is it a roll of clear adhesive tape without a dispenser?",
+      "scope_groups": [
+        "O"
+      ],
+      "yes_ids": [
+        "O27"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q330"
+    },
+    {
+      "id": "Q331",
+      "text_ja": "画面とキーボードを折りたためますか？",
+      "meaning_en": "Does a screen fold against a keyboard?",
+      "scope_groups": [
+        "O"
+      ],
+      "yes_ids": [
+        "O29"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q331"
+    },
+    {
+      "id": "Q332",
+      "text_ja": "机の上で動かして操作しますか？",
+      "meaning_en": "Do you move it on a desk to control a pointer?",
+      "scope_groups": [
+        "O"
+      ],
+      "yes_ids": [
+        "O30"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q332"
+    },
+    {
+      "id": "Q333",
+      "text_ja": "電話ができる小さな板状端末ですか？",
+      "meaning_en": "Is it a small slab-shaped telephone device?",
+      "scope_groups": [
+        "O"
+      ],
+      "yes_ids": [
+        "O31"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q333"
+    },
+    {
+      "id": "Q334",
+      "text_ja": "数字キーのある計算専用機ですか？",
+      "meaning_en": "Is it a dedicated calculator with number keys?",
+      "scope_groups": [
+        "O"
+      ],
+      "yes_ids": [
+        "O32"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q334"
+    },
+    {
+      "id": "Q335",
+      "text_ja": "扉付きの箱で食べ物を温めますか？",
+      "meaning_en": "Does it heat food inside a box with a door?",
+      "scope_groups": [
+        "O"
+      ],
+      "yes_ids": [
+        "O13"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q335"
+    },
+    {
+      "id": "Q401",
+      "text_ja": "ねじやナットを回す道具ですか？",
+      "meaning_en": "Is its role turning screws, bolts or nuts?",
+      "scope_groups": [
+        "T"
+      ],
+      "yes_ids": [
+        "T07",
+        "T08",
+        "T09",
+        "T10",
+        "T11",
+        "T12",
+        "T23"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q401"
+    },
+    {
+      "id": "Q402",
+      "text_ja": "2本の柄を握って挟む形ですか？",
+      "meaning_en": "Does it have two squeeze handles and jaws?",
+      "scope_groups": [
+        "T"
+      ],
+      "yes_ids": [
+        "T13",
+        "T14",
+        "T15"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q402"
+    },
+    {
+      "id": "Q403",
+      "text_ja": "材料を固定する道具ですか？",
+      "meaning_en": "Is its main role holding work material in place?",
+      "scope_groups": [
+        "T"
+      ],
+      "yes_ids": [
+        "T19",
+        "T20"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q403"
+    },
+    {
+      "id": "Q404",
+      "text_ja": "叩くための頭がありますか？",
+      "meaning_en": "Does it have a head used for striking?",
+      "scope_groups": [
+        "T"
+      ],
+      "yes_ids": [
+        "T16",
+        "T17"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q404"
+    },
+    {
+      "id": "Q405",
+      "text_ja": "ねじ山がある締結部品ですか？",
+      "meaning_en": "Is it a threaded fastener rather than a tool?",
+      "scope_groups": [
+        "T"
+      ],
+      "yes_ids": [
+        "T31",
+        "T32"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q405"
+    },
+    {
+      "id": "Q406",
+      "text_ja": "水平や直角を確かめますか？",
+      "meaning_en": "Does it check level or a right angle?",
+      "scope_groups": [
+        "T"
+      ],
+      "yes_ids": [
+        "T05",
+        "T06"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q406"
+    },
+    {
+      "id": "Q407",
+      "text_ja": "回転する電動工具ですか？",
+      "meaning_en": "Is it an electrically rotating power tool?",
+      "scope_groups": [
+        "T"
+      ],
+      "yes_ids": [
+        "T21",
+        "T22"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q407"
+    },
+    {
+      "id": "Q408",
+      "text_ja": "顔・目・頭につける保護具ですか？",
+      "meaning_en": "Is it protective equipment for the head, face or eyes, excluding earmuffs?",
+      "scope_groups": [
+        "T"
+      ],
+      "yes_ids": [
+        "T25",
+        "T26",
+        "T29"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q408"
+    },
+    {
+      "id": "Q409",
+      "text_ja": "手か足につける保護具ですか？",
+      "meaning_en": "Is it worn on the hands or feet?",
+      "scope_groups": [
+        "T"
+      ],
+      "yes_ids": [
+        "T27",
+        "T30"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q409"
+    },
+    {
+      "id": "Q410",
+      "text_ja": "口をスライドさせて測りますか？",
+      "meaning_en": "Does it measure by sliding jaws?",
+      "scope_groups": [
+        "T"
+      ],
+      "yes_ids": [
+        "T01"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q410"
+    },
+    {
+      "id": "Q411",
+      "text_ja": "C字形でねじを回して測りますか？",
+      "meaning_en": "Does it measure with a screw spindle in a C frame?",
+      "scope_groups": [
+        "T"
+      ],
+      "yes_ids": [
+        "T02"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q411"
+    },
+    {
+      "id": "Q412",
+      "text_ja": "目盛り付きテープを引き出しますか？",
+      "meaning_en": "Does graduated measuring tape pull out of a case?",
+      "scope_groups": [
+        "T"
+      ],
+      "yes_ids": [
+        "T03"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q412"
+    },
+    {
+      "id": "Q413",
+      "text_ja": "小窓に気泡がありますか？",
+      "meaning_en": "Does it contain a visible spirit-level bubble?",
+      "scope_groups": [
+        "T"
+      ],
+      "yes_ids": [
+        "T05"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q413"
+    },
+    {
+      "id": "Q414",
+      "text_ja": "L字形の道具ですか？",
+      "meaning_en": "Is it L-shaped?",
+      "scope_groups": [
+        "T"
+      ],
+      "yes_ids": [
+        "T06",
+        "T09"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q414"
+    },
+    {
+      "id": "Q415",
+      "text_ja": "先端が十字形ですか？",
+      "meaning_en": "Is its screwdriver tip cross-shaped?",
+      "scope_groups": [
+        "T"
+      ],
+      "yes_ids": [
+        "T07"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q415"
+    },
+    {
+      "id": "Q416",
+      "text_ja": "先端が平たい一文字形ですか？",
+      "meaning_en": "Is its screwdriver tip a flat slot blade?",
+      "scope_groups": [
+        "T"
+      ],
+      "yes_ids": [
+        "T08"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q416"
+    },
+    {
+      "id": "Q417",
+      "text_ja": "六角の棒を穴に差して回しますか？",
+      "meaning_en": "Is it a hexagonal-section key inserted into a hex socket?",
+      "scope_groups": [
+        "T"
+      ],
+      "yes_ids": [
+        "T09"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q417"
+    },
+    {
+      "id": "Q418",
+      "text_ja": "レンチの口幅を調整できますか？",
+      "meaning_en": "Does its open wrench jaw width adjust?",
+      "scope_groups": [
+        "T"
+      ],
+      "yes_ids": [
+        "T10"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q418"
+    },
+    {
+      "id": "Q419",
+      "text_ja": "ソケットで往復して回しますか？",
+      "meaning_en": "Does it use a socket ratchet without torque setting?",
+      "scope_groups": [
+        "T"
+      ],
+      "yes_ids": [
+        "T12"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q419"
+    },
+    {
+      "id": "Q420",
+      "text_ja": "締付ける力を設定できますか？",
+      "meaning_en": "Can its tightening torque be preset?",
+      "scope_groups": [
+        "T"
+      ],
+      "yes_ids": [
+        "T23"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q420"
+    },
+    {
+      "id": "Q421",
+      "text_ja": "あごが長く細いですか？",
+      "meaning_en": "Are the plier jaws long and narrow?",
+      "scope_groups": [
+        "T"
+      ],
+      "yes_ids": [
+        "T15"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q421"
+    },
+    {
+      "id": "Q422",
+      "text_ja": "線を切ることが主な役目ですか？",
+      "meaning_en": "Is its primary function cutting wire rather than gripping?",
+      "scope_groups": [
+        "T"
+      ],
+      "yes_ids": [
+        "T14"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q422"
+    },
+    {
+      "id": "Q423",
+      "text_ja": "叩く頭がゴム製ですか？",
+      "meaning_en": "Is the striking head rubber?",
+      "scope_groups": [
+        "T"
+      ],
+      "yes_ids": [
+        "T17"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q423"
+    },
+    {
+      "id": "Q424",
+      "text_ja": "表面の細かい刃で削りますか？",
+      "meaning_en": "Does an abrasive file surface remove material manually?",
+      "scope_groups": [
+        "T"
+      ],
+      "yes_ids": [
+        "T18"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q424"
+    },
+    {
+      "id": "Q425",
+      "text_ja": "作業台に取り付けて固定しますか？",
+      "meaning_en": "Is it a vise mounted to a workbench?",
+      "scope_groups": [
+        "T"
+      ],
+      "yes_ids": [
+        "T20"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q425"
+    },
+    {
+      "id": "Q426",
+      "text_ja": "ドリルの刃で穴を開けますか？",
+      "meaning_en": "Does it drill holes using a rotating bit?",
+      "scope_groups": [
+        "T"
+      ],
+      "yes_ids": [
+        "T21"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q426"
+    },
+    {
+      "id": "Q427",
+      "text_ja": "円盤を高速で回して削りますか？",
+      "meaning_en": "Does it grind using a high-speed disk?",
+      "scope_groups": [
+        "T"
+      ],
+      "yes_ids": [
+        "T22"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q427"
+    },
+    {
+      "id": "Q428",
+      "text_ja": "2本のリードで電圧などを測りますか？",
+      "meaning_en": "Does it measure electrical quantities using two test leads?",
+      "scope_groups": [
+        "T"
+      ],
+      "yes_ids": [
+        "T24"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q428"
+    },
+    {
+      "id": "Q429",
+      "text_ja": "透明なレンズで目を守りますか？",
+      "meaning_en": "Does it protect the eyes with clear lenses?",
+      "scope_groups": [
+        "T"
+      ],
+      "yes_ids": [
+        "T26"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q429"
+    },
+    {
+      "id": "Q430",
+      "text_ja": "顔全体と暗くなる窓がありますか？",
+      "meaning_en": "Does it cover the face and have an auto-darkening window?",
+      "scope_groups": [
+        "T"
+      ],
+      "yes_ids": [
+        "T29"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q430"
+    },
+    {
+      "id": "Q431",
+      "text_ja": "左右の耳をカップで覆いますか？",
+      "meaning_en": "Does it cover both ears with protective cups?",
+      "scope_groups": [
+        "T"
+      ],
+      "yes_ids": [
+        "T28"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q431"
+    },
+    {
+      "id": "Q432",
+      "text_ja": "布で手の指を包みますか？",
+      "meaning_en": "Does it enclose the fingers in cloth?",
+      "scope_groups": [
+        "T"
+      ],
+      "yes_ids": [
+        "T27"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q432"
+    },
+    {
+      "id": "Q433",
+      "text_ja": "足に履くものですか？",
+      "meaning_en": "Is it worn on the feet?",
+      "scope_groups": [
+        "T"
+      ],
+      "yes_ids": [
+        "T30"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q433"
+    },
+    {
+      "id": "Q434",
+      "text_ja": "ねじ山は外側にありますか？",
+      "meaning_en": "Does the fastener have external threads?",
+      "scope_groups": [
+        "T"
+      ],
+      "yes_ids": [
+        "T31"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q434"
+    },
+    {
+      "id": "Q237",
+      "text_ja": "パン・ケーキ・焼き菓子の仲間ですか？",
+      "meaning_en": "Is it bread, cake, pastry, cookie, pancake or waffle rather than candy, fruit or a spoon dessert?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F01",
+        "F02",
+        "F03",
+        "F04",
+        "F05",
+        "F06",
+        "F07",
+        "F08",
+        "F09",
+        "F10",
+        "F11",
+        "F13",
+        "F14",
+        "F15",
+        "F32"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q237"
+    },
+    {
+      "id": "Q238",
+      "text_ja": "塩味や食事向けの味ですか？",
+      "meaning_en": "Is it savory rather than a sweet dessert, plain bread, fresh fruit or unseasoned nuts?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F04",
+        "F05",
+        "F26",
+        "F27",
+        "F28",
+        "F29",
+        "F32"
+      ],
+      "help_ja": "カレー・ハムチーズ・おにぎり・せんべい・塩味スナック・ソーセージがYESです。パン生地の微量の塩は数えません。",
+      "family": "Q238"
+    },
+    {
+      "id": "Q239",
+      "text_ja": "薄く平たい形ですか？",
+      "meaning_en": "Is the depicted food thin and flat: toast, pancake, waffle, cookie, chocolate slab, rice cracker or potato chips?",
+      "scope_groups": [
+        "F"
+      ],
+      "yes_ids": [
+        "F01",
+        "F08",
+        "F09",
+        "F10",
+        "F11",
+        "F12",
+        "F27",
+        "F28"
+      ],
+      "help_ja": "厚いパンやケーキ、果物、器入りのデザートではなく、薄い板・円盤・チップ状のものです。",
+      "family": "Q239"
+    },
+    {
+      "id": "Q336",
+      "text_ja": "食器・調理・片付けの道具ですか？",
+      "meaning_en": "Is it tableware, kitchen equipment or a cleaning/disposal item rather than stationery or a computing device?",
+      "scope_groups": [
+        "O"
+      ],
+      "yes_ids": [
+        "O01",
+        "O02",
+        "O03",
+        "O04",
+        "O05",
+        "O06",
+        "O07",
+        "O08",
+        "O09",
+        "O10",
+        "O11",
+        "O12",
+        "O13",
+        "O14",
+        "O15",
+        "O16",
+        "O17",
+        "O18",
+        "O19",
+        "O20"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q336"
+    },
+    {
+      "id": "Q337",
+      "text_ja": "容器・皿・お盆の仲間ですか？",
+      "meaning_en": "Is its primary role a drinking or waste container, saucer or serving tray, not a filter, appliance or coaster?",
+      "scope_groups": [
+        "O"
+      ],
+      "yes_ids": [
+        "O01",
+        "O02",
+        "O03",
+        "O04",
+        "O05",
+        "O14",
+        "O20"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q337"
+    },
+    {
+      "id": "Q435",
+      "text_ja": "手の力で加工や締付けをしますか？",
+      "meaning_en": "Is it a non-powered hand tool for turning, gripping, cutting, striking, filing or clamping?",
+      "scope_groups": [
+        "T"
+      ],
+      "yes_ids": [
+        "T07",
+        "T08",
+        "T09",
+        "T10",
+        "T11",
+        "T12",
+        "T13",
+        "T14",
+        "T15",
+        "T16",
+        "T17",
+        "T18",
+        "T19",
+        "T20",
+        "T23"
+      ],
+      "help_ja": "ドライバー・レンチ・ペンチ類・ハンマー・やすり・クランプ・万力を含みます。測定だけの器具、電動工具、保護具、部品はNOです。",
+      "family": "Q435"
+    },
+    {
+      "id": "Q436",
+      "text_ja": "寸法・水平・直角・電気を測りますか？",
+      "meaning_en": "Is it for measurement or checking dimensions, level, right angles or electrical values, excluding torque setting?",
+      "scope_groups": [
+        "T"
+      ],
+      "yes_ids": [
+        "T01",
+        "T02",
+        "T03",
+        "T04",
+        "T05",
+        "T06",
+        "T24"
+      ],
+      "help_ja": "一覧の説明で決めた姿を基準に答えてください。迷ったら「わからない」で飛ばせます。",
+      "family": "Q436"
+    }
+  ]
+}

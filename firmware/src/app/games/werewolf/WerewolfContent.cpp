@@ -207,20 +207,19 @@ const StringEntry kLocalStrings[] = {
     {"std.brief.next", "覚えました"},
     {"std.brief.villager", "次の画面では、誰かを\n選ぶふりをするだけ。\n何も起きません。"},
     {"std.brief.seer", "次の画面で選んだ人が\n人狼かどうか分かります。\n生きている人を\nひとり選ぼう。"},
-    {"std.brief.wolf.first", "初日は襲撃なし。\n次の画面は選ぶふりだけ。"},
-    {"std.brief.wolf", "次の画面で、今夜\nおそう相手を選ぼう。"},
+    {"std.brief.wolf.first", "初日は襲撃なし。選ぶ\nふりだけ。次の夜から\n本当におそいます。"},
     {"std.brief.wolf.mate", "仲間：{name}さん"},
-    {"std.brief.wolf.pick", "仲間の{name}さんは\n{target_label}を選んだよ。\nあとに選んだほうが\n今夜の襲撃先になる。"},
     {"std.night.target.title", "夜の行動：1人選ぼう"},
     {"std.night.target.note", "効くのは占い師と人狼"},
     {"std.night.target.confirm", "{target_label}を選びますか？\n決定後は変えられません。"},
     {"std.night.result.title", "夜の結果"},
     {"std.night.result.hold", "押して確認"},
     {"std.night.result.next", "確認しました"},
-    {"std.night.result.wolf", "{target_label}は\n人狼です。\n覚えておこう。"},
-    {"std.night.result.not_wolf", "{target_label}は\n人狼ではありません。\n覚えておこう。"},
-    {"std.night.result.attack", "今夜おそう相手を\n決めました。\n朝に分かります。"},
-    {"std.night.result.first", "初日は襲撃なし。\n何も起きません。"},
+    {"std.night.result.wolf", "あなたは占い師。\n{target_label}は\n人狼です。\n覚えておこう。"},
+    {"std.night.result.not_wolf", "あなたは占い師。\n{target_label}は\n人狼ではありません。\n覚えておこう。"},
+    {"std.night.result.attack", "あなたは人狼。\n今夜おそう相手を\n決めました。\n朝に分かります。"},
+    {"std.night.result.first", "あなたは人狼。\n初日は襲撃なし。\n何も起きません。"},
+    {"std.night.result.villager", "あなたは村人。\n今夜は何も\n起きませんでした。"},
     {"std.night.result.none", "あなたに分かることは\nありません。"},
     {"std.night.done.last", "朝の発表へ"},
     {"std.table.title", "みんなで見よう"},
@@ -400,12 +399,13 @@ const StoryPage kStory[] = {
 const size_t kStoryCount = sizeof(kStory) / sizeof(kStory[0]);
 
 const StoryPage kStoryStd[] = {
-    {"T1", "閉店後の人狼会", "閉店後の喫茶「余白」。\n常連の中に、人に化けた\n「人狼」がいるらしい。", "\xEE\xBD\x9E"},   // nightlight_round
-    {"T2", "通常ルールです", "このモードは、決着まで\n何日も続きます。\n夜ごとに、ひとり\n消えていきます。", "\xEE\xA4\x9D"},   // pets
-    {"T3", "1日の流れ", "朝に犠牲者を知り、\n昼に話し合い、\n投票で1人を追放。\nこれを毎日くり返す。", "\xEE\x90\xB0"},   // wb_sunny
-    {"T4", "占い師のこと", "占い師は毎晩、\n生きている人をひとり\n占えます。", "\xEE\xA3\xB4"},   // visibility
-    {"T5", "勝ち負け", "人狼を全員追放できたら\n村の勝ち。\n人狼の数が村と\n同じになったら人狼の勝ち。", "\xEF\x88\xB3"},   // groups
-    {"T6", "抜けた人のこと", "抜けた人の役職は\n最後まで伏せたまま。\n終わったら全部\n公開します。", "\xEE\x95\x81"},   // local_cafe
+    {"T1", "閉店後の人狼会", "閉店後の喫茶「余白」。\n常連たちの中に、\n人に化けた「人狼」が\nまぎれているらしい。", "\xEE\xBD\x9E"},   // nightlight_round
+    {"T2", "閉店後の人狼会", "人狼は、人のふりをして\nうそをつく。そして夜ごとに\n常連をひとりずつ\nおそっていく。", "\xEE\xA4\x9D"},   // pets
+    {"T3", "閉店後の人狼会", "村人は、話し合いと投票で\n人狼を見つけ出す。\n毎日ひとりを追放して、\n人狼を追いつめよう。", "\xEF\x88\xB3"},   // groups
+    {"T4", "閉店後の人狼会", "占い師は、毎晩ひとりだけ\n正体を占える。\nその結果が\n推理の手がかりになる。", "\xEE\xA3\xB4"},   // visibility
+    {"T5", "閉店後の人狼会", "夜におそわれた人と、\n投票で追放された人は\nゲームから抜ける。\n役職は最後まで秘密。", "\xEE\x90\xB0"},   // wb_sunny
+    {"T6", "閉店後の人狼会", "人狼をすべて追放すれば\n村の勝ち。人狼の数が\n村の人数に並んだら\n人狼の勝ち。", "\xEE\xA0\xB8"},   // star
+    {"T7", "通常ルールです", "このモードは、\n決着がつくまで\n何日も続きます。", "\xEE\xA2\xB5"},   // schedule
 };
 const size_t kStoryStdCount = sizeof(kStoryStd) / sizeof(kStoryStd[0]);
 
@@ -413,7 +413,8 @@ const PagedEntry kBriefStd[] = {
     {"B1", "始める前の約束", "画面は自分側に向けて。\n覗かない・撮らない。\n役職はゲームの中だけ。"},
     {"B2", "この人数の配役", "{players}人で遊びます。\n人狼{wolves}・占い師{seers}・村人{villagers}。\n伏せ札はありません。\n1人1枚ずつ配ります。"},
     {"B3", "抜けた人のこと", "追放・襲撃で抜けた人は\n端末を受け取りません。\n投票もされません。\n話し合いは見守ってね。"},
-    {"B4", "時間のこと", "話し合いは人数で決まる\n時間まで。+1分の延長は\n1日1回だけ。\n1局120分で終わります。"},
+    {"B4", "夜の進み方", "役職を見せるのは\n最初の夜だけ。\n襲撃は2日目の夜から。\n夜は相手選びだけです。"},
+    {"B5", "時間のこと", "話し合いは人数で決まる\n時間まで。+1分の延長は\n1日1回だけ。\n1局120分で終わります。"},
 };
 const size_t kBriefStdCount = sizeof(kBriefStd) / sizeof(kBriefStd[0]);
 

@@ -7,8 +7,8 @@
 //   1. 4〜10 人の配役の枚数と、配り方の番号が一対一であること
 //   2. 勝敗の判定（村の勝ち／人狼の勝ち）
 //   3. 抜けた人が手番・投票・対象に現れないこと
-//   4. 最初の夜は誰も死なないこと
-//   5. 人狼 2 人のときの襲撃先（後に操作した生存中の人狼の選択）と、仲間の選択の見え方
+//   4. 最初の夜は誰も死なないこと／役職の案内は初日の夜だけで、どの役職も夜ごとに同じ手順を踏むこと
+//   5. 人狼 2 人のときの襲撃先（後に操作した生存中の人狼の選択）。仲間の選択は誰にも見えないこと
 //   6. 同票 → 決選 → それでも同票なら追放なし
 //   7. 古い版数（Stamp）・場面違いの操作を弾くこと
 //   8. 秘密が手番の本人以外から読めないこと（占い師が 2 人いても混ざらないこと）
@@ -76,6 +76,11 @@ static GameStats playRandomGame(uint8_t n, ws::Composition comp, Rng &rng, bool 
         return out;
     }
 
+    // 「その夜に生きている全員が、役職によらず同じ数の画面を踏む」ことを数える
+    ws::Mask night_alive = 0;
+    uint8_t night_day = 0;
+    std::array<uint8_t, ws::MAX_PLAYERS> steps{};
+
     int guard = 0;
     while (e.active() && ++guard < 20000) {
         now += 10;
@@ -86,7 +91,15 @@ static GameStats playRandomGame(uint8_t n, ws::Composition comp, Rng &rng, bool 
         }
         switch (pv.phase) {
         case Phase::NightHandoff: {
-            if (deep) CHECK(e.aliveSeat(pv.actor));
+            if (deep) {
+                CHECK(e.aliveSeat(pv.actor));
+                if (pv.day != night_day) {   // その夜の 1 人目
+                    night_day = pv.day;
+                    night_alive = pv.alive;
+                    steps.fill(0);
+                }
+                ++steps[pv.actor];
+            }
             CHECK(e.receiveNight(e.stamp(), pv.actor) == Err::Ok);
             break;
         }
@@ -94,18 +107,25 @@ static GameStats playRandomGame(uint8_t n, ws::Composition comp, Rng &rng, bool 
             ws::Brief b;
             CHECK(e.readBrief(pv.actor, b) == Err::Ok);
             if (deep) {
+                ++steps[pv.actor];
+                CHECK(pv.day == 1);          // 役職の案内が出るのは初日の夜だけ
+                CHECK(b.day == 1);
+                CHECK(b.first_night);
                 CHECK(b.role != Role::Empty);
                 // 占い師・村人には仲間の情報が一切載らない
-                if (b.role != Role::Wolf) {
-                    CHECK(b.partners == 0);
-                    CHECK(b.partner_pick == ws::NONE);
-                }
+                if (b.role != Role::Wolf) CHECK(b.partners == 0);
                 CHECK((b.partners & ws::bit(pv.actor)) == 0);
             }
             CHECK(e.acknowledgeBrief(e.stamp(), pv.actor) == Err::Ok);
             break;
         }
         case Phase::NightTarget: {
+            if (deep) {
+                ++steps[pv.actor];
+                // 案内は NightBrief の場面でしか読めない（2 日目以降はその場面が無い）
+                ws::Brief b;
+                CHECK(e.readBrief(pv.actor, b) == Err::Phase);
+            }
             // 生きている自分以外を順に試す。人狼が仲間を選んだときだけ Err::Target が返る
             bool done = false;
             const uint8_t start = static_cast<uint8_t>(rng.below(n));
@@ -122,6 +142,10 @@ static GameStats playRandomGame(uint8_t n, ws::Composition comp, Rng &rng, bool 
             ws::NightOutcome o;
             CHECK(e.readNightResult(pv.actor, o) == Err::Ok);
             if (deep) {
+                ++steps[pv.actor];
+                // 役職のおさらいは、ここで手番の本人にだけ返る
+                CHECK(o.role != Role::Empty);
+                CHECK(o.first_night == (pv.day == 1));
                 // 占い師以外に占いの結果は絶対に返さない
                 if (o.role != Role::Seer) CHECK(o.finding == Finding::None);
                 if (o.role == Role::Villager) CHECK(o.target == ws::NONE);
@@ -130,9 +154,18 @@ static GameStats playRandomGame(uint8_t n, ws::Composition comp, Rng &rng, bool 
             break;
         }
         case Phase::NightDone:
+            if (deep) ++steps[pv.actor];
             CHECK(e.passNight(e.stamp(), pv.actor) == Err::Ok);
             break;
         case Phase::MorningReady:
+            if (deep) {
+                // 初日は 5 画面（手渡し・案内・対象・結果・隠した）、2 日目以降は案内が無いので 4 画面。
+                // 役職によって増えたり減ったりしないこと
+                const uint8_t want = (night_day == 1) ? 5 : 4;
+                for (uint8_t a = 0; a < n; ++a) {
+                    CHECK(steps[a] == ((night_alive & ws::bit(a)) ? want : 0));
+                }
+            }
             CHECK(e.openMorning(e.stamp(), true) == Err::Ok);
             break;
         case Phase::MorningAnnounce: {
@@ -384,29 +417,26 @@ static void checkTwoWolves() {
     uint64_t now = 1000;
     CHECK(e.start(e.stamp(), n, static_cast<uint16_t>(k), now, c) == Err::Ok);
 
-    // --- 初日の夜: 仲間の名前が見え、仲間の選択が後の人狼にだけ見える -------
-    bool seen_partner = false, seen_pick = false;
+    // --- 初日の夜: 仲間の名前だけが見える（仲間が何を選んだかは誰にも見せない）---
+    bool seen_partner = false, seen_mate = false;
     while (true) {
         now += 10; e.tick(now);
         const ws::PublicView pv = e.publicView();
         if (pv.phase == Phase::NightHandoff) { e.receiveNight(e.stamp(), pv.actor); continue; }
         if (pv.phase == Phase::NightBrief) {
+            CHECK(pv.day == 1);
             ws::Brief b;
             CHECK(e.readBrief(pv.actor, b) == Err::Ok);
             if (pv.actor == 0) {
                 CHECK(b.role == Role::Wolf);
                 CHECK(b.partners == ws::bit(1));          // 仲間は 1 番
-                CHECK(b.partner_pick == ws::NONE);        // まだ誰も選んでいない
                 seen_partner = true;
             } else if (pv.actor == 1) {
                 CHECK(b.role == Role::Wolf);
                 CHECK(b.partners == ws::bit(0));
-                CHECK(b.partner_pick == 3);               // 先の人狼（0 番）の選択が見える
-                CHECK(b.partner_pick_by == 0);
-                seen_pick = true;
+                seen_mate = true;
             } else {
                 CHECK(b.partners == 0);
-                CHECK(b.partner_pick == ws::NONE);
             }
             e.acknowledgeBrief(e.stamp(), pv.actor);
             continue;
@@ -433,7 +463,7 @@ static void checkTwoWolves() {
         if (pv.phase == Phase::NightDone) { e.passNight(e.stamp(), pv.actor); continue; }
         break;
     }
-    CHECK(seen_partner && seen_pick);
+    CHECK(seen_partner && seen_mate);
     CHECK(e.publicView().phase == Phase::MorningReady);
     CHECK(e.publicView().last_victim == ws::NONE);      // 最初の夜は襲撃なし
 
@@ -450,12 +480,50 @@ static void checkTwoWolves() {
     e.closeExecution(e.stamp());
     CHECK(e.publicView().day == 2);
 
-    // --- 2 日目の夜: 後に操作した生存中の人狼（1 番）の選択が襲撃先になる ---
-    runNight(e, now, [](uint8_t a) -> int {
-        if (a == 0) return 3;   // 先の人狼は 3 番を選ぶ
-        if (a == 1) return 4;   // 後の人狼は 4 番を選ぶ → こちらが採用される
-        return (a == 5) ? 4 : 5;
-    });
+    // --- 2 日目の夜: 役職の案内は出ない。後に操作した生存中の人狼（1 番）の選択が襲撃先 ---
+    const Role expect[ws::MAX_PLAYERS] = {Role::Wolf, Role::Wolf, Role::Seer, Role::Villager,
+                                          Role::Villager, Role::Villager, Role::Villager};
+    int night2_seats = 0, reminded = 0;
+    while (true) {
+        now += 10; e.tick(now);
+        const ws::PublicView pv = e.publicView();
+        if (pv.phase == Phase::NightBrief) { CHECK(false); return; }   // 2 日目に案内は無い
+        if (pv.phase == Phase::NightHandoff) {
+            ++night2_seats;
+            e.receiveNight(e.stamp(), pv.actor);
+            // 手渡しの次は必ず対象選択（案内をとばす）
+            CHECK(e.publicView().phase == Phase::NightTarget);
+            continue;
+        }
+        if (pv.phase == Phase::NightTarget) {
+            ws::Brief b;
+            CHECK(e.readBrief(pv.actor, b) == Err::Phase);   // 2 日目以降は読めない
+            if (pv.actor == 0) CHECK(e.chooseNight(e.stamp(), 0, 1) == Err::Target);
+            if (pv.actor == 1) CHECK(e.chooseNight(e.stamp(), 1, 0) == Err::Target);
+            const int t = (pv.actor == 0) ? 3 : (pv.actor == 1 ? 4 : (pv.actor == 5 ? 4 : 5));
+            CHECK(e.chooseNight(e.stamp(), pv.actor, t) == Err::Ok);
+            continue;
+        }
+        if (pv.phase == Phase::NightResult) {
+            ws::NightOutcome o;
+            CHECK(e.readNightResult(pv.actor, o) == Err::Ok);
+            CHECK(o.role == expect[pv.actor]);     // 役職のおさらいはここで手番の本人に返る
+            CHECK(!o.first_night);
+            ++reminded;
+            // ほかの席からは読めない（役職のおさらいも秘密）
+            for (uint8_t a = 0; a < n; ++a) {
+                if (a == pv.actor) continue;
+                ws::NightOutcome other;
+                CHECK(e.readNightResult(a, other) == Err::Seat);
+            }
+            e.acknowledgeNightResult(e.stamp(), pv.actor);
+            continue;
+        }
+        if (pv.phase == Phase::NightDone) { e.passNight(e.stamp(), pv.actor); continue; }
+        break;
+    }
+    CHECK(night2_seats == 6);    // 6 番は追放済み。残る 6 人が同じ手順を踏む
+    CHECK(reminded == 6);
     CHECK(e.publicView().phase == Phase::MorningReady);
     CHECK(e.publicView().last_victim == 4);
     CHECK(!e.aliveSeat(4));
@@ -680,7 +748,6 @@ static void checkTwoSeers() {
             if (pv.actor == 2 || pv.actor == 3) {
                 CHECK(b.role == Role::Seer);
                 CHECK(b.partners == 0);              // 占い師どうしは互いを知らない
-                CHECK(b.partner_pick == ws::NONE);
             }
             e.acknowledgeBrief(e.stamp(), pv.actor);
             continue;
@@ -727,7 +794,7 @@ static void checkTwoSeers() {
             if (pv.actor == 2) seat2_acted = true;
             e.receiveNight(e.stamp(), pv.actor); continue;
         }
-        if (pv.phase == Phase::NightBrief) { ws::Brief b; e.readBrief(pv.actor, b); e.acknowledgeBrief(e.stamp(), pv.actor); continue; }
+        if (pv.phase == Phase::NightBrief) { CHECK(false); return; }   // 2 日目に案内は無い
         if (pv.phase == Phase::NightTarget) {
             const int t = (pv.actor == 3) ? 1 : (pv.actor == 0 ? 5 : (pv.actor == 1 ? 6 : 4));
             e.chooseNight(e.stamp(), pv.actor, t == static_cast<int>(pv.actor) ? 5 : t);
