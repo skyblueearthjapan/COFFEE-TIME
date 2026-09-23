@@ -104,8 +104,10 @@ constexpr Rect kPickGo     {248, 356, 124, 46};
 
 // --- 遊び方 / はじめての説明 --------------------------------------------------
 // 「この卓の流れ」は 5 行あるので本文を 6 行ぶん（156px）取ってある
-constexpr Rect kTutTitle { 88, 110, 304, 34};
-constexpr Rect kTutBody  { 84, 152, 312, 156};
+// 実機で右端が欠けたので、本文と見出しの枠を広げて左右に 8px 以上の余白を残す
+// （Montserrat の大文字は 20px でも 1 文字 13px ほどあり、全角の半分では収まらない）
+constexpr Rect kTutTitle { 80, 110, 320, 34};
+constexpr Rect kTutBody  { 76, 152, 328, 156};
 constexpr Rect kTutNote  { 90, 312, 300, 38};   // 最後のページは「次回から表示しない」
 constexpr Rect kTutPrev  {108, 356, 124, 46};
 constexpr Rect kTutNext  {248, 356, 124, 46};
@@ -175,8 +177,8 @@ constexpr Rect kGopsNext  {400, 268, 44, 52};
 // ラウンドの結果
 constexpr Rect kGopsResult{ 92, 118, 296, 32};
 constexpr Rect kGopsBurn  { 92, 158, 296, 28};
-constexpr Rect kGopsYouTag{ 90, 202, 136, 26};
-constexpr Rect kGopsAiTag {254, 202, 136, 26};
+constexpr Rect kGopsYouTag{ 86, 202, 144, 26};
+constexpr Rect kGopsAiTag {250, 202, 144, 26};
 constexpr Rect kGopsYouBid{128, 238,  66, 88};
 constexpr Rect kGopsAiBid {286, 238,  66, 88};
 // 残り札
@@ -285,6 +287,7 @@ constexpr uint8_t kJevAttempts = 2;             // 1 回だけ黙って送り直
 constexpr uint32_t kSendBusyMs = 8000;
 constexpr uint32_t kInputLatchMs = 250;
 constexpr uint32_t kThinkMs = 320;              // 端末 AI の「考えています」の見せ場
+constexpr uint32_t kRevealMs = 180;             // 場の札を 1 枚ずつめくる間隔（theme.json）
 constexpr uint8_t kDetailRows = 6;              // 内訳に並べる候補の数
 
 // ---------------------------------------------------------------------------
@@ -340,13 +343,13 @@ constexpr TutorialPage kTutorial[22] = {
     {"同時に開く", "大きな札を出した側が場の得点を\n獲得。同じ数字なら、両方の札と\n得点を使い切ります。"},
     {"最後まで考えよう", "小さな得点に大きな札を使うと、\n後で困るかもしれません。最後は\n合計点で勝負。"},
     {"同じマークを集める", "手札は3枚。4種類のマークごとに\n足し、一番高い合計があなたの点\n数です。"},
-    {"Aは11、絵札は10", "Aは11点、J・Q・Kは10点。同じ数\n字3枚の特別点はありません。"},
+    {"Aは11、絵札は10", "Aは11点、J・Q・Kは10点。\n同じ数字3枚の特別点は\nありません。"},
     {"場と1枚ずつ交換", "自分の1枚と場の1枚を選んで\n交換。場へ出した札は相手にも\n見えます。"},
     {"勝負を仕掛ける", "交換の代わりにノックすると、相\n手に最後の交換チャンスが1回あ\nります。"},
     {"31なら即決着", "31点になったらすぐに公開。同点\nは引き分け。長く続いたら20手で\n比べます。"},
     {"この端末だけの短期戦", "通常の流派とは一部違う\nカフェルールです。\n3回の勝ち数で決めます。"},
-    {"二つの側を予想", "PLAYER側とBANKER側は手札の呼び\n名。人間とJevの呼び名ではあり\nません。"},
-    {"9点に近い方が勝ち", "Aは1点、10・J・Q・Kは0点。足し\nた数字の一の位だけを比べます。"},
+    {"二つの側を予想", "PLAYER側と BANKER側は\n手札の呼び名。人間とJevの\n呼び名ではありません。"},
+    {"9点に近い方が勝ち", "Aは1点、10・J・Q・Kは0点。\n足した数字の一の位だけを\n比べます。"},
     {"引くかどうかは自動", "追加カードは決まったルールで配\nられます。人間もJevも引き方を\n変更できません。"},
     {"1枚ずつ見て予想", "OPENでは各側の最初の1枚が見え\nます。残りのカードは、人間にも\nJevにも分かりません。"},
     {"当たれば1点", "引き分けを当てても1点です。5回\nの的中数を比べましょう。"},
@@ -368,8 +371,8 @@ constexpr TutorialPage kSummary[4] = {
      "手札3枚と場の3枚を見ます。\n自分の1枚と場の1枚を交換。\n同じマークの合計が点数です。\n"
      "通常ターンにパスはありません。\nここで勝負＝相手に最後の1手。"},
     {"この卓の流れ",
-     "PLAYERとBANKERは手札の呼び名。\nあなたもJevも同じ側を予想。\n追加の札は規則で自動です。\n"
-     "当たれば1点、5回で比べます。\n前の結果は次に影響しません。"},
+     "PLAYER と BANKER は\n手札の側の名前です。\nあなたもJevも同じ側を予想。\n"
+     "追加の札は規則で自動です。\n当たれば1点、5回で比べます。\n前の結果は次に影響しません。"},
 };
 
 // ホールデムは原本のチュートリアルに無いので、ここで書く（計画 §5b）
@@ -510,6 +513,10 @@ int8_t s_tut_game = -1;             // -1 = 4 卓ぶん、0〜3 = その卓だ�
 bool s_tut_first_play = false;      // 初回の自動表示（スキップ・次回から表示しない つき）
 bool s_tut_dont_show = true;        // 「次回から表示しない」の既定はオン
 uint8_t s_guided = 0;               // この電源セッションで説明を出した卓（最初の 1 局だけ一言を出す）
+
+// ホールデムの場の札のめくり（出し終えた枚数と、最後にめくった時刻）
+uint8_t s_reveal_shown = 0;
+uint32_t s_reveal_ms = 0;
 uint8_t s_page = 0;                 // GOPS の候補のページ
 
 // 人間の仮選択（draft）。確定ボタンを押すまでゲームは 1 ミリも動かない
@@ -612,6 +619,17 @@ constexpr const char *const kThinkBaccarat[1] = {
 bool waitingForJev()
 {
     return s_step == Step::Wait;
+}
+
+// ホールデムの場の札は 1 枚ずつめくる。**めくり終わるまで操作を止める**
+// （フロップの 3 枚がいっぺんに出ると、何が増えたのか分からない）
+bool revealing()
+{
+    if (s_sess == nullptr || !s_sess->in_match) {
+        return false;
+    }
+    const ct::Match &m = s_sess->match;
+    return ct::isHoldem(m) && !m.finished && s_reveal_shown < m.hd_board_n;
 }
 
 // 卓の上に出す「はじめての人むけの一言」。その卓の最初のハンド / ラウンドだけ。
@@ -1273,6 +1291,9 @@ void afterAction()
         Serial.printf("[CARDS] %s\n", m.fault);
         m.fault = nullptr;
     }
+    if (revealing()) {
+        s_reveal_ms = millis();     // 場が増えた。1 枚目は 180ms 後に出す
+    }
     if (m.game == ct::Game::Poker && m.phase == ct::Phase::UnitResult && m.last_folded) {
         s_sess->jev_hidden = true;
     }
@@ -1313,6 +1334,7 @@ void beginMatch()
         return;
     }
     st.in_match = true;
+    s_reveal_shown = 0;
     Serial.printf("[CARDS] new match %s %s vs %s\n", ct::gameId(match().game),
                   ct::variantId(match()), st.want_jev ? "jev" : "local");
     setStep(Step::Idle);
@@ -1379,6 +1401,9 @@ void syncAi()
 {
     if (s_sess == nullptr || !s_sess->in_match) {
         return;
+    }
+    if (revealing()) {
+        return;     // 場をめくり終わるまで相手も動かさない
     }
     ct::Match &m = match();
     if (m.finished || m.phase == ct::Phase::UnitResult || !ct::canAct(m, 1)) {
@@ -1712,9 +1737,11 @@ void buildHoldemTable()
     }
     rectLabel(layout::kHdHead, &ct_font_jp_20, CD_MUTED, head);
 
-    // 配られた場の札は表、まだの枠は裏（「あと何枚来るか」が見えるように）
+    // 配られた場の札は表、まだの枠は裏（「あと何枚来るか」が見えるように）。
+    // めくっている最中は s_reveal_shown 枚まで（1 枚ずつ 180ms で表になる）
+    const int shown = s_reveal_shown < m.hd_board_n ? (int)s_reveal_shown : (int)m.hd_board_n;
     for (int i = 0; i < 5; ++i) {
-        if (i < m.hd_board_n) {
+        if (i < shown) {
             const core::Card c = m.hd_board[i];
             makeCard(layout::kHdBoard[i], Face::Front, core::rank(c), core::suit(c), false, false);
         } else {
@@ -1723,7 +1750,10 @@ void buildHoldemTable()
     }
 
     char human[96];
-    if (waitingForJev()) {
+    if (revealing()) {
+        std::snprintf(human, sizeof(human), "場の札をめくっています");
+        rectLabel(layout::kHdHuman, &ct_font_jp_20, CD_MUTED, human);
+    } else if (waitingForJev()) {
         // 止まった字だと固まって見えるので、動く「考え中」に差し替える（枠と座標は同じ）
         ui::thinkingCreate(s_content, Rect{80, 252, 320, 26}, kThinkPoker, 3);
     } else if (!ct::canAct(m, 0)) {
@@ -1749,7 +1779,11 @@ void buildHoldemTable()
         makeCard(layout::kHdHand[i], Face::Front, core::rank(c), core::suit(c), false, true);
     }
 
-    if (ct::canAct(m, 0)) {
+    // めくっている間は確定させない（誤タップで 1 枚も見ないまま進まないように）
+    if (revealing()) {
+        tableButton(0, layout::kAct2[0], "めくっています", Role::None, nullptr, false, false);
+        tableButton(1, layout::kAct2[1], "お待ちください", Role::None, nullptr, false, false);
+    } else if (ct::canAct(m, 0)) {
         buildBetButtons(s);
     } else {
         tableButton(0, layout::kAct2[0], "遊び方", Role::None, nullptr, false, false);
@@ -1964,7 +1998,7 @@ void buildPokerResult()
         registerPrivate(rectLabel(layout::kPokResult, fitFont(top, layout::kPokResult.w), CD_TEXT,
                                   top));
         char line[64];
-        std::snprintf(line, sizeof(line), "%s　あなた%dpt", detail, m.stacks[0]);
+        std::snprintf(line, sizeof(line), "場の%d点獲得　あなた%dpt", m.last_pot, m.stacks[0]);
         rectLabel(layout::kPokDetail, &ct_font_jp_20, CD_GOLD, line);
         for (int i = 0; i < 5; ++i) {
             const core::Card c = m.ph.hands[0][i];
@@ -2217,7 +2251,7 @@ void buildBaccaratTable()
     // （札の下端 330 と操作の行 350 のあいだは 20px しかないので、下は 1 行しか置けない）
     char meta[64];
     if (revealed) {
-        std::snprintf(meta, sizeof(meta), "%s ・ %u/5 ・ %s", open ? "OPEN" : "CLASSIC",
+        std::snprintf(meta, sizeof(meta), "%s %u/5 ・ %s", open ? "OPEN" : "CLASSIC",
                       (unsigned)m.bac_round, outcome);
     } else {
         std::snprintf(meta, sizeof(meta), "%s ・ ラウンド %u / 5", open ? "OPEN" : "CLASSIC",
@@ -2280,7 +2314,7 @@ void buildBaccaratTable()
     }
 
     const bool ready = ct::sealed(m, 1);
-    const char *ready_note = showHint() ? "PLAYER/BANKER は札の側の名前"
+    const char *ready_note = showHint() ? "PLAYER/BANKER は札の名前"
                                         : "同じ札を見て、勝敗を予想";
     if (!ready && waitingForJev()) {
         ui::thinkingCreate(s_content, Rect{88, 324, 304, 26}, kThinkBaccarat, 1);
@@ -2764,6 +2798,7 @@ void tableBtnCb(lv_event_t *e)
                 Serial.printf("[CARDS] %s\n", m.fault);
                 m.fault = nullptr;
             }
+            s_reveal_shown = m.hd_board_n;      // 次のハンドは場が空から
             resetDrafts();
             s_sess->jev_valid = false;
             setView(View::Table);
@@ -3010,6 +3045,12 @@ void tickCb(lv_timer_t *t)
         s_send_since_ms = millis();
         s_result_since_ms = millis();
     } else {
+        // 場の札を 1 枚ずつ表にする（ホールデムだけ）
+        if (revealing() && millis() - s_reveal_ms >= kRevealMs) {
+            ++s_reveal_shown;
+            s_reveal_ms = millis();
+            s_dirty = true;
+        }
         switch (s_step) {
         case Step::Think:
             if (millis() - s_step_ms >= kThinkMs) {
@@ -3174,6 +3215,8 @@ lv_obj_t *createGameScreen()
     s_tut_page = 0;
     s_tut_first_play = false;
     s_tut_dont_show = true;
+    // 画面を開き直したときに、めくり終わった場をもう一度めくらない
+    s_reveal_shown = s_sess->in_match ? s_sess->match.hd_board_n : 0;
     resetDrafts();
     s_view_ms = millis();
 

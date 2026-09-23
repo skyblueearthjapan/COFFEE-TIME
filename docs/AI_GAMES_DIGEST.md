@@ -1,5 +1,8 @@
 # AI を使う 2 作（エスパー対決・AI DUEL）の要点
 
+> **2026-09-23 追記**: この文書は 9/21 時点の設計の要点と疎通試験の記録。エスパー第 2 段階・AI DUEL・リバーシ・POKER TABLE はすべて実装済みで、計画と決定事項は ESPER_STAGE2_PLAN.md AI_DUEL_PLAN.md REVERSI_PLAN.md POKER_TABLE_PLAN.md、現状は HANDOFF.md を見ること。
+
+
 - 作成: 2026-09-21。設計書（`参考データ/ゲーム4部作/COFFEE_TIME_AI_ESPER_Design_v1.0.md`・`…AI_DUEL_Design_v1.0.md`）を読み取り専用で整理したもの。
   実装前に必ず設計書の該当章を読み直すこと
 - 前提（ユーザー決定）: **探偵に Jev は入れない。AI（TypeSafe Jev）が必須なのはこの 2 作**。着手順は エスパー → AI DUEL
