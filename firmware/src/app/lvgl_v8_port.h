@@ -177,6 +177,11 @@ unsigned lvgl_port_task_stack_free(void);
  * 開発用：LVGL に対してだけ、指定座標のタップを偽装する（生のタッチデータは更新しない）。
  */
 void lvgl_port_debug_tap(int16_t x, int16_t y, uint32_t hold_ms);
+/**
+ * 開発用：直前の操作が偽装タップ（P コマンド）だったか。
+ * コーヒーの「＋1」はこれが true のとき記録しない（自動操作の誤タップで本物の記録を作らないため）。
+ */
+bool lvgl_port_debug_tap_recent();
 
 /**
  * @brief Porting LVGL with LCD and touch panel. This function should be called after the initialization of the LCD and touch panel.

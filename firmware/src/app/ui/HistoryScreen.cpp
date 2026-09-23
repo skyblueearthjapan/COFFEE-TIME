@@ -32,16 +32,16 @@ constexpr Rect kPill[4] = {
 constexpr Rect kNoData{70, 170, 340, 60};
 
 // --- ゲームの表の配置 -------------------------------------------------------
-// 5 行（リバーシを足した）になったので、見出しの行を上げ、行の高さと間隔を詰めて
-// 切り替えの丸ボタン（y=336）の上に注記まで収めた
+// 6 行（POKER TABLE を足した）になったので、行の高さと間隔をもう一段詰めた。
+// 最後の行は y=276〜306、注記は 308〜332 で、切り替えの丸ボタン（y=336）に重ならない
 constexpr int16_t kGameRowX = 84;
 constexpr int16_t kGameRowW = 316;
-constexpr int16_t kGameRowH = 36;
-constexpr int16_t kGameRowTop = 110;
-constexpr int16_t kGameRowStep = 40;
-constexpr Rect kGameHeadToday{200, 86, 66, 22};
-constexpr Rect kGameHeadWeek{266, 86, 66, 22};
-constexpr Rect kGameHeadTotal{332, 86, 62, 22};
+constexpr int16_t kGameRowH = 30;
+constexpr int16_t kGameRowTop = 106;
+constexpr int16_t kGameRowStep = 34;
+constexpr Rect kGameHeadToday{200, 84, 66, 22};
+constexpr Rect kGameHeadWeek{266, 84, 66, 22};
+constexpr Rect kGameHeadTotal{332, 84, 62, 22};
 constexpr Rect kGameNote{70, 308, 340, 24};
 
 // --- 一覧の配置 -------------------------------------------------------------
@@ -60,13 +60,14 @@ struct GameRow {
     cup::GameId id;
     const char *name;
 };
-// 並び順はゲーム一覧と同じ（AI DUEL → エスパー → 探偵 → 人狼 → リバーシ）
+// 並び順はゲーム一覧と同じ（AI DUEL → エスパー → 探偵 → 人狼 → リバーシ → POKER TABLE）
 const GameRow kGameRows[] = {
     {cup::GameId::Duel, "AI DUEL"},
     {cup::GameId::Esper, "エスパー"},
     {cup::GameId::Detective, "事件簿"},
     {cup::GameId::Werewolf, "人狼会"},
     {cup::GameId::Reversi, "リバーシ"},
+    {cup::GameId::Cards, "POKER TABLE"},   // ゲームの名前はユーザー指定（2026-09-23）
 };
 constexpr int kGameRowCount = (int)(sizeof(kGameRows) / sizeof(kGameRows[0]));
 
@@ -232,7 +233,7 @@ void buildGamesTable(lv_obj_t *p)
         const cup::GameId id = kGameRows[i].id;
         const int16_t y = (int16_t)(kGameRowTop + kGameRowStep * i);
         makePanel(p, Rect{kGameRowX, y, kGameRowW, kGameRowH}, CT_COLOR_PANEL, 12);
-        makeRectLabel(p, Rect{96, y, 104, kGameRowH}, &ct_font_jp_20, CT_COLOR_TEXT,
+        makeRectLabel(p, Rect{96, y, 140, kGameRowH}, &ct_font_jp_20, CT_COLOR_TEXT,
                       kGameRows[i].name, LV_TEXT_ALIGN_LEFT);
 
         int week_sum = 0;

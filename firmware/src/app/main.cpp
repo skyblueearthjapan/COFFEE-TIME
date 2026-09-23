@@ -22,6 +22,7 @@
 #include "ui/ScreenManager.h"
 #include "ui/SettingsScreen.h"
 #include "ui/TodayScreen.h"
+#include "games/cards/CardsGame.h"
 #include "games/detective/DetectiveGame.h"
 #include "games/duel/DuelGame.h"
 #include "games/esper/EsperGame.h"
@@ -59,15 +60,20 @@ static void sendSnapshot()
     heap_caps_free(buf);
 }
 
-// 人狼の秘密（役職・占い結果・投票先）が映っている間は、開発用コマンドで画面を
-// 送ったり切り替えたりしない。スクリーンショットが秘密ごと PC に渡るのを防ぐ
+// 人狼の秘密（役職・占い結果・投票先）や POKER TABLE の手札が映っている間は、
+// 開発用コマンドで画面を送ったり切り替えたりしない。
+// スクリーンショットが秘密ごと PC に渡るのを防ぐ
 static bool blockedBySecret()
 {
-    if (!werewolf::secretOnScreen()) {
-        return false;
+    if (werewolf::secretOnScreen()) {
+        Serial.println("[DEV] ignored: a werewolf secret is on screen");
+        return true;
     }
-    Serial.println("[DEV] ignored: a werewolf secret is on screen");
-    return true;
+    if (cards::privateOnScreen()) {
+        Serial.println("[DEV] ignored: a POKER TABLE hand is on screen");
+        return true;
+    }
+    return false;
 }
 
 // 開発用："P<x>,<y>改行" でその座標をタップする（画面確認の自動化。秘密の表示はできない）
@@ -251,6 +257,11 @@ void loop()
             // 開発用：リバーシの今の場面を表示（画面・盤・手番・枚数・直前の手）。
             // **盤面は公開情報**なので、そのまま出してよい（人狼の秘密とは違う）
             case 'J': reversi::debugPrintPublicState(); break;
+            // 開発用：POKER TABLE の今の場面を表示（画面・卓・進み具合・点数）。
+            // **手札と、公開前の相手の選択は絶対に出さない**（秘密は端末の中だけ）
+            case 'K': cards::debugPrintPublicState(); break;
+            // 開発用：画面の重なりの数（1 = HOME）。tools/uiwalk.py が「HOME ではない」ことを確かめてからタップするために使う
+            case 'Q': Serial.printf("[UI] view=stack depth=%d\n", ui::depth()); break;
             // 開発用：探偵の記録を消す（試験で「初回の結果」を使い切らないため）
             case 'X': detective::debugResetProgress(); break;
             case 'C': setTimeFromSerial(); break;    // PC の時計から時刻を設定（tools/settime.py）

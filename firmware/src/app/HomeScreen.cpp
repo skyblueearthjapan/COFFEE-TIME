@@ -1,5 +1,7 @@
 #include "HomeScreen.h"
 
+#include "lvgl_v8_port.h"
+
 #include <Arduino.h>
 #include <lvgl.h>
 #include <time.h>
@@ -160,6 +162,12 @@ static void recordEvent(const char *event, uint32_t prev)
 // コーヒーを 1 杯記録する。HOME の「+1」のほか、ゲーム中の一時停止メニューからも呼ばれる
 void addOneCup()
 {
+    // 開発用の偽装タップ（シリアル P）からは絶対に記録しない。自動操作の誤タップで本物の「＋1」が
+    // 2 度入ったため（2026-09-22 / 23）。本物の記録を試験したいときはシリアル T を使う
+    if (lvgl_port_debug_tap_recent()) {
+        Serial.println("[DEV] ignored: +1 from a debug tap (use T for a real record)");
+        return;
+    }
     const uint32_t prev = cup::remaining();
     cup::takeOne();
     recordEvent("take", prev);

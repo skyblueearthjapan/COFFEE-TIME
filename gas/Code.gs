@@ -78,6 +78,11 @@ function doPost(e) {
     return json_(reversiHandle_(body));
   }
 
+  // POKER TABLE（トランプ 4 種）: 端末が作った観測を検査して Jev に 1 手を選ばせる / 終わった試合の記録（gas/Cards.gs）
+  if (body.event === 'cards') {
+    return json_(cardsHandle_(body));
+  }
+
   // デザイン確認用：スクリプト所有者だけに見本メールを送る（ログには残さない）
   if (body.event === 'preview') {
     const left = body.left === undefined ? NOTIFY_AT : Number(body.left);

@@ -19,5 +19,6 @@ void push(ScreenFactory factory);       // 画面を開く（戻り先として�
 void pop();                             // 1 つ前の画面へ戻る
 void goHome();                          // HOME まで一気に戻る（ゲーム中の「カフェへ」導線）
 bool isHome();
+int depth();        // 重なっている画面の数（1 = HOME だけ、2 = メニューやゲーム一覧など 1 枚上）。開発用の状態表示に使う
 
 }  // namespace ui

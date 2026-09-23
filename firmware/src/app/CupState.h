@@ -21,8 +21,9 @@ enum class GameId : uint8_t {
     Esper = 2,      // エスパー対決
     Duel = 3,       // AI DUEL
     Reversi = 4,    // リバーシ（JEV REVERSI）
+    Cards = 5,      // POKER TABLE（トランプ 4 種）
 };
-constexpr size_t kGameCount = 5;
+constexpr size_t kGameCount = 6;
 
 // **0〜3 番だけが `cup/today` と `cup_hist/days` の塊に入る。**
 // 杯数の記録（いちばん大事なデータ）と同じ塊なので、形を 1 バイトも変えない。

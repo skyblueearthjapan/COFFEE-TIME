@@ -6,7 +6,8 @@
   python tools/gas_call.py duel                    AI DUEL の予測を 1 回頼む（架空の集計。シートには書かない）
   python tools/gas_call.py duel withlog=1          上に加えて DuelRounds シートへ guest の試験行を 1 行書く
   python tools/gas_call.py reversi [mode=jev_pro|casual] [same=1]   JEV REVERSI の 1 手を頼む（シートには書かない）
-  python tools/gas_call.py ping-unauthorized     わざと違う合言葉で呼び、doPost が動いているかだけ確かめる
+  python tools/gas_call.py cards [game=gops] [same=1]               POKER TABLE の 1 手を頼む（シートには書かない）
+  python tools/gas_call.py ping-unauthorized    わざと違う合言葉で呼び、doPost が動いているかだけ確かめる
                                                    （{"ok":false,"error":"unauthorized"} が返れば正常。何も記録されない）
 
 GAS は POST を処理したあと 302 で別ホストへ渡す。転送先は「ヘッダーを引き継がない新しい GET」で読む
@@ -52,6 +53,25 @@ if event == "reversi":
     gid = "0" * 32 if payload.pop("same", 0) else _secrets.token_hex(16)
     payload["req"] = 1
     payload["snapshot"] = {"game_id": gid, "n": 6, "human": "B", "mode": mode, "history": ["C2:H"]}
+
+if event == "cards":
+    # POKER TABLE: バカラ（OPEN。P1=S7, B1=C2）の予想を 1 回頼む。手札の要らないゲームなので試験に向く。シートには書かない。
+    # game=gops で GOPS（7 枚版・1 回目・得点札 4）も試せる。same=1 なら固定 ID = 2 回目からは GAS の控えが返る
+    import secrets as _secrets
+    game = str(payload.pop("game", "baccarat"))
+    mid = "0" * 32 if payload.pop("same", 0) else _secrets.token_hex(16)
+    payload.update({"req": 1, "match": mid, "rev": 3})
+    if game == "gops":
+        payload["observation"] = {"game": "gops", "variant": "quick7", "phase": "bid", "rules_version": "1.0.0",
+                                  "n": 7, "round_no": 1, "prize": 4, "own_remaining": [1, 2, 3, 4, 5, 6, 7],
+                                  "opponent_remaining": [1, 2, 3, 4, 5, 6, 7], "scores": {"self": 0, "opponent": 0},
+                                  "history": [], "previous_match_history": []}
+        payload["legal"] = ["PLAY:%d" % i for i in range(1, 8)]
+    else:
+        payload["observation"] = {"game": "baccarat", "variant": "open", "phase": "predict", "rules_version": "1.0.0",
+                                  "decks": 8, "fresh_deck_each_round": True,
+                                  "public_first_cards": {"PLAYER": "S7", "BANKER": "C2"}}
+        payload["legal"] = ["BANKER", "PLAYER", "TIE"]
 
 if event == "duel":
     # 「グーが多く、負けた次はパーに変えがち」な架空の人の集計。シートには書かない（withlog=1 のときだけ guest で 1 行書く）

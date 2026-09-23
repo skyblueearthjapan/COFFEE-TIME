@@ -68,4 +68,9 @@ bool isHome()
     return s_depth <= 1;
 }
 
+int depth()
+{
+    return s_depth;
+}
+
 }  // namespace ui

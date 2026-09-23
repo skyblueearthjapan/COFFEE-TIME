@@ -693,12 +693,21 @@ static volatile bool s_sim_tap_active = false;
 static volatile int16_t s_sim_tap_x = 0, s_sim_tap_y = 0;
 static volatile uint32_t s_sim_tap_until_ms = 0;
 
+static volatile uint32_t s_sim_tap_last_ms = 0;   // 最後に偽装タップを「離した」時刻
+
 void lvgl_port_debug_tap(int16_t x, int16_t y, uint32_t hold_ms)
 {
     s_sim_tap_x = x;
     s_sim_tap_y = y;
     s_sim_tap_until_ms = lv_tick_get() + hold_ms;
+    s_sim_tap_last_ms = s_sim_tap_until_ms;
     s_sim_tap_active = true;
+}
+
+bool lvgl_port_debug_tap_recent()
+{
+    // CLICKED は指を離した直後に届くので、離してから少しの間も「偽装タップ由来」とみなす
+    return s_sim_tap_active || (int32_t)(lv_tick_get() - s_sim_tap_last_ms) < 800;
 }
 
 static void touchpad_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)

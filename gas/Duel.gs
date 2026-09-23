@@ -90,15 +90,24 @@ function duelValidate_(r) {
 // 1 日の Jev 呼び出し回数の上限（スクリプト プロパティ JEV_DAILY_MAX。無ければ既定値）。
 // 厳密な排他はしない（端末 1 台・1 ラウンド 1 回なので、数回の数え違いは許容する）
 function duelTakeDailySlot_() {
-  const props = PropertiesService.getScriptProperties();
-  const max = Number(props.getProperty('JEV_DAILY_MAX')) || DUEL_DAILY_DEFAULT;
-  const day = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd');
+  if (!duelDailySlotAvailable_()) return false;
   const cache = CacheService.getScriptCache();
-  const key = 'jev_n_' + day;
+  const key = duelDailyKey_();
   const n = Number(cache.get(key)) || 0;
-  if (n >= max) return false;
   cache.put(key, String(n + 1), 21600);  // 6 時間（キャッシュの上限）。切れたら数え直しになるが安全側の目安として十分
   return true;
+}
+
+// 数えずに空きだけを見る（POKER TABLE は成功した呼び出しだけをあとから数える）
+function duelDailySlotAvailable_() {
+  const props = PropertiesService.getScriptProperties();
+  const max = Number(props.getProperty('JEV_DAILY_MAX')) || DUEL_DAILY_DEFAULT;
+  const n = Number(CacheService.getScriptCache().get(duelDailyKey_())) || 0;
+  return n < max;
+}
+
+function duelDailyKey_() {
+  return 'jev_n_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd');
 }
 
 // 対戦 1 回ぶんのラウンドをまとめて DuelRounds シートへ足す。形の崩れた行は捨て、書けた行数を返す
