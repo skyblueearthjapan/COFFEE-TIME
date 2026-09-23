@@ -16,6 +16,7 @@
 #include "../../HomeScreen.h"
 #include "../../NetService.h"
 #include "../../ui/ScreenManager.h"
+#include "../../ui/Thinking.h"
 #include "../../ui/UiKit.h"
 #include "ReversiContent.h"
 #include "ReversiStore.h"
@@ -103,6 +104,9 @@ constexpr Rect kColorBack   {150, 370, 180, 46};
 // --- board（設計書 4.1）-----------------------------------------------------
 constexpr Rect kBoardTitle {120,  20, 240, 24};
 constexpr Rect kBoardScore { 84,  48, 312, 30};
+// Jev の返事待ちのあいだ、石の数の行に出す動く「考え中」。
+// 円の上のほうは狭いので、弧を置く左端が円に入る x=120 まで内側に寄せてある
+constexpr Rect kBoardWait  {120,  48, 240, 30};
 constexpr Rect kBoardArea  { 84,  84, 312, 312};
 constexpr Rect kBoardMenu  {132, 400,  48, 44};
 constexpr Rect kBoardPlace {188, 402, 104, 52};
@@ -1145,10 +1149,21 @@ void buildBoard()
     std::snprintf(title, sizeof(title), "%s %s", text("game.title"), sizeLabel(s.pos.n));
     rectLabel(layout::kBoardTitle, &ct_font_jp_20, CT_COLOR_SUBTEXT, title);
 
-    char line[128];
-    boardStatusText(line, sizeof(line));
-    rectLabel(layout::kBoardScore, fitFont(line, layout::kBoardScore.w),
-              s_st->save_failed ? CT_COLOR_ALERT : CT_COLOR_TEXT, line);
+    // Jev の返事は 3〜11 秒かかる。そのあいだだけ、止まった「Jevが判断中…」の代わりに
+    // 弧を回しながら何をしているかを順に出す（石の数はすぐ戻る）。
+    // 保存できていない知らせは何より優先するので、そのときはいつもの行のまま
+    if (s_phase == Phase::Wait && !s_st->save_failed && s.closure == Closure::Active) {
+        static const char *phrases[3];
+        phrases[0] = text("ui.board.think1");
+        phrases[1] = text("ui.board.think2");
+        phrases[2] = text("ui.board.think3");
+        ui::thinkingCreate(s_content, layout::kBoardWait, phrases, 3);
+    } else {
+        char line[128];
+        boardStatusText(line, sizeof(line));
+        rectLabel(layout::kBoardScore, fitFont(line, layout::kBoardScore.w),
+                  s_st->save_failed ? CT_COLOR_ALERT : CT_COLOR_TEXT, line);
+    }
 
     s_board = lv_obj_create(s_content);
     lv_obj_remove_style_all(s_board);

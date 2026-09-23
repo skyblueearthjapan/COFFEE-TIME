@@ -127,6 +127,73 @@ const Contract = require(path.join(__dirname, 'jev_contract.js'));
 
 let bad = 0;
 
+// --- ホールデムの入力ゲート（原本に無いので、ここに同じ厳しさで書く）---------
+// GAS 側の gas/CardsHoldem.gs と**同じキー集合・同じ範囲**であること（計画 §5b）。
+// 片方だけ直すと実機のホールデムだけが全部断られるので、鍵の一覧はここが控え
+function hExact(o, keys) {
+  if (!o || typeof o !== 'object' || Array.isArray(o)) throw Error('OBJECT');
+  if (JSON.stringify(Object.keys(o).sort()) !== JSON.stringify(keys.slice().sort()))
+    throw Error('UNKNOWN_OR_MISSING_KEY');
+}
+function hInt(x, lo, hi) { if (!Number.isInteger(x) || x < lo || x > hi) throw Error('INTEGER'); return x; }
+function hFace(s) {
+  if (typeof s !== 'string' || !/^([CDHS])([2-9]|10|J|Q|K|A)$/.test(s)) throw Error('FACE');
+  const r = { J: 11, Q: 12, K: 13, A: 14 }[s.slice(1)] || Number(s.slice(1));
+  return 'CDHS'.indexOf(s[0]) * 13 + r - 2;
+}
+function validateHoldem(o) {
+  hExact(o, ['game', 'variant', 'phase', 'rules_version', 'own_cards', 'board', 'hand_no',
+             'max_hands', 'stacks', 'pot', 'contribution', 'unit', 'raises_left', 'dealer',
+             'public_actions', 'statistics']);
+  if (o.game !== 'holdem' || o.variant !== 'holdem' || o.rules_version !== '1.0.0') throw Error('VERSION');
+  const boardBy = { preflop: 0, flop: 3, turn: 4, river: 5 };
+  if (!(o.phase in boardBy)) throw Error('PHASE');
+  if (!Array.isArray(o.own_cards) || o.own_cards.length !== 2) throw Error('OWN_CARDS');
+  if (!Array.isArray(o.board) || o.board.length !== boardBy[o.phase]) throw Error('BOARD');
+  const all = o.own_cards.concat(o.board);
+  all.forEach(hFace);
+  if (new Set(all).size !== all.length) throw Error('OVERLAP');
+  hInt(o.hand_no, 1, 5);
+  if (o.max_hands !== 5) throw Error('MAX_HANDS');
+  if (!['SELF', 'OPPONENT'].includes(o.dealer)) throw Error('DEALER');
+  hExact(o.stacks, ['self', 'opponent']);
+  hExact(o.contribution, ['self', 'opponent']);
+  hInt(o.stacks.self, 0, 400); hInt(o.stacks.opponent, 0, 400);
+  hInt(o.pot, 2, 74);
+  if (o.stacks.self + o.stacks.opponent + o.pot !== 400) throw Error('CHIPS');
+  const unit = (o.phase === 'turn' || o.phase === 'river') ? 4 : 2;
+  if (o.unit !== unit) throw Error('UNIT');
+  hInt(o.raises_left, 0, 2);
+  for (const x of Object.values(o.contribution)) { hInt(x, 0, 3 * unit); if (x % unit) throw Error('CONTRIBUTION'); }
+  const owed = o.contribution.opponent - o.contribution.self;
+  if (owed < 0) throw Error('WRONG_TURN');
+  const criteria = {};
+  if (owed === 0) {
+    if (o.contribution.self !== 0) throw Error('CLOSED_STREET');
+    criteria.CHECK = 1; criteria.BET = 1;
+  } else {
+    if (owed !== unit) throw Error('OWED');
+    criteria.FOLD = 1; criteria.CALL = 1;
+    if (o.raises_left > 0) criteria.RAISE = 1;
+  }
+  if (!Array.isArray(o.public_actions) || o.public_actions.length > 24) throw Error('HISTORY');
+  for (const e of o.public_actions) {
+    if (!['SELF', 'OPPONENT'].includes(e.actor)) throw Error('ACTOR');
+    if (!['CHECK', 'BET', 'CALL', 'RAISE', 'FOLD'].includes(e.type)) throw Error('EVENT_TYPE');
+    const keys = ['actor', 'type'];
+    if (['BET', 'CALL', 'RAISE'].includes(e.type)) { keys.push('amount'); hInt(e.amount, 1, 12); }
+    hExact(e, keys);
+  }
+  // 原本の gate の statCheck と同じ: sample_n は必須、ほかは任意（0..1e6 の整数）
+  const allowed = ['sample_n', 'fold', 'check', 'call', 'bet', 'raise',
+                   'aggressive_opportunities', 'facing_bet_opportunities'];
+  const st = o.statistics;
+  if (!st || typeof st !== 'object' || Array.isArray(st) || !Object.hasOwn(st, 'sample_n') ||
+      Object.keys(st).some(function (k) { return !allowed.includes(k); })) throw Error('STATS');
+  Object.values(st).forEach(function (x) { hInt(x, 0, 1000000); });
+  return Object.keys(criteria).sort();
+}
+
 // --- 観測を入力ゲートに通す -------------------------------------------------
 const rows = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 const seen = {};
@@ -134,6 +201,11 @@ for (const row of rows) {
   const key = row.game + '/' + row.phase;
   seen[key] = (seen[key] || 0) + 1;
   try {
+    if (row.game === 'holdem') {
+      const keys = validateHoldem(row.observation);
+      if (JSON.stringify(keys) !== JSON.stringify(row.legal)) throw new Error('CRITERIA_MISMATCH');
+      continue;
+    }
     const req = Gate.requestFromObservation(row.observation, row.legal);
     const keys = Object.keys(req.questions.action.criteria).sort();
     if (JSON.stringify(keys) !== JSON.stringify(row.legal)) {
@@ -149,8 +221,9 @@ for (const row of rows) {
 }
 console.log('  観測 ' + rows.length + ' 件を CardsGate に通しました（不合格 ' + bad + ' 件）');
 console.log('  内訳: ' + JSON.stringify(seen));
-const want = ['poker/bet_pre', 'poker/draw', 'poker/bet_post', 'gops/bid',
-              'thirty_one/turn', 'thirty_one/last_reply', 'baccarat/predict'];
+const want = ['poker/bet_pre', 'poker/draw', 'poker/bet_post',
+              'holdem/preflop', 'holdem/flop', 'holdem/turn', 'holdem/river',
+              'gops/bid', 'thirty_one/turn', 'thirty_one/last_reply', 'baccarat/predict'];
 const missing = want.filter(function (k) { return !seen[k]; });
 if (missing.length) {
   console.log('  **試していない段階: ' + missing.join(', ') + '**');

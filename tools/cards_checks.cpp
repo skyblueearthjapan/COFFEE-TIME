@@ -50,7 +50,7 @@ static int g_group_mark = 0;        // その群に入ったときの失敗数
         g_group_mark = g_failures;                                               \
     } while (false)
 
-static constexpr int kExpectedGroups = 21;
+static constexpr int kExpectedGroups = 23;      // ＋ ホールデムの 7 枚評価 ＋ ホールデムの試合
 
 // ---------------------------------------------------------------------------
 // 1. 原本 tests/core_test.cpp 相当
@@ -185,6 +185,260 @@ static void collectPokerKeys()
     CHECK(g_key_categories == 0x1FFu, "9 つの役が全部そろっていない");
     CHECK(g_keys.size() >= 600, "役のキーの例が少なすぎる");
     GROUP("役のキーの見本（9 つの役すべて）");
+}
+
+// ---------------------------------------------------------------------------
+// ホールデム: 7 枚から最良の 5 枚（計画 §5b）を、まったく別の書き方の評価器と比べる。
+// 参照側は 5 枚の組み合わせを一切作らず、rank / suit の数え上げだけで役を決める
+// ---------------------------------------------------------------------------
+static int referenceCategory7(const Card *c, int n)
+{
+    int rank_count[15] = {};
+    int suit_count[4] = {};
+    bool by_suit[4][15] = {};
+    for (int i = 0; i < n; ++i) {
+        const int r = rank(c[i]), s = suit(c[i]);
+        ++rank_count[r];
+        ++suit_count[s];
+        by_suit[s][r] = true;
+    }
+    auto straightHigh = [](const bool *has) {
+        for (int hi = 14; hi >= 5; --hi) {
+            bool all = true;
+            for (int k = 0; k < 5; ++k) {
+                const int r = hi - k;
+                all = all && has[r == 1 ? 14 : r];
+            }
+            if (all) {
+                return hi;
+            }
+        }
+        // A2345（A を 1 として扱う）
+        if (has[14] && has[2] && has[3] && has[4] && has[5]) {
+            return 5;
+        }
+        return 0;
+    };
+    for (int s = 0; s < 4; ++s) {
+        if (suit_count[s] >= 5 && straightHigh(by_suit[s]) > 0) {
+            return 8;       // ストレートフラッシュ
+        }
+    }
+    int quads = 0, trips = 0, pairs = 0;
+    for (int r = 2; r <= 14; ++r) {
+        if (rank_count[r] == 4) ++quads;
+        else if (rank_count[r] == 3) ++trips;
+        else if (rank_count[r] == 2) ++pairs;
+    }
+    if (quads) return 7;
+    if (trips >= 2 || (trips == 1 && pairs >= 1)) return 6;     // フルハウス
+    for (int s = 0; s < 4; ++s) {
+        if (suit_count[s] >= 5) return 5;
+    }
+    bool has[15] = {};
+    for (int r = 2; r <= 14; ++r) {
+        has[r] = rank_count[r] > 0;
+    }
+    if (straightHigh(has) > 0) return 4;
+    if (trips == 1) return 3;
+    if (pairs >= 2) return 2;
+    if (pairs == 1) return 1;
+    return 0;
+}
+
+// 参照側の「6 つの数字」まるごと。5 枚の組み合わせを一切作らず、
+// rank / suit の数え上げだけで poker_value と同じキーを組み立てる
+static std::array<int, 6> referenceKey7(const Card *c, int n)
+{
+    int rank_count[15] = {};
+    int suit_count[4] = {};
+    bool by_suit[4][15] = {};
+    for (int i = 0; i < n; ++i) {
+        const int r = rank(c[i]), s = suit(c[i]);
+        ++rank_count[r];
+        ++suit_count[s];
+        by_suit[s][r] = true;
+    }
+    auto straightHigh = [](const bool *has) {
+        for (int hi = 14; hi >= 6; --hi) {
+            bool all = true;
+            for (int k = 0; k < 5; ++k) {
+                all = all && has[hi - k];
+            }
+            if (all) {
+                return hi;
+            }
+        }
+        return (has[14] && has[2] && has[3] && has[4] && has[5]) ? 5 : 0;   // ホイール
+    };
+    // 8: ストレートフラッシュ
+    for (int s = 0; s < 4; ++s) {
+        if (suit_count[s] >= 5) {
+            const int hi = straightHigh(by_suit[s]);
+            if (hi > 0) {
+                return {8, hi, 0, 0, 0, 0};
+            }
+        }
+    }
+    int quad = 0, trips_hi = 0, trips_lo = 0, pair_hi = 0, pair_lo = 0;
+    for (int r = 14; r >= 2; --r) {
+        if (rank_count[r] == 4 && !quad) quad = r;
+        else if (rank_count[r] == 3) { if (!trips_hi) trips_hi = r; else if (!trips_lo) trips_lo = r; }
+        else if (rank_count[r] == 2) { if (!pair_hi) pair_hi = r; else if (!pair_lo) pair_lo = r; }
+    }
+    auto topOther = [&](int skip_a, int skip_b, int nth) {
+        int seen = 0;
+        for (int r = 14; r >= 2; --r) {
+            if (r == skip_a || r == skip_b || rank_count[r] == 0) continue;
+            if (++seen == nth) return r;
+        }
+        return 0;
+    };
+    // 7: フォーカード
+    if (quad) {
+        return {7, quad, topOther(quad, 0, 1), 0, 0, 0};
+    }
+    // 6: フルハウス（3 枚組が 2 つなら高いほうを 3 枚に、低いほうを 2 枚に使う）
+    if (trips_hi && (trips_lo || pair_hi)) {
+        const int p = trips_lo > pair_hi ? trips_lo : pair_hi;
+        return {6, trips_hi, p, 0, 0, 0};
+    }
+    // 5: フラッシュ（そのスートの高い 5 枚）
+    for (int s = 0; s < 4; ++s) {
+        if (suit_count[s] >= 5) {
+            std::array<int, 6> key = {5, 0, 0, 0, 0, 0};
+            int at = 1;
+            for (int r = 14; r >= 2 && at < 6; --r) {
+                if (by_suit[s][r]) key[at++] = r;
+            }
+            return key;
+        }
+    }
+    // 4: ストレート
+    {
+        bool has[15] = {};
+        for (int r = 2; r <= 14; ++r) has[r] = rank_count[r] > 0;
+        const int hi = straightHigh(has);
+        if (hi > 0) return {4, hi, 0, 0, 0, 0};
+    }
+    // 3: スリーカード
+    if (trips_hi) {
+        return {3, trips_hi, topOther(trips_hi, 0, 1), topOther(trips_hi, 0, 2), 0, 0};
+    }
+    // 2: ツーペア（余りの最高位が kicker。3 組目のペアでもよい）
+    if (pair_hi && pair_lo) {
+        return {2, pair_hi, pair_lo, topOther(pair_hi, pair_lo, 1), 0, 0};
+    }
+    // 1: ワンペア
+    if (pair_hi) {
+        return {1, pair_hi, topOther(pair_hi, 0, 1), topOther(pair_hi, 0, 2),
+                topOther(pair_hi, 0, 3), 0};
+    }
+    // 0: ハイカード
+    return {0, topOther(0, 0, 1), topOther(0, 0, 2), topOther(0, 0, 3), topOther(0, 0, 4),
+            topOther(0, 0, 5)};
+}
+
+// 選び方のコードとは**別に** 21 通りを数え直し、選ばれた 5 枚より強い組み合わせが
+// 無いことを確かめる（bestFive のループ範囲や比べ方の取りこぼしをここで捕まえる）
+static bool noBetterCombo(const Card *c, int n, const std::array<int, 6> &best)
+{
+    for (int a = 0; a < n - 4; ++a) {
+        for (int b = a + 1; b < n - 3; ++b) {
+            for (int d = b + 1; d < n - 2; ++d) {
+                for (int e = d + 1; e < n - 1; ++e) {
+                    for (int f = e + 1; f < n; ++f) {
+                        const PokerValue v =
+                            poker_value({c[a], c[b], c[d], c[e], c[f]});
+                        if (v.valid && v.key > best) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return true;
+}
+
+static void holdemEvaluatorTests()
+{
+    std::printf("[8] ホールデム: 7 枚の最良役を独立実装と突き合わせる\n");
+    std::mt19937 rng(987654321u);
+    long long boards = 0;
+    for (int i = 0; i < 20000; ++i) {
+        Deck d;
+        if (!d.init(1, next32, &rng)) {
+            CHECK(false, "山札を作れない");
+            break;
+        }
+        Card seven[7];
+        for (auto &c : seven) {
+            d.take(c);
+        }
+        const ct::Best5 best = ct::bestFive(seven, 7);
+        CHECK(best.valid, "7 枚から 5 枚を選べない");
+        if (!best.valid) {
+            break;
+        }
+        CHECK(best.value.key[0] == referenceCategory7(seven, 7),
+              "7 枚の役の種類が独立実装と違う");
+        // 同点の決め方（6 つの数字）まで独立実装と合うか
+        CHECK(best.value.key == referenceKey7(seven, 7), "7 枚の役のキーが独立実装と違う");
+        // 21 通りを数え直して、これより強い組み合わせが無いか
+        CHECK(noBetterCombo(seven, 7, best.value.key), "もっと強い 5 枚の組み合わせがある");
+        // 選ばれた 5 枚が本当に 7 枚の部分集合か
+        for (auto picked : best.cards) {
+            bool found = false;
+            for (auto c : seven) {
+                found = found || c == picked;
+            }
+            CHECK(found, "選んだ 5 枚が元の 7 枚に無い");
+        }
+        ++boards;
+        if (g_failures != g_group_mark) {
+            break;
+        }
+    }
+    CHECK(boards == 20000, "7 枚の手を 20,000 通り試していない");
+
+    // 端の場合を名指しで
+    {
+        // 場が A-2-3-4、手札に 5 → 5 が上のストレート
+        const std::array<Card, 2> hole = {C(5, 0), C(13, 1)};
+        const Card board[5] = {C(14, 2), C(2, 3), C(3, 0), C(4, 1), C(9, 2)};
+        const ct::Best5 b = ct::holdemBest(hole, board, 5);
+        CHECK(b.valid && b.value.key[0] == 4 && b.value.key[1] == 5, "場のホイールを拾えない");
+    }
+    {
+        // 6 枚同スート → いちばん高い 5 枚のフラッシュ
+        const std::array<Card, 2> hole = {C(3, 3), C(4, 3)};
+        const Card board[5] = {C(7, 3), C(9, 3), C(11, 3), C(13, 3), C(2, 0)};
+        const ct::Best5 b = ct::holdemBest(hole, board, 5);
+        CHECK(b.valid && b.value.key[0] == 5 && b.value.key[1] == 13 && b.value.key[2] == 11 &&
+                  b.value.key[3] == 9 && b.value.key[4] == 7 && b.value.key[5] == 4,
+              "6 枚同スートから高い 5 枚を選べない");
+    }
+    {
+        // フルハウスが 2 通り（KKK+99 と KKK+77）→ 高いペアを選ぶ
+        const std::array<Card, 2> hole = {C(13, 0), C(13, 1)};
+        const Card board[5] = {C(13, 2), C(9, 0), C(9, 1), C(7, 2), C(7, 3)};
+        const ct::Best5 b = ct::holdemBest(hole, board, 5);
+        CHECK(b.valid && b.value.key[0] == 6 && b.value.key[1] == 13 && b.value.key[2] == 9,
+              "フルハウスの組み方を間違えている");
+    }
+    {
+        // 場だけで決まる（双方とも場のストレート）→ 引き分け
+        const std::array<Card, 2> a = {C(2, 0), C(3, 1)};
+        const std::array<Card, 2> b = {C(2, 2), C(3, 3)};
+        const Card board[5] = {C(10, 0), C(11, 1), C(12, 2), C(13, 3), C(14, 0)};
+        const ct::Best5 ba = ct::holdemBest(a, board, 5);
+        const ct::Best5 bb = ct::holdemBest(b, board, 5);
+        CHECK(ba.valid && bb.valid && ba.value.key == bb.value.key,
+              "場だけで決まる局面が引き分けにならない");
+    }
+    std::printf("  7 枚の手 %lld 通り ＋ 端の場合 4 件\n", boards);
+    GROUP("ホールデムの 7 枚評価");
 }
 
 static void portableCoreTests()
@@ -537,17 +791,21 @@ struct Sample {
     std::string game, phase, observation, legal;
 };
 static std::vector<Sample> g_samples;
-static int g_sample_count[4][4] = {};
+static int g_sample_count[4][8] = {};
 static const int kSamplesPerPhase = 60;
 
 static int phaseSlot(ct::Phase p)
 {
     switch (p) {
-    case ct::Phase::PokerBetPre:  return 0;
-    case ct::Phase::PokerDraw:    return 1;
-    case ct::Phase::PokerBetPost: return 2;
-    case ct::Phase::ThirtyLast:   return 1;
-    default:                      return 0;
+    case ct::Phase::PokerBetPre:   return 0;
+    case ct::Phase::PokerDraw:     return 1;
+    case ct::Phase::PokerBetPost:  return 2;
+    case ct::Phase::HoldemPreflop: return 3;
+    case ct::Phase::HoldemFlop:    return 4;
+    case ct::Phase::HoldemTurn:    return 5;
+    case ct::Phase::HoldemRiver:   return 6;
+    case ct::Phase::ThirtyLast:    return 1;
+    default:                       return 0;
     }
 }
 
@@ -575,7 +833,8 @@ static void maybeSample(const ct::Match &m)
         return;
     }
     ++g_sample_count[g][slot];
-    g_samples.push_back({ct::gameId(m.game), ct::phaseId(m.phase), obs, legal});
+    g_samples.push_back({ct::isHoldem(m) ? "holdem" : ct::gameId(m.game), ct::phaseId(m.phase),
+                         obs, legal});
 }
 
 struct GopsWatch {
@@ -728,12 +987,14 @@ static bool playMatch(ct::Game game, uint8_t variant, bool human_random, std::mt
     }
 
     switch (game) {
-    case ct::Game::Poker:
-        if (m.completed_units != 5 || m.scores[0] + m.scores[1] != 200) {
-            std::printf("  **FAIL** ポーカーの試合が 5 ハンド 200 点で終わっていません\n");
+    case ct::Game::Poker: {
+        const int total = ct::isHoldem(m) ? 400 : 200;
+        if (m.completed_units != 5 || m.scores[0] + m.scores[1] != total) {
+            std::printf("  **FAIL** ポーカーの試合が 5 ハンド %d 点で終わっていません\n", total);
             return false;
         }
         break;
+    }
     case ct::Game::Gops: {
         int total = 0;
         for (int i = 0; i < m.gops.n; ++i) {
@@ -779,7 +1040,8 @@ static void matchTests(int per_game)
     std::mt19937 rng(20260924);
     struct Entry { ct::Game game; uint8_t variant; const char *name; };
     const Entry kEntries[] = {
-        {ct::Game::Poker, 0, "POKER"},
+        {ct::Game::Poker, 0, "POKER HOLDEM"},
+        {ct::Game::Poker, 1, "POKER DRAW"},
         {ct::Game::Gops, 7, "GOPS 7"},
         {ct::Game::Gops, 13, "GOPS 13"},
         {ct::Game::Thirty, 0, "THIRTY-ONE"},
@@ -845,6 +1107,7 @@ int main(int argc, char **argv)
     portableCoreTests();
     localPolicyTests();
     exhaustiveTests();
+    holdemEvaluatorTests();
     collectPokerKeys();
     matchTests(400);
 

@@ -124,7 +124,7 @@ bool writeSeen()
     uint8_t blob[kSeenBytes] = {};
     uint8_t back[kSeenBytes] = {};
     blob[0] = kSeenVersion;
-    blob[1] = (uint8_t)(s_seen & 0x0Fu);
+    blob[1] = (uint8_t)(s_seen & 0x1Fu);
     put32(blob + kSeenBytes - 4, crc32(blob, kSeenBytes - 4));
 
     Preferences prefs;
@@ -248,7 +248,7 @@ bool loadSeen()
             s_seen = 0;
             ok = false;
         } else {
-            s_seen = (uint8_t)(blob[1] & 0x0Fu);
+            s_seen = (uint8_t)(blob[1] & 0x1Fu);
         }
     } else if (length != 0) {
         Serial.printf("[CARDS] the seen blob has an unknown length (%u)\n", (unsigned)length);
@@ -266,20 +266,20 @@ uint8_t seenFlags()
     return s_seen;
 }
 
-bool seenFlag(size_t game)
+bool seenFlag(size_t slot)
 {
-    return game < kGames && (seenFlags() & (uint8_t)(1u << game)) != 0;
+    return slot < kSeenSlots && (seenFlags() & (uint8_t)(1u << slot)) != 0;
 }
 
-bool markSeen(size_t game)
+bool markSeen(size_t slot)
 {
-    if (game >= kGames) {
+    if (slot >= kSeenSlots) {
         return false;
     }
     if (!s_seen_loaded) {
         loadSeen();
     }
-    const uint8_t next = (uint8_t)(s_seen | (1u << game));
+    const uint8_t next = (uint8_t)(s_seen | (1u << slot));
     if (next == s_seen) {
         return true;        // すでに立っている。フラッシュは触らない
     }

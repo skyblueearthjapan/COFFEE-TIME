@@ -56,11 +56,17 @@ constexpr const char *kRulesVersion = "1.0.0";
 enum class Game : uint8_t { Poker = 0, Gops = 1, Thirty = 2, Baccarat = 3 };
 constexpr size_t kGameCount = 4;
 
-// 原本 I3 のゲーム固有 phase を、この端末で必要なぶんだけ
+// 原本 I3 のゲーム固有 phase を、この端末で必要なぶんだけ。
+// **Phase と EventKind の番号は RAM の中だけの話**（試合は NVS にも SD にも書かない。
+// 計画 §4）。並べ替えても保存済みのデータとは食い違わない
 enum class Phase : uint8_t {
     PokerBetPre,        // 交換前のベット
     PokerDraw,          // 交換（同時選択）
     PokerBetPost,       // 交換後のベット
+    HoldemPreflop,      // ホールデム: 手札 2 枚だけ（計画 §5b）
+    HoldemFlop,         // 場 3 枚
+    HoldemTurn,         // 場 4 枚
+    HoldemRiver,        // 場 5 枚
     GopsBid,            // 入札（同時選択）
     ThirtyTurn,         // 通常ターン（SWAP か KNOCK）
     ThirtyLast,         // ノック後の最後の 1 手（SWAP か STAND）
@@ -79,6 +85,7 @@ enum class EventKind : uint8_t {
     Swap,        // thirty: 場との 1 対 1 交換（出入りの札は公開情報）
     Knock,       // thirty
     Stand,       // thirty
+    Board,       // holdem: 場に共通カードが配られた（value = 場の枚数）
     Fallback,    // 共通: Jev → 端末 AI への切替
 };
 
@@ -168,6 +175,14 @@ struct Match {
     bool last_folded = false;
     int last_winner = core::NONE;
 
+    // --- HOLDEM（計画 §5b。山札は m.deck をそのまま使う）-----------------
+    core::Street hd_street;
+    std::array<std::array<Card, 2>, 2> hd_hands{};   // 手札 2 枚ずつ
+    std::array<Card, 5> hd_board{};                  // 場の共通カード
+    uint8_t hd_board_n = 0;                          // 0 / 3 / 4 / 5
+    int hd_stack[2] = {200, 200};                    // ホールデムは 200 点から
+    int hd_pot = 0;
+
     // --- GOPS ----------------------------------------------------------
     Gops gops;
     struct GopsRow { uint8_t prize, human, ai; };
@@ -187,6 +202,10 @@ struct Match {
     std::array<Card, 6> bac_six{};
     BaccaratResult bac_res;
     uint8_t bac_hits[2] = {0, 0};
+
+    // 起こらないはずの失敗の覚え書き（画面側が 1 行ログに出して消す。
+    // ずっと残る文字列しか入れない）
+    const char *fault = nullptr;
 
     // --- 公開イベント（直近 kEventMax 件の輪）---------------------------
     PublicEvent events[kEventMax] = {};
@@ -252,10 +271,96 @@ inline uint8_t unitNo(const Match &m)
     return (uint8_t)n;
 }
 
+// ---------------------------------------------------------------------------
+// ホールデム（計画 §5b）。原本のコアの Deck / poker_value / poker_compare /
+// Street をそのまま使い、7 枚から最良の 5 枚を選ぶところだけを足す
+// ---------------------------------------------------------------------------
+inline bool isHoldemBet(Phase p)
+{
+    return p == Phase::HoldemPreflop || p == Phase::HoldemFlop || p == Phase::HoldemTurn ||
+           p == Phase::HoldemRiver;
+}
+
+// 段階ごとの場の枚数と単位（プリフロップ・フロップ 2 点 / ターン・リバー 4 点）
+inline int holdemBoardCount(Phase p)
+{
+    switch (p) {
+    case Phase::HoldemFlop:  return 3;
+    case Phase::HoldemTurn:  return 4;
+    case Phase::HoldemRiver: return 5;
+    default:                 return 0;
+    }
+}
+
+inline int holdemUnit(Phase p)
+{
+    return (p == Phase::HoldemTurn || p == Phase::HoldemRiver) ? 4 : 2;
+}
+
+struct Best5 {
+    core::PokerValue value;
+    std::array<Card, 5> cards{};
+    bool valid = false;
+};
+
+// n 枚（5〜7）から最良の 5 枚。**相手の札は渡さないこと**
+inline Best5 bestFive(const Card *cards, int n)
+{
+    Best5 out;
+    if (cards == nullptr || n < 5 || n > 7) {
+        return out;
+    }
+    for (int a = 0; a < n - 4; ++a) {
+        for (int b = a + 1; b < n - 3; ++b) {
+            for (int c = b + 1; c < n - 2; ++c) {
+                for (int d = c + 1; d < n - 1; ++d) {
+                    for (int e = d + 1; e < n; ++e) {
+                        const std::array<Card, 5> h = {cards[a], cards[b], cards[c], cards[d],
+                                                       cards[e]};
+                        const core::PokerValue v = core::poker_value(h);
+                        if (!v.valid) {
+                            continue;
+                        }
+                        if (!out.valid || v.key > out.value.key) {
+                            out.value = v;
+                            out.cards = h;
+                            out.valid = true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return out;
+}
+
+// 手札 2 枚 ＋ 場 board_n 枚をつないで最良の 5 枚を出す
+inline Best5 holdemBest(const std::array<Card, 2> &hole, const Card *board, int board_n)
+{
+    Card all[7];
+    int n = 0;
+    all[n++] = hole[0];
+    all[n++] = hole[1];
+    for (int i = 0; i < board_n && n < 7; ++i) {
+        all[n++] = board[i];
+    }
+    return bestFive(all, n);
+}
+
 // いまの時点の得点（試合の途中でも読める）。中止した試合の記録に使う。
 // **m.scores は決着したときにしか入らない**ので、途中の試合で読んではいけない
+inline bool isHoldem(const Match &m)
+{
+    return m.game == Game::Poker && m.variant == 0;
+}
+
 inline void liveScores(const Match &m, int &human, int &ai)
 {
+    if (isHoldem(m)) {
+        human = m.hd_stack[0];
+        ai = m.hd_stack[1];
+        return;
+    }
     switch (m.game) {
     case Game::Poker:  human = m.ph.stack[0];   ai = m.ph.stack[1];   break;
     case Game::Gops:   human = m.gops.score[0]; ai = m.gops.score[1]; break;
@@ -277,7 +382,7 @@ inline const char *gameId(Game g)
 inline const char *variantId(const Match &m)
 {
     switch (m.game) {
-    case Game::Poker:  return "fixed5";
+    case Game::Poker:  return m.variant == 0 ? "holdem" : "fixed5";
     case Game::Gops:   return m.variant == 13 ? "classic13" : "quick7";
     case Game::Thirty: return "market3";
     default:           return m.variant == 1 ? "classic" : "open";
@@ -290,6 +395,10 @@ inline const char *phaseId(Phase p)
     case Phase::PokerBetPre:     return "bet_pre";
     case Phase::PokerDraw:       return "draw";
     case Phase::PokerBetPost:    return "bet_post";
+    case Phase::HoldemPreflop:   return "preflop";
+    case Phase::HoldemFlop:      return "flop";
+    case Phase::HoldemTurn:      return "turn";
+    case Phase::HoldemRiver:     return "river";
     case Phase::GopsBid:         return "bid";
     case Phase::ThirtyTurn:      return "turn";
     case Phase::ThirtyLast:      return "last_reply";
@@ -316,11 +425,26 @@ inline bool sealed(const Match &m, int who)
     }
 }
 
+// いまベットしている段階の Street（ドローとホールデムで別物）
+inline const core::Street *betStreet(const Match &m)
+{
+    if (m.phase == Phase::PokerBetPre || m.phase == Phase::PokerBetPost) {
+        return &m.ph.street;
+    }
+    if (isHoldemBet(m.phase)) {
+        return &m.hd_street;
+    }
+    return nullptr;
+}
+
 // いま行動できるのはだれか。同時選択の段階は両方 true になりうる
 inline bool canAct(const Match &m, int who)
 {
     if (who < 0 || who > 1 || m.finished) {
         return false;
+    }
+    if (isHoldemBet(m.phase)) {
+        return m.hd_street.actor == who && !m.hd_street.closed;
     }
     switch (m.phase) {
     case Phase::PokerBetPre:
@@ -360,6 +484,23 @@ inline int legalActions(const Match &m, int who, char out[][kActionIdMax])
         return 0;
     }
     int n = 0;
+    if (isHoldemBet(m.phase)) {
+        // ホールデムの行動はドローと同じ 5 種（設計書 P3 の legality をそのまま使う）
+        const core::Street &s = m.hd_street;
+        const int owed = s.paid[1 - who] - s.paid[who];
+        if (owed > 0) {
+            std::snprintf(out[n++], kActionIdMax, "CALL");
+            std::snprintf(out[n++], kActionIdMax, "FOLD");
+            if (s.raises < 2) {
+                std::snprintf(out[n++], kActionIdMax, "RAISE");
+            }
+        } else {
+            std::snprintf(out[n++], kActionIdMax, "BET");
+            std::snprintf(out[n++], kActionIdMax, "CHECK");
+        }
+        sortIds(out, n);
+        return n;
+    }
     switch (m.phase) {
     case Phase::PokerBetPre:
     case Phase::PokerBetPost: {
@@ -426,8 +567,13 @@ inline bool isLegalId(const Match &m, int who, const char *id)
 // ---------------------------------------------------------------------------
 // 1 ハンド / 1 ラウンドを始める
 // ---------------------------------------------------------------------------
+inline bool startHoldemHand(Match &m, core::Rng32 rng, void *ctx);
+
 inline bool startPokerHand(Match &m, core::Rng32 rng, void *ctx)
 {
+    if (m.variant == 0) {
+        return startHoldemHand(m, rng, ctx);    // POKER 卓の既定はホールデム
+    }
     if (!m.deck.init(1, rng, ctx)) {
         return false;
     }
@@ -451,6 +597,112 @@ inline bool startPokerHand(Match &m, core::Rng32 rng, void *ctx)
     pushEvent(m, e);
     m.phase = Phase::PokerBetPre;
     return true;
+}
+
+// --- ホールデムの 1 ハンド（計画 §5b）---------------------------------------
+//
+// 参加点を場に出したあとで黙って false を返すと、画面が進まないまま固まる。
+// 起こらないはずの失敗でも、場の点を双方へ戻して引き分けでハンドを閉じ、
+// 理由を m.fault に残す（画面側が 1 行ログに出す）
+inline void holdemBail(Match &m, const char *why)
+{
+    m.fault = why;
+    m.hd_stack[0] += m.hd_pot / 2;
+    m.hd_stack[1] += m.hd_pot - m.hd_pot / 2;
+    m.hd_pot = 0;
+    m.last_pot = 0;
+    m.last_folded = false;
+    m.last_winner = core::DRAW;
+    ++m.completed_units;
+    m.phase = Phase::UnitResult;
+}
+
+inline bool startHoldemHand(Match &m, core::Rng32 rng, void *ctx)
+{
+    if (!m.deck.init(1, rng, ctx)) {
+        return false;
+    }
+    const int dealer = (m.dealer0 + m.hand_no - 1) % 2;
+    const int first = 1 - dealer;
+    m.hand_start_stacks[0] = m.hd_stack[0];
+    m.hand_start_stacks[1] = m.hd_stack[1];
+    // 参加点は双方 1 点（ブラインドは使わない。原本 P1 と同じ作法）
+    if (m.hd_stack[0] < 37 || m.hd_stack[1] < 37) {
+        // 37 点/ハンドを必ず払えることが前提（計画 §5b）。ここに来たら組み立ての誤り
+        return false;
+    }
+    m.hd_pot = 2;
+    --m.hd_stack[0];
+    --m.hd_stack[1];
+    // 非ディーラーから交互に 1 枚ずつ 2 巡
+    for (int k = 0; k < 2; ++k) {
+        for (int x = 0; x < 2; ++x) {
+            const int who = x ? dealer : first;
+            if (!m.deck.take(m.hd_hands[who][k])) {
+                // 52 枚の山から 4 枚なので起こらない。参加点は戻して結果画面へ
+                holdemBail(m, "holdem: could not deal the hole cards");
+                return true;
+            }
+        }
+    }
+    m.hd_board_n = 0;
+    m.hd_street = core::Street{};
+    m.hd_street.actor = first;
+    m.hd_street.unit = holdemUnit(Phase::HoldemPreflop);
+    m.last_pot = 0;
+    m.last_folded = false;
+    m.last_winner = core::NONE;
+    clearEvents(m);
+    PublicEvent e;
+    e.kind = EventKind::HandStart;
+    e.actor = -1;
+    e.unit_no = m.hand_no;
+    e.detail = (uint8_t)(dealer + 1);
+    pushEvent(m, e);
+    m.phase = Phase::HoldemPreflop;
+    return true;
+}
+
+// 場に n 枚めくる（バーンカードなし）
+inline bool holdemDealBoard(Match &m, int count)
+{
+    for (int i = 0; i < count; ++i) {
+        if (m.hd_board_n >= 5 || !m.deck.take(m.hd_board[m.hd_board_n])) {
+            return false;
+        }
+        ++m.hd_board_n;
+    }
+    PublicEvent e;
+    e.kind = EventKind::Board;
+    e.actor = -1;
+    e.unit_no = m.hand_no;
+    e.value = m.hd_board_n;
+    pushEvent(m, e);
+    return true;
+}
+
+// 場の点を渡してハンドを閉じる（winner は H / AI / DRAW）
+inline void holdemAward(Match &m, int winner)
+{
+    m.last_winner = winner;
+    m.last_pot = m.hd_pot;
+    if (winner == core::DRAW) {
+        // 同キーは折半。拠出が一致しているので pot は必ず偶数
+        m.hd_stack[0] += m.hd_pot / 2;
+        m.hd_stack[1] += m.hd_pot / 2;
+    } else {
+        m.hd_stack[winner] += m.hd_pot;
+    }
+    m.hd_pot = 0;
+    ++m.completed_units;
+    PublicEvent e;
+    e.kind = EventKind::HandEnd;
+    e.actor = -1;
+    e.unit_no = m.hand_no;
+    e.value = (uint8_t)(m.last_pot > 255 ? 255 : m.last_pot);
+    e.detail = (uint8_t)(winner + 1);
+    pushEvent(m, e);
+    m.phase = Phase::UnitResult;
 }
 
 inline bool startThirtyHand(Match &m, core::Rng32 rng, void *ctx)
@@ -528,6 +780,10 @@ inline void resetMatch(Match &m)
     m.last_pot = 0;
     m.last_folded = false;
     m.last_winner = core::NONE;
+    m.hd_street = core::Street{};
+    m.hd_board_n = 0;
+    m.hd_stack[0] = m.hd_stack[1] = 200;
+    m.hd_pot = 0;
     m.gops = Gops{};
     m.gops_rows = 0;
     m.t31 = ThirtyOne{};
@@ -548,8 +804,11 @@ inline bool startMatch(Match &m, Game game, uint8_t variant, core::Rng32 rng, vo
     m.variant = variant;
     switch (game) {
     case Game::Poker:
-        m.variant = 0;
+        // variant 0 = ホールデム（既定・200 点）、1 = 5 カードドロー（原本・100 点）
+        m.variant = variant == 1 ? 1 : 0;
         m.stacks[0] = m.stacks[1] = 100;
+        m.hd_stack[0] = m.hd_stack[1] = 200;
+        m.hd_pot = 0;
         m.hand_no = 1;
         m.dealer0 = (uint8_t)core::uniform(rng, ctx, 2);
         return startPokerHand(m, rng, ctx);
@@ -595,8 +854,8 @@ inline void finishMatch(Match &m)
     m.phase = Phase::MatchOver;
     switch (m.game) {
     case Game::Poker:
-        m.scores[0] = m.stacks[0];
-        m.scores[1] = m.stacks[1];
+        m.scores[0] = isHoldem(m) ? m.hd_stack[0] : m.stacks[0];
+        m.scores[1] = isHoldem(m) ? m.hd_stack[1] : m.stacks[1];
         break;
     case Game::Gops:
         m.scores[0] = m.gops.score[0];
@@ -713,6 +972,74 @@ inline bool applyAction(Match &m, int who, const char *id)
 {
     if (!isLegalId(m, who, id)) {
         return false;
+    }
+    if (isHoldemBet(m.phase)) {
+        bool ok = false;
+        const core::BetAction a = betOf(id, ok);
+        if (!ok) {
+            return false;
+        }
+        const int debit = betDebit(m.hd_street, who, a);
+        if (debit > m.hd_stack[who]) {
+            return false;
+        }
+        core::Street next = m.hd_street;
+        int applied = 0;
+        if (!next.apply(who, a, applied) || applied != debit) {
+            return false;
+        }
+        m.hd_street = next;
+        m.hd_stack[who] -= debit;
+        m.hd_pot += debit;
+        ++m.revision;
+        PublicEvent e;
+        e.kind = EventKind::Bet;
+        e.actor = (int8_t)who;
+        e.unit_no = m.hand_no;
+        e.value = (uint8_t)debit;
+        e.detail = (uint8_t)a;
+        pushEvent(m, e);
+
+        if (!m.hd_street.closed) {
+            return true;
+        }
+        if (m.hd_street.fold_winner != core::NONE) {
+            m.last_folded = true;
+            holdemAward(m, m.hd_street.fold_winner);
+            return true;
+        }
+        // 段階を 1 つ進める。リバーまで終わったらショーダウン
+        const int dealer = (m.dealer0 + m.hand_no - 1) % 2;
+        Phase next_phase = Phase::UnitResult;
+        int deal = 0;
+        switch (m.phase) {
+        case Phase::HoldemPreflop: next_phase = Phase::HoldemFlop;  deal = 3; break;
+        case Phase::HoldemFlop:    next_phase = Phase::HoldemTurn;  deal = 1; break;
+        case Phase::HoldemTurn:    next_phase = Phase::HoldemRiver; deal = 1; break;
+        default:                   next_phase = Phase::UnitResult;  deal = 0; break;
+        }
+        if (deal > 0) {
+            if (!holdemDealBoard(m, deal)) {
+                holdemBail(m, "holdem: could not deal the board");
+                return true;
+            }
+            m.phase = next_phase;
+            m.hd_street = core::Street{};
+            m.hd_street.actor = 1 - dealer;     // 先手は毎回非ディーラー
+            m.hd_street.unit = holdemUnit(next_phase);
+            return true;
+        }
+        // ショーダウン: 手札 2 ＋ 場 5 の 7 枚から最良の 5 枚を比べる
+        const Best5 mine = holdemBest(m.hd_hands[0], m.hd_board.data(), m.hd_board_n);
+        const Best5 theirs = holdemBest(m.hd_hands[1], m.hd_board.data(), m.hd_board_n);
+        if (!mine.valid || !theirs.valid) {
+            holdemBail(m, "holdem: could not read the showdown hands");
+            return true;
+        }
+        const int cmp = mine.value.key > theirs.value.key ? 1
+                      : (mine.value.key < theirs.value.key ? -1 : 0);
+        holdemAward(m, cmp > 0 ? core::H : (cmp < 0 ? core::AI : core::DRAW));
+        return true;
     }
     switch (m.phase) {
     case Phase::PokerBetPre:
@@ -892,10 +1219,102 @@ inline SavedRoll drawRoll(core::Rng32 rng, void *ctx)
     return r;
 }
 
+// --- ホールデムの端末 AI（計画 §5b）------------------------------------------
+//
+// 原本の local_poker_bet と**同じ形**（強さ 0〜3 と保存済みの 0〜99 で決める）。
+// 強いエンジンではなく、通信なしで最後まで遊べる比較基準（設計書 I7 と同じ位置づけ）。
+//   プリフロップ … 手札 2 枚の格付け（ペア 3 / 両方 J 以上 2 / 同スートか 2 つ違い以内 1 / ほか 0）
+//   フロップ以降 … 自分の 2 枚＋場の役（スリーカード以上 3 / ツーペア 2 / ワンペア 1 / ほか 0）
+//                  ＋リバー前なら「4 枚同スート」か「4 連続」で 1 段上げる
+// **相手の手札は 1 枚も見ない。**
+inline bool holdemDraw(const Card *cards, int n)
+{
+    int suits[4] = {};
+    bool has[15] = {};
+    for (int i = 0; i < n; ++i) {
+        ++suits[core::suit(cards[i])];
+        has[core::rank(cards[i])] = true;
+    }
+    for (int s = 0; s < 4; ++s) {
+        if (suits[s] >= 4) {
+            return true;
+        }
+    }
+    for (int lo = 2; lo <= 11; ++lo) {
+        int run = 0;
+        for (int r = lo; r < lo + 4; ++r) {
+            run += has[r] ? 1 : 0;
+        }
+        if (run == 4) {
+            return true;
+        }
+    }
+    return has[14] && has[2] && has[3] && has[4];     // A2345 の 4 枚
+}
+
+inline int holdemStrength(const Match &m, int who)
+{
+    const std::array<Card, 2> &hole = m.hd_hands[who];
+    if (m.hd_board_n == 0) {
+        const int r0 = core::rank(hole[0]), r1 = core::rank(hole[1]);
+        if (r0 == r1) {
+            return 3;
+        }
+        if (r0 >= 11 && r1 >= 11) {
+            return 2;
+        }
+        const bool suited = core::suit(hole[0]) == core::suit(hole[1]);
+        const int gap = r0 > r1 ? r0 - r1 : r1 - r0;
+        return (suited || gap <= 2) ? 1 : 0;
+    }
+    const Best5 best = holdemBest(hole, m.hd_board.data(), m.hd_board_n);
+    int strength = 0;
+    if (best.valid) {
+        const int cat = best.value.key[0];
+        strength = cat >= 3 ? 3 : (cat == 2 ? 2 : (cat == 1 ? 1 : 0));
+    }
+    if (m.hd_board_n < 5 && strength < 2) {
+        Card all[7];
+        int n = 0;
+        all[n++] = hole[0];
+        all[n++] = hole[1];
+        for (int i = 0; i < m.hd_board_n; ++i) {
+            all[n++] = m.hd_board[i];
+        }
+        if (holdemDraw(all, n)) {
+            ++strength;     // フラッシュ / ストレートの手前
+        }
+    }
+    return strength;
+}
+
+inline core::BetAction holdemLocalBet(const Match &m, int who, uint8_t roll100)
+{
+    const core::Street &s = m.hd_street;
+    const int strength = holdemStrength(m, who);
+    const int r = (int)roll100;
+    if (s.paid[0] == s.paid[1]) {
+        const bool attack = strength >= 2 || (strength == 1 && r < 45) || (strength == 0 && r < 12);
+        return attack ? core::BetAction::Bet : core::BetAction::Check;
+    }
+    if (s.raises < 2 &&
+        (strength >= 2 || (strength == 1 && r < 15) || (strength == 0 && r < 5))) {
+        return core::BetAction::Raise;
+    }
+    if (strength >= 1 || r < 25) {
+        return core::BetAction::Call;
+    }
+    return core::BetAction::Fold;
+}
+
 inline bool localActionId(const Match &m, int who, const SavedRoll &roll, char *out, size_t size)
 {
     if (!canAct(m, who)) {
         return false;
+    }
+    if (isHoldemBet(m.phase)) {
+        std::snprintf(out, size, "%s", betId(holdemLocalBet(m, who, roll.poker100)));
+        return true;
     }
     switch (m.phase) {
     case Phase::PokerBetPre:
@@ -1015,7 +1434,10 @@ inline void putPublicActions(JsonOut &j, const Match &m)
     int n = 0;
     for (size_t i = 0; i < m.event_count; ++i) {
         const PublicEvent &e = eventAt(m, i);
-        const bool poker = (e.kind == EventKind::Bet || e.kind == EventKind::DrawCounts);
+        // ホールデムはベットだけ（BOARD は送らない。場は board で渡している）
+        const bool poker = isHoldem(m) ? (e.kind == EventKind::Bet)
+                                       : (e.kind == EventKind::Bet ||
+                                          e.kind == EventKind::DrawCounts);
         const bool thirty = (e.kind == EventKind::Swap || e.kind == EventKind::Knock ||
                              e.kind == EventKind::Stand);
         if ((m.game == Game::Poker && poker) || (m.game == Game::Thirty && thirty)) {
@@ -1062,8 +1484,28 @@ inline void putPublicActions(JsonOut &j, const Match &m)
 inline size_t writeObservation(const Match &m, char *out, size_t size)
 {
     JsonOut j{out, size};
+    // ホールデムは原本に無いので `game` 自体を "holdem" にする（計画 §5b・GAS は CardsHoldem.gs）
     j.put("{\"game\":\"%s\",\"variant\":\"%s\",\"phase\":\"%s\",\"rules_version\":\"%s\"",
-          gameId(m.game), variantId(m), phaseId(m.phase), kRulesVersion);
+          isHoldem(m) ? "holdem" : gameId(m.game), variantId(m), phaseId(m.phase), kRulesVersion);
+
+    if (isHoldemBet(m.phase)) {
+        const core::Street &s = m.hd_street;
+        j.put(",\"own_cards\":");
+        putCardArray(j, m.hd_hands[1].data(), 2);
+        j.put(",\"board\":");
+        putCardArray(j, m.hd_board.data(), m.hd_board_n);
+        j.put(",\"hand_no\":%u,\"max_hands\":5", (unsigned)m.hand_no);
+        j.put(",\"stacks\":{\"self\":%d,\"opponent\":%d},\"pot\":%d", m.hd_stack[1], m.hd_stack[0],
+              m.hd_pot);
+        j.put(",\"contribution\":{\"self\":%d,\"opponent\":%d},\"unit\":%d,\"raises_left\":%d",
+              s.paid[1], s.paid[0], s.unit, 2 - s.raises);
+        const int dealer = (m.dealer0 + m.hand_no - 1) % 2;
+        j.put(",\"dealer\":\"%s\"", dealer == 1 ? "SELF" : "OPPONENT");
+        j.put(",\"public_actions\":");
+        putPublicActions(j, m);
+        j.put(",\"statistics\":{\"sample_n\":0}}");
+        return j.ok ? j.at : 0;
+    }
 
     switch (m.phase) {
     case Phase::PokerBetPre:
@@ -1194,6 +1636,53 @@ inline bool invariants(const Match &m, const char **why)
     const char *dummy = nullptr;
     const char **w = why != nullptr ? why : &dummy;
     *w = nullptr;
+    if (isHoldem(m)) {
+        if (m.hd_stack[0] < 0 || m.hd_stack[1] < 0 || m.hd_pot < 0) {
+            *w = "holdem: negative chips";
+            return false;
+        }
+        if (m.hd_stack[0] + m.hd_stack[1] + m.hd_pot != 400) {
+            *w = "holdem: chips do not add up to 400";
+            return false;
+        }
+        if (m.hd_pot > 74) {
+            *w = "holdem: pot above 74";
+            return false;
+        }
+        for (int p = 0; p < 2; ++p) {
+            if (m.hand_start_stacks[p] - m.hd_stack[p] > 37) {
+                *w = "holdem: more than 37 contributed in one hand";
+                return false;
+            }
+        }
+        if (m.hd_board_n > 5) {
+            *w = "holdem: more than five board cards";
+            return false;
+        }
+        Card all[9];
+        int k = 0;
+        for (const auto &h : m.hd_hands) {
+            for (auto c : h) {
+                all[k++] = c;
+            }
+        }
+        for (int i = 0; i < m.hd_board_n; ++i) {
+            all[k++] = m.hd_board[i];
+        }
+        if (!core::valid_cards(all, k)) {
+            *w = "holdem: a card appears twice";
+            return false;
+        }
+        if (isHoldemBet(m.phase) && m.hd_board_n != holdemBoardCount(m.phase)) {
+            *w = "holdem: the board does not match the phase";
+            return false;
+        }
+        if (isHoldemBet(m.phase) && m.hd_street.unit != holdemUnit(m.phase)) {
+            *w = "holdem: the betting unit does not match the phase";
+            return false;
+        }
+        return true;
+    }
     switch (m.game) {
     case Game::Poker: {
         if (m.ph.stack[0] < 0 || m.ph.stack[1] < 0 || m.ph.pot < 0) {

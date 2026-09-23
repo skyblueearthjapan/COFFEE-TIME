@@ -44,8 +44,10 @@ function cardsHandleInner_(body, out) {
   const model = props.getProperty('JEV_MODEL') || JEV_DEFAULT_MODEL;
   let request;
   try {
-    // 観測の全キー・範囲・整合性の検査と、候補の説明づくり。合法 ID の並びが違えばここで断られる
-    request = requestFromObservation(o, legal.slice().sort(), model);
+    // 観測の全キー・範囲・整合性の検査と、候補の説明づくり。合法 ID の並びが違えばここで断られる。
+    // ホールデムは原本に無いので CardsHoldem.gs（同じ厳しさ）で検査する
+    request = o.game === 'holdem' ? holdemRequest_(o, legal.slice().sort(), model)
+                                  : requestFromObservation(o, legal.slice().sort(), model);
   } catch (err) {
     return cardsFail_(out, cardsReason_(err, 'BAD_OBSERVATION'));
   }
@@ -130,7 +132,7 @@ function cardsAppendResult_(device, r) {
   const reason = r.end_reason === 'completed' ? 'completed' : 'aborted';
   const num = function (v, max) { const n = Number(v); return Number.isInteger(n) && n >= 0 && n <= max ? n : 0; };
   // 文字列はシートに式として解釈されないよう、決まった値だけを通す
-  const variants = ['fixed5', 'quick7', 'classic13', 'market3', 'open', 'classic'];
+  const variants = ['fixed5', 'holdem', 'quick7', 'classic13', 'market3', 'open', 'classic'];
   const variant = variants.indexOf(r.variant) >= 0 ? r.variant : '';
   const lock = LockService.getScriptLock();
   try {

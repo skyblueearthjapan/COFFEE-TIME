@@ -160,6 +160,9 @@ const TextEntry kLocalTexts[] = {
     {"ui.detail.conf", "自信指標"},
     {"ui.detail.cached", "前に決めた手をそのまま"},
     {"ui.board.waiting", "Jevの返事を待っています"},
+    {"ui.board.think1", "盤面を読んでいます…"},
+    {"ui.board.think2", "手をくらべています…"},
+    {"ui.board.think3", "先を読んでいます…"},
     {"ui.board.frozen", "この対局は端末AIが担当"},
     {"ui.board.save_failed", "保存できません"},
     {"ui.detail.more", "ほか"},
@@ -176,7 +179,7 @@ const TextEntry kLocalTexts[] = {
     {"ui.size.label6", "6×6"},
     {"ui.size.label8", "8×8"},
 };
-const size_t kLocalTextCount = 58;
+const size_t kLocalTextCount = 61;
 
 const TutorialPage kTutorial[] = {
     {"一枚置いて、はさむ",

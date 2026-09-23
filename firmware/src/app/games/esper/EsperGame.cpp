@@ -16,6 +16,7 @@
 #include "../../HomeScreen.h"
 #include "../../NetService.h"
 #include "../../ui/ScreenManager.h"
+#include "../../ui/Thinking.h"
 #include "../../ui/UiKit.h"
 #include "EsperContent.h"
 #include "EsperStats.h"
@@ -92,6 +93,8 @@ constexpr Rect kReadyCafe  {248, 390, 100, 44};
 // --- G41 考えています / G43 AI が考え中（Jev の返事待ち） -------------------
 constexpr Rect kThinkBig   { 94, 186, 292, 60};
 constexpr Rect kThinkSub   { 94, 252, 292, 30};
+// Jev の返事待ちの動く表示（弧＋一言＋5 秒からの注記）。注記は全角 15 文字 = 300px 要る
+constexpr Rect kWaitThink  { 88, 252, 304, 86};
 constexpr Rect kWaitCafe   {152, 404, 176, 40};   // 待っている間もコーヒーは記録できる
 
 // --- G40 質問（設計書 5.2） -------------------------------------------------
@@ -652,9 +655,14 @@ void buildThinking()
 // **コーヒーの記録だけはいつでもできる**ようにする（設計書 4.6「カウンターを止めない」）
 void buildWaiting()
 {
+    // 待っている間に何をしているかを順に出す。止まった字だけだと 4〜7 秒が長く感じ、
+    // 固まったようにも見えるため（作り物の％や理解度は出さない）
+    static const char *const kPhrases[] = {"記録を読んでいます…", "候補をくらべています…",
+                                           "質問をえらんでいます…"};
     makeTitle(layout::kTitleWide, "エスパー対決");
     rectLabel(layout::kThinkBig, &ct_font_jp_40, CT_COLOR_ACCENT_HI, "AI が考え中…");
-    rectLabel(layout::kThinkSub, &ct_font_jp_20, CT_COLOR_SUBTEXT, text("thinking_sub"));
+    ui::thinkingCreate(s_content, layout::kWaitThink, kPhrases,
+                       sizeof(kPhrases) / sizeof(kPhrases[0]));
     rectButton(layout::kWaitCafe, "カフェ", Act::Cafe);
 }
 

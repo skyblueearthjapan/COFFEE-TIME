@@ -71,7 +71,16 @@ if event == "cards":
     game = str(payload.pop("game", "baccarat"))
     mid = "0" * 32 if payload.pop("same", 0) else _secrets.token_hex(16)
     payload.update({"req": 1, "match": mid, "rev": 3})
-    if game == "gops":
+    if game == "holdem":
+        # ホールデム: フロップで相手が 2 点出してきた局面（自分は A♠K♠、場 A♥7♦2♣）
+        payload["observation"] = {"game": "holdem", "variant": "holdem", "phase": "flop", "rules_version": "1.0.0",
+                                  "own_cards": ["SA", "SK"], "board": ["HA", "D7", "C2"], "hand_no": 2, "max_hands": 5,
+                                  "stacks": {"self": 195, "opponent": 197}, "pot": 8,
+                                  "contribution": {"self": 0, "opponent": 2}, "unit": 2, "raises_left": 2, "dealer": "SELF",
+                                  "public_actions": [{"actor": "SELF", "type": "CHECK"}, {"actor": "OPPONENT", "type": "BET", "amount": 2}],
+                                  "statistics": {"sample_n": 0}}
+        payload["legal"] = ["CALL", "FOLD", "RAISE"]
+    elif game == "gops":
         payload["observation"] = {"game": "gops", "variant": "quick7", "phase": "bid", "rules_version": "1.0.0",
                                   "n": 7, "round_no": 1, "prize": 4, "own_remaining": [1, 2, 3, 4, 5, 6, 7],
                                   "opponent_remaining": [1, 2, 3, 4, 5, 6, 7], "scores": {"self": 0, "opponent": 0},

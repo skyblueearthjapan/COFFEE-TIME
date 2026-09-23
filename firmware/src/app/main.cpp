@@ -63,6 +63,10 @@ static void sendSnapshot()
 // 人狼の秘密（役職・占い結果・投票先）や POKER TABLE の手札が映っている間は、
 // 開発用コマンドで画面を送ったり切り替えたりしない。
 // スクリーンショットが秘密ごと PC に渡るのを防ぐ
+// 開発用：POKER TABLE の手札が出ていてもスクリーンショットを許す（シリアル O で切り替え。起動時は必ず不許可）。
+// 持ち主が手元で画面を確かめるためのもので、人狼の秘密には効かない
+static bool s_dev_peek = false;
+
 static bool blockedBySecret()
 {
     if (werewolf::secretOnScreen()) {
@@ -281,7 +285,8 @@ void loop()
         while (Serial.available() > 0) {
             const int cmd = Serial.read();
             switch (cmd) {
-            case 'S': if (!blockedBySecret()) { sendSnapshot(); } break;
+            // O で許可したときは POKER TABLE の手札が出ていても撮る（画面の切り替えの禁止は変えない。人狼の秘密は常に不可）
+            case 'S': if ((s_dev_peek && !werewolf::secretOnScreen()) || !blockedBySecret()) { sendSnapshot(); } break;
             // 開発用：背景の時間帯を固定 M=朝 N=昼 E=夕方 A=自動
             case 'M': home::debugForceHour(8); break;
             case 'N': home::debugForceHour(13); break;
@@ -325,6 +330,11 @@ void loop()
             case 'K': cards::debugPrintPublicState(); break;
             // 開発用：画面の重なりの数（1 = HOME）。tools/uiwalk.py が「HOME ではない」ことを確かめてからタップするために使う
             case 'Q': Serial.printf("[UI] view=stack depth=%d\n", ui::depth()); break;
+            // 開発用：POKER TABLE の手札が出ている画面のスクリーンショットを許す／禁じる（既定は禁止）
+            case 'O':
+                s_dev_peek = !s_dev_peek;
+                Serial.printf("[DEV] snapshot of private card views: %s\n", s_dev_peek ? "ALLOWED (dev)" : "blocked");
+                break;
             // 開発用：探偵の記録を消す（試験で「初回の結果」を使い切らないため）
             case 'X': detective::debugResetProgress(); break;
             case 'C': setTimeFromSerial(); break;    // PC の時計から時刻を設定（tools/settime.py）

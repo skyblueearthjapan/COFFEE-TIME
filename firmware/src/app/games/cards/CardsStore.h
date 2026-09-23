@@ -38,13 +38,20 @@ bool loadStats();
 // --- はじめての説明を見たか（キー `seen`。8 バイト・版と CRC つき）---------
 //
 // **`stats` の塊とは別のキー**にしてある（勝敗の形は 1 バイトも変えない）。
-// 4 ゲームぶんの 1 ビットずつだけを持つ: bit0 POKER / bit1 GOPS /
-// bit2 THIRTY-ONE / bit3 BACCARAT。ゲストと本人は区別しない（端末の設定と同じ扱い）
+// 説明の単位ごとに 1 ビット:
+//   bit0 POKER ホールデム / bit1 GOPS / bit2 THIRTY-ONE / bit3 BACCARAT /
+//   bit4 POKER ドロー
+// **ホールデムとドローは説明が別物**なので枠を分けてある。bit4 を足しても塊の
+// 大きさと CRC の取り方は変わらないので、古い塊はそのまま読めて bit4 は 0 になる。
+// ゲストと本人は区別しない（端末の設定と同じ扱い）
+
+constexpr size_t kSeenSlots = 5;
+constexpr size_t kSeenPokerDraw = 4;    // POKER 卓のドローだけ別枠
 
 bool loadSeen();                    // 画面を開いたときに 1 回読む
-uint8_t seenFlags();                // 4 ビットぶん
-bool seenFlag(size_t game);         // その卓の説明をもう見たか
-bool markSeen(size_t game);         // 「次回から表示しない」で立てる
+uint8_t seenFlags();                // 5 ビットぶん
+bool seenFlag(size_t slot);         // その説明をもう見たか
+bool markSeen(size_t slot);         // 「次回から表示しない」で立てる
 bool clearSeen();                   // 入口の「説明をもう一度」で全部おろす
 
 const Record &stats();

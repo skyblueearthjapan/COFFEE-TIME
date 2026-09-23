@@ -13,6 +13,7 @@
 #include "../../HomeScreen.h"
 #include "../../NetService.h"
 #include "../../ui/ScreenManager.h"
+#include "../../ui/Thinking.h"
 #include "../../ui/UiKit.h"
 #include "DuelStore.h"
 #include "core/duel_core.hpp"
@@ -1083,15 +1084,19 @@ void buildChoose()
                   (unsigned)core::kRoundsPerMatch);
     rectLabel(layout::kChooseRound, &ct_font_jp_40, CT_COLOR_TEXT, round);
 
-    char state[96];
-    if (!s_ai_fixed) {
-        std::snprintf(state, sizeof(state), "相手が考え中…");
-    } else {
+    if (s_ai_fixed) {
+        char state[96];
         std::snprintf(state, sizeof(state), "相手の手は確定済み（%s）\n手をえらんでください",
                       providerName(s_provider));
+        rectLabel(layout::kChooseState, &ct_font_jp_20, CT_COLOR_TEXT, state);
+    } else {
+        // Jev の返事は 4〜7 秒かかる。止まった「考え中」だと長く感じるので、
+        // 弧を回しながら何をしているかを順に出す（作り物の％は出さない）
+        static const char *const kPhrases[] = {"あなたの癖を読んでいます…",
+                                               "次の手を予想しています…"};
+        ui::thinkingCreate(s_content, layout::kChooseState, kPhrases,
+                           sizeof(kPhrases) / sizeof(kPhrases[0]));
     }
-    rectLabel(layout::kChooseState, &ct_font_jp_20,
-              s_ai_fixed ? CT_COLOR_TEXT : CT_COLOR_SUBTEXT, state);
 
     // AI の手が確定するまで押せない（設計書 1.2）。手は LV_EVENT_CLICKED で 1 回だけ確定する
     static const Act kHandAct[3] = {Act::HandRock, Act::HandScissors, Act::HandPaper};

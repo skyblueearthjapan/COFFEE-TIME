@@ -106,7 +106,7 @@ while time.time() - started < limit:
         if st.get("pending") == "1":
             time.sleep(1.0)
             continue
-        if phase in ("bet_pre", "bet_post"):
+        if phase in ("bet_pre", "bet_post", "preflop", "flop", "turn", "river"):
             # 2 つのボタンなら「続ける / 同じ額」、3 つなら「降りる」に当たる（どちらも確認画面へ進む）
             tap(170, 376)
             if state().get("view") != "confirm":

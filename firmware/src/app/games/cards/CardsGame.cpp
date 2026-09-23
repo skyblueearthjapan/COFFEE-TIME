@@ -15,6 +15,7 @@
 #include "../../HomeScreen.h"
 #include "../../NetService.h"
 #include "../../ui/ScreenManager.h"
+#include "../../ui/Thinking.h"
 #include "../../ui/UiKit.h"
 #include "CardsStore.h"
 #include "core/cards_extra.hpp"
@@ -139,6 +140,25 @@ constexpr Rect kFoldResult {88, 145, 304, 36};
 constexpr Rect kFoldDetail {100, 192, 280, 28};
 constexpr Rect kFoldPrivacy{ 90, 248, 300, 28};
 constexpr Rect kFoldNoProb { 90, 280, 300, 26};
+
+// --- HOLDEM（計画 §5b。上 = 相手の 2 枚、中 = 場の 5 枚、下 = 自分の 2 枚）----
+constexpr Rect kHdOpp      { 88, 102, 304, 22};
+constexpr Rect kHdOppCard[2] = {{212, 128, 26, 34}, {242, 128, 26, 34}};
+constexpr Rect kHdHead     { 88, 166, 304, 20};     // 段階名・単位・POT
+constexpr Rect kHdBoard[5] = {{ 96, 190, 52, 62}, {155, 190, 52, 62}, {214, 190, 52, 62},
+                              {273, 190, 52, 62}, {332, 190, 52, 62}};
+constexpr Rect kHdHuman    { 80, 254, 320, 22};
+constexpr Rect kHdHand[2]  = {{176, 278, 60, 68}, {244, 278, 60, 68}};
+// ショーダウン: 場を上に、双方の 2 枚を左右に並べる（4 段は丸い画面に入らない）
+constexpr Rect kHdShowHead { 88, 100, 304, 18};
+constexpr Rect kHdShowBoard[5] = {{102, 120, 48, 58}, {159, 120, 48, 58}, {216, 120, 48, 58},
+                                  {273, 120, 48, 58}, {330, 120, 48, 58}};
+// 名前と役は 2 行（「スリーカード」まで入れると 1 行では横に入らない）
+constexpr Rect kHdOppTag   { 44, 182, 196, 52};
+constexpr Rect kHdYouTag   {240, 182, 196, 52};
+constexpr Rect kHdOppShow[2] = {{ 62, 238, 48, 58}, {114, 238, 48, 58}};
+constexpr Rect kHdYouShow[2] = {{318, 238, 48, 58}, {370, 238, 48, 58}};
+constexpr Rect kHdResult   { 88, 298, 304, 28};
 
 // --- GOPS --------------------------------------------------------------------
 constexpr Rect kGopsOpp   { 98, 105, 284, 24};
@@ -352,12 +372,43 @@ constexpr TutorialPage kSummary[4] = {
      "当たれば1点、5回で比べます。\n前の結果は次に影響しません。"},
 };
 
-// 説明のページ数（卓ごと: 流れ 1 ＋ tutorials.ja.json のページ。game < 0 は 4 卓ぶん）
+// ホールデムは原本のチュートリアルに無いので、ここで書く（計画 §5b）
+constexpr TutorialPage kHoldemSummary =
+    {"この卓の流れ",
+     "自分の2枚だけが見えます。\n場の5枚は共有。合わせて\n最良の5枚が役です。\n"
+     "上乗せは各段階2回まで。\n5ハンド後の持ち点で決着。"};
+
+constexpr TutorialPage kHoldemTut[6] = {
+    {"手札2枚と場の5枚", "配られるのは2枚だけ。場の5枚\nは共有で、合わせた7枚から\n"
+                         "最良の5枚を選びます。"},
+    {"押しただけでは確定しません", "行動を選んでから「決定」。\n迷ったら選び直せます。"},
+    {"4回のベット", "プリフロップ・フロップ・\nターン・リバーの4回。\n"
+                    "先手は毎回ディーラーでない側。"},
+    {"上乗せは決まった額", "最初の2回は2点ずつ、ターンと\nリバーは4点ずつ。上乗せは\n"
+                           "各段階2回までです。"},
+    {"Aは二つの使い方", "A・2・3・4・5は5が上のストレー\nト。Q・K・A・2・3はつながりま\nせん。"},
+    {"持ち点で決着", "200点ずつで始め、5回終わった\nときに多い側が勝ち。点数に\n"
+                    "金銭価値はありません。"},
+};
+
+// POKER 卓はホールデムとドローで説明が別。そのほかの卓は 1 種類
+bool s_tut_holdem = true;
+
+int guideTablePages(int game)
+{
+    if (game == 0) {
+        return s_tut_holdem ? (int)(1 + (sizeof(kHoldemTut) / sizeof(kHoldemTut[0])))
+                            : (int)(1 + kTutCount[0]);
+    }
+    return 1 + kTutCount[game];
+}
+
+// 説明のページ数（卓ごと: 流れ 1 ＋ その卓のページ。game < 0 は 4 卓ぶん）
 int guideCount(int game)
 {
     int n = 0;
     for (int g = (game < 0 ? 0 : game); g <= (game < 0 ? 3 : game); ++g) {
-        n += 1 + kTutCount[g];
+        n += guideTablePages(g);
     }
     return n;
 }
@@ -366,20 +417,25 @@ int guideCount(int game)
 bool guidePage(int game, int index, const char *&title, const char *&body, int &of_game)
 {
     for (int g = (game < 0 ? 0 : game); g <= (game < 0 ? 3 : game); ++g) {
+        const bool holdem = (g == 0 && s_tut_holdem);
+        const int pages = guideTablePages(g);
         if (index == 0) {
-            title = kSummary[g].title;
-            body = kSummary[g].body;
+            const TutorialPage &p = holdem ? kHoldemSummary : kSummary[g];
+            title = p.title;
+            body = p.body;
             of_game = g;
             return true;
         }
         --index;
-        if (index < kTutCount[g]) {
-            title = kTutorial[kTutStart[g] + index].title;
-            body = kTutorial[kTutStart[g] + index].body;
+        if (index < pages - 1) {
+            const TutorialPage &p = holdem ? kHoldemTut[index]
+                                           : kTutorial[kTutStart[g] + index];
+            title = p.title;
+            body = p.body;
             of_game = g;
             return true;
         }
-        index -= kTutCount[g];
+        index -= pages - 1;
     }
     return false;
 }
@@ -532,6 +588,32 @@ bool resumable()
     return s_sess != nullptr && s_sess->in_match && !s_sess->match.finished;
 }
 
+// 説明の枠（卓ごと。POKER だけホールデムとドローで別）
+size_t seenSlot(int game, int variant)
+{
+    return (game == 0 && variant == 1) ? cards::store::kSeenPokerDraw : (size_t)game;
+}
+
+// 相手の返事を待っているあいだの一言（卓ごと。ui::Thinking が 1.5 秒で入れ替える）
+constexpr const char *const kThinkPoker[3] = {
+    "手札を読んでいます…", "場を読んでいます…", "賭け方を決めています…",
+};
+constexpr const char *const kThinkGops[2] = {
+    "札の価値をくらべています…", "今回の得点札を見ています…",
+};
+constexpr const char *const kThinkThirty[2] = {
+    "場の札をくらべています…", "交換かノックか考えています…",
+};
+constexpr const char *const kThinkBaccarat[1] = {
+    "見えている札から考えます…",
+};
+
+// Jev の返事を待っている（pending=1）あいだだけ、止まった字ではなく動く表示にする
+bool waitingForJev()
+{
+    return s_step == Step::Wait;
+}
+
 // 卓の上に出す「はじめての人むけの一言」。その卓の最初のハンド / ラウンドだけ。
 // もう説明を見た（印が立っている）卓では出さないが、その場で説明を見たばかりの
 // 卓では最初の 1 局だけ出す（説明の最後に印を立てるので、印だけでは判定できない）
@@ -540,8 +622,8 @@ bool showHint()
     if (s_sess == nullptr || !s_sess->in_match || s_sess->match.finished) {
         return false;
     }
-    const size_t g = s_sess->game;
-    const bool first_time = !cards::store::seenFlag(g) || (s_guided & (1u << g)) != 0;
+    const size_t slot = seenSlot((int)s_sess->game, (int)s_sess->variant);
+    const bool first_time = !cards::store::seenFlag(slot) || (s_guided & (1u << slot)) != 0;
     return first_time && ct::unitNo(s_sess->match) == 1;
 }
 
@@ -1185,7 +1267,12 @@ void abortMatch()
 // **フォールドで終わったハンドは、確率内訳も出さない**（設計書 P6）
 void afterAction()
 {
-    const ct::Match &m = match();
+    ct::Match &m = match();
+    // 起こらないはずの失敗でコアが引き分けにしたときは、1 行だけ残して消す
+    if (m.fault != nullptr) {
+        Serial.printf("[CARDS] %s\n", m.fault);
+        m.fault = nullptr;
+    }
     if (m.game == ct::Game::Poker && m.phase == ct::Phase::UnitResult && m.last_folded) {
         s_sess->jev_hidden = true;
     }
@@ -1482,7 +1569,15 @@ void buildVariant()
     buildFrame();
     makeTitle(kTableName[s_pick_game]);
     makeMeta("どちらで遊びますか？");
-    if (s_pick_game == 1) {
+    if (s_pick_game == 0) {
+        // ホールデムを既定に（ユーザーはホールデムしか知らない。計画 §5b）
+        rectButton(layout::kPickBtn[0], "ホールデム\n手札2枚と場の5枚", Act::Variant0, true,
+                   s_pick_variant == 0);
+        rectButton(layout::kPickBtn[1], "ドロー\n5枚を1回交換", Act::Variant1, true,
+                   s_pick_variant == 1);
+        rectLabel(layout::kPickNote, &ct_font_jp_20, CD_MUTED,
+                  "ホールデムは200点、\nドローは100点から始めます");
+    } else if (s_pick_game == 1) {
         rectButton(layout::kPickBtn[0], "7枚勝負\n1〜7の札で7ラウンド", Act::Variant0, true,
                    s_pick_variant == 0);
         rectButton(layout::kPickBtn[1], "13枚勝負\n1〜13の札で13ラウンド", Act::Variant1, true,
@@ -1556,6 +1651,172 @@ void buildTutorial()
     rectButton(layout::kTutBack, s_tut_first_play ? "スキップ" : "閉じる", Act::TutBack);
 }
 
+// ベットの操作行（ドローとホールデムで同じ。設計書 P3 の行動そのまま）
+void buildBetButtons(const core::Street &s)
+{
+    const int owed = s.paid[1] - s.paid[0];
+    if (owed > 0) {
+        char call[24], raise[24];
+        std::snprintf(call, sizeof(call), "同額で\n+%d pt", owed);
+        std::snprintf(raise, sizeof(raise), "上乗せ\n+%d pt", owed + s.unit);
+        if (s.raises < 2) {
+            tableButton(0, layout::kAct3[0], "降りる", Role::ActionId, "FOLD", true, false);
+            tableButton(1, layout::kAct3[1], call, Role::ActionId, "CALL", true, true);
+            tableButton(2, layout::kAct3[2], raise, Role::ActionId, "RAISE", true, false);
+        } else {
+            tableButton(0, layout::kAct2[0], "降りる", Role::ActionId, "FOLD", true, false);
+            tableButton(1, layout::kAct2[1], call, Role::ActionId, "CALL", true, true);
+        }
+    } else {
+        char bet[24];
+        std::snprintf(bet, sizeof(bet), "%d点出す", s.unit);
+        tableButton(0, layout::kAct2[0], "続ける", Role::ActionId, "CHECK", true, false);
+        tableButton(1, layout::kAct2[1], bet, Role::ActionId, "BET", true, true);
+    }
+}
+
+// --- HOLDEM ------------------------------------------------------------------
+const char *holdemPhaseName(ct::Phase p)
+{
+    switch (p) {
+    case ct::Phase::HoldemFlop:  return "フロップ";
+    case ct::Phase::HoldemTurn:  return "ターン";
+    case ct::Phase::HoldemRiver: return "リバー";
+    default:                     return "プリフロップ";
+    }
+}
+
+void buildHoldemTable()
+{
+    ct::Match &m = match();
+    const core::Street &s = m.hd_street;
+    makeTitle(kTableTitle[0]);
+    char meta[64];
+    std::snprintf(meta, sizeof(meta), "ハンド %u / 5 ・ %s", (unsigned)m.hand_no, playerName());
+    makeMeta(meta);
+
+    char opp[64];
+    std::snprintf(opp, sizeof(opp), "%s  %d pt", shortOpponentName(), m.hd_stack[1]);
+    rectLabel(layout::kHdOpp, &ct_font_jp_20, CD_MUTED, opp);
+    for (int i = 0; i < 2; ++i) {
+        makeCard(layout::kHdOppCard[i], Face::Back, 0, 0, false, false);
+    }
+
+    char head[64];
+    if (showHint() && m.phase == ct::Phase::HoldemPreflop) {
+        // はじめての人へ（最初のハンドのプリフロップだけ）
+        std::snprintf(head, sizeof(head), "%s ・ 場の5枚は共有", holdemPhaseName(m.phase));
+    } else {
+        std::snprintf(head, sizeof(head), "%s %d点 ・ POT %dpt", holdemPhaseName(m.phase), s.unit,
+                      m.hd_pot);
+    }
+    rectLabel(layout::kHdHead, &ct_font_jp_20, CD_MUTED, head);
+
+    // 配られた場の札は表、まだの枠は裏（「あと何枚来るか」が見えるように）
+    for (int i = 0; i < 5; ++i) {
+        if (i < m.hd_board_n) {
+            const core::Card c = m.hd_board[i];
+            makeCard(layout::kHdBoard[i], Face::Front, core::rank(c), core::suit(c), false, false);
+        } else {
+            makeCard(layout::kHdBoard[i], Face::Back, 0, 0, false, false);
+        }
+    }
+
+    char human[96];
+    if (waitingForJev()) {
+        // 止まった字だと固まって見えるので、動く「考え中」に差し替える（枠と座標は同じ）
+        ui::thinkingCreate(s_content, Rect{80, 252, 320, 26}, kThinkPoker, 3);
+    } else if (!ct::canAct(m, 0)) {
+        std::snprintf(human, sizeof(human), "相手が考えています");
+        registerPrivate(rectLabel(layout::kHdHuman, &ct_font_jp_20, CD_TEXT, human));
+    } else {
+        const int owed = s.paid[1] - s.paid[0];
+        if (owed > 0) {
+            std::snprintf(human, sizeof(human), "あなた %d pt ／ 同額には%d点", m.hd_stack[0],
+                          owed);
+        } else if (m.hd_board_n == 0) {
+            std::snprintf(human, sizeof(human), "あなた %d pt", m.hd_stack[0]);
+        } else {
+            const ct::Best5 best = ct::holdemBest(m.hd_hands[0], m.hd_board.data(), m.hd_board_n);
+            std::snprintf(human, sizeof(human), "あなた %d pt / %s", m.hd_stack[0],
+                          best.valid ? kHandName[best.value.key[0]] : "");
+        }
+        registerPrivate(rectLabel(layout::kHdHuman, fitFont(human, layout::kHdHuman.w), CD_TEXT,
+                                  human));
+    }
+    for (int i = 0; i < 2; ++i) {
+        const core::Card c = m.hd_hands[0][i];
+        makeCard(layout::kHdHand[i], Face::Front, core::rank(c), core::suit(c), false, true);
+    }
+
+    if (ct::canAct(m, 0)) {
+        buildBetButtons(s);
+    } else {
+        tableButton(0, layout::kAct2[0], "遊び方", Role::None, nullptr, false, false);
+        tableButton(1, layout::kAct2[1], "相手の番", Role::None, nullptr, false, false);
+    }
+}
+
+void buildHoldemResult()
+{
+    ct::Match &m = match();
+    makeTitle(kTableTitle[0]);
+    char meta[64];
+    std::snprintf(meta, sizeof(meta), "ハンド %u / 5 ・ %s", (unsigned)m.hand_no,
+                  m.last_folded ? "フォールド" : "手札公開");
+    makeMeta(meta);
+
+    const char *verdict = m.last_winner == core::H  ? "あなたの勝ち"
+                        : m.last_winner == core::AI ? "相手の勝ち"
+                                                    : "引き分け";
+    if (m.last_folded) {
+        // **降りたハンドは双方の札も確率内訳も出さない**（設計書 P6 と同じ扱い）
+        rectLabel(layout::kFoldResult, &ct_font_jp_22, CD_TEXT,
+                  m.last_winner == core::H ? "相手が降りました" : "あなたが降りました");
+        char detail[64];
+        std::snprintf(detail, sizeof(detail), "場の%d点を獲得", m.last_pot);
+        rectLabel(layout::kFoldDetail, &ct_font_jp_20, CD_GOLD, detail);
+        rectLabel(layout::kFoldPrivacy, &ct_font_jp_20, CD_MUTED, "双方の札は公開しません");
+        rectLabel(layout::kFoldNoProb, &ct_font_jp_20, CD_MUTED, "行動の確率内訳も非表示");
+        char score[64];
+        std::snprintf(score, sizeof(score), "あなた%dpt ／ 相手%dpt", m.hd_stack[0], m.hd_stack[1]);
+        rectLabel(Rect{100, 220, 280, 24}, &ct_font_jp_20, CD_TEXT, score);
+    } else {
+        const ct::Best5 mine = ct::holdemBest(m.hd_hands[0], m.hd_board.data(), m.hd_board_n);
+        const ct::Best5 theirs = ct::holdemBest(m.hd_hands[1], m.hd_board.data(), m.hd_board_n);
+        char head[64];
+        std::snprintf(head, sizeof(head), "場の5枚　あなた%dpt", m.hd_stack[0]);
+        rectLabel(layout::kHdShowHead, &ct_font_jp_20, CD_MUTED, head);
+        for (int i = 0; i < m.hd_board_n && i < 5; ++i) {
+            const core::Card c = m.hd_board[i];
+            makeCard(layout::kHdShowBoard[i], Face::Front, core::rank(c), core::suit(c), false,
+                     false);
+        }
+        // 名前と、7 枚から選ばれた最良の 5 枚の役名（2 行）
+        char opp_tag[64], you_tag[64];
+        std::snprintf(opp_tag, sizeof(opp_tag), "%s\n%s", shortOpponentName(),
+                      theirs.valid ? kHandName[theirs.value.key[0]] : "");
+        std::snprintf(you_tag, sizeof(you_tag), "あなた\n%s",
+                      mine.valid ? kHandName[mine.value.key[0]] : "");
+        registerPrivate(rectLabel(layout::kHdOppTag, &ct_font_jp_20, CD_MUTED, opp_tag));
+        registerPrivate(rectLabel(layout::kHdYouTag, &ct_font_jp_20, CD_GOLD, you_tag));
+        for (int i = 0; i < 2; ++i) {
+            const core::Card o = m.hd_hands[1][i];
+            makeCard(layout::kHdOppShow[i], Face::Front, core::rank(o), core::suit(o), false, true);
+            const core::Card y = m.hd_hands[0][i];
+            makeCard(layout::kHdYouShow[i], Face::Front, core::rank(y), core::suit(y), false, true);
+        }
+        char result[64];
+        std::snprintf(result, sizeof(result), "%s ・ 場の%d点", verdict, m.last_pot);
+        rectLabel(layout::kHdResult, fitFont(result, layout::kHdResult.w), CD_TEXT, result);
+    }
+
+    const bool show_detail = s_sess->jev_valid && !s_sess->jev_hidden && !m.last_folded;
+    tableButton(0, layout::kAct2[0], "内訳", Role::Detail, nullptr, show_detail, false);
+    tableButton(1, layout::kAct2[1], m.hand_no >= 5 ? "結果へ" : "次のハンド", Role::Next, nullptr,
+                true, true);
+}
+
 // --- POKER -------------------------------------------------------------------
 void buildPokerTable()
 {
@@ -1610,12 +1871,14 @@ void buildPokerTable()
     char human[96];
     const core::PokerValue v = core::poker_value(m.ph.hands[0]);
     const char *role = v.valid ? kHandName[v.key[0]] : "";
-    if (drawing) {
+    if (waitingForJev()) {
+        ui::thinkingCreate(s_content, Rect{80, 230, 320, 26}, kThinkPoker, 3);
+        human[0] = '\0';
+    } else if (drawing) {
         std::snprintf(human, sizeof(human), "%s",
                       ct::sealed(m, 1) ? "相手の選択は確定済み" : "相手の交換を待っています");
     } else if (!ct::canAct(m, 0)) {
-        std::snprintf(human, sizeof(human), "%s",
-                      s_step == Step::Wait ? "JEVに問い合わせ中" : "相手が考えています");
+        std::snprintf(human, sizeof(human), "相手が考えています");
     } else {
         const int owed = s.paid[1] - s.paid[0];
         if (owed > 0) {
@@ -1625,8 +1888,10 @@ void buildPokerTable()
         }
     }
     // 役の名前は手札から作った私的情報。カードと同じく、カフェへ移る前に消す
-    registerPrivate(rectLabel(layout::kPokHuman, fitFont(human, layout::kPokHuman.w), CD_TEXT,
-                              human));
+    if (human[0] != '\0') {
+        registerPrivate(rectLabel(layout::kPokHuman, fitFont(human, layout::kPokHuman.w), CD_TEXT,
+                                  human));
+    }
 
     for (int i = 0; i < 5; ++i) {
         const core::Card c = m.ph.hands[0][i];
@@ -1650,25 +1915,7 @@ void buildPokerTable()
                                     Role::DraftPoker, nullptr, ready, ready);
         s_draw_confirm = buttonLabel(btn);
     } else if (ct::canAct(m, 0)) {
-        const int owed = s.paid[1] - s.paid[0];
-        if (owed > 0) {
-            char call[24], raise[24];
-            std::snprintf(call, sizeof(call), "同額で\n+%d pt", owed);
-            std::snprintf(raise, sizeof(raise), "上乗せ\n+%d pt", owed + s.unit);
-            if (s.raises < 2) {
-                tableButton(0, layout::kAct3[0], "降りる", Role::ActionId, "FOLD", true, false);
-                tableButton(1, layout::kAct3[1], call, Role::ActionId, "CALL", true, true);
-                tableButton(2, layout::kAct3[2], raise, Role::ActionId, "RAISE", true, false);
-            } else {
-                tableButton(0, layout::kAct2[0], "降りる", Role::ActionId, "FOLD", true, false);
-                tableButton(1, layout::kAct2[1], call, Role::ActionId, "CALL", true, true);
-            }
-        } else {
-            char bet[24];
-            std::snprintf(bet, sizeof(bet), "%d点出す", s.unit);
-            tableButton(0, layout::kAct2[0], "続ける", Role::ActionId, "CHECK", true, false);
-            tableButton(1, layout::kAct2[1], bet, Role::ActionId, "BET", true, true);
-        }
+        buildBetButtons(s);
     } else {
         tableButton(0, layout::kAct2[0], "遊び方", Role::None, nullptr, false, false);
         tableButton(1, layout::kAct2[1], "相手の番", Role::None, nullptr, false, false);
@@ -1740,9 +1987,12 @@ void buildGopsTable()
                   m.gops.n);
     makeMeta(meta);
 
-    const char *state = ct::sealed(m, 1) ? "相手の選択は確定済み"
-                      : (s_step == Step::Wait ? "JEVに問い合わせ中" : "相手が選んでいます");
-    rectLabel(layout::kGopsOpp, &ct_font_jp_20, CD_MUTED, state);
+    if (waitingForJev()) {
+        ui::thinkingCreate(s_content, Rect{88, 104, 304, 26}, kThinkGops, 2);
+    } else {
+        rectLabel(layout::kGopsOpp, &ct_font_jp_20, CD_MUTED,
+                  ct::sealed(m, 1) ? "相手の選択は確定済み" : "相手が選んでいます");
+    }
     rectLabel(layout::kGopsPrizeL, &ct_font_jp_20, CD_MUTED,
               showHint() ? "今回の得点・同じ数字なら消滅" : "今回の得点");
     char you[32], ai[32];
@@ -1885,14 +2135,17 @@ void buildThirtyTable()
 
     const int score = core::score31(m.t31.hands[0]);
     char human[64];
-    if (!ct::canAct(m, 0) && s_step != Step::Idle) {
-        std::snprintf(human, sizeof(human), "%s",
-                      s_step == Step::Wait ? "JEVに問い合わせ中" : "相手が考えています");
+    if (waitingForJev()) {
+        ui::thinkingCreate(s_content, Rect{80, 237, 320, 26}, kThinkThirty, 2);
     } else {
-        std::snprintf(human, sizeof(human), "あなた：%d点", score);
+        if (!ct::canAct(m, 0) && s_step != Step::Idle) {
+            std::snprintf(human, sizeof(human), "相手が考えています");
+        } else {
+            std::snprintf(human, sizeof(human), "あなた：%d点", score);
+        }
+        // 自分の得点も手札から作った私的情報
+        registerPrivate(rectLabel(layout::kT31Human, &ct_font_jp_20, CD_TEXT, human));
     }
-    // 自分の得点も手札から作った私的情報
-    registerPrivate(rectLabel(layout::kT31Human, &ct_font_jp_20, CD_TEXT, human));
     for (int i = 0; i < 3; ++i) {
         const core::Card c = m.t31.hands[0][i];
         makeCard(layout::kT31Hand[i], Face::Front, core::rank(c), core::suit(c), i == s_draft_hand,
@@ -2029,9 +2282,12 @@ void buildBaccaratTable()
     const bool ready = ct::sealed(m, 1);
     const char *ready_note = showHint() ? "PLAYER/BANKER は札の側の名前"
                                         : "同じ札を見て、勝敗を予想";
-    rectLabel(layout::kBacNote, &ct_font_jp_20, CD_MUTED,
-              ready ? ready_note
-                    : (s_step == Step::Wait ? "JEVに問い合わせ中" : "相手が予想しています"));
+    if (!ready && waitingForJev()) {
+        ui::thinkingCreate(s_content, Rect{88, 324, 304, 26}, kThinkBaccarat, 1);
+    } else {
+        rectLabel(layout::kBacNote, &ct_font_jp_20, CD_MUTED,
+                  ready ? ready_note : "相手が予想しています");
+    }
     tableButton(0, layout::kAct3[0], "PLAYER\n勝ち", Role::ActionId, "PLAYER", ready, false);
     tableButton(1, layout::kAct3[1], "BANKER\n勝ち", Role::ActionId, "BANKER", ready, false);
     tableButton(2, layout::kAct3[2], "引き分け", Role::ActionId, "TIE", ready, false);
@@ -2097,7 +2353,13 @@ void buildTable()
     const bool result = m.phase == ct::Phase::UnitResult;
     switch (m.game) {
     case ct::Game::Poker:
-        if (result) {
+        if (ct::isHoldem(m)) {
+            if (result) {
+                buildHoldemResult();
+            } else {
+                buildHoldemTable();
+            }
+        } else if (result) {
             buildPokerResult();
         } else {
             buildPokerTable();
@@ -2184,7 +2446,8 @@ void confirmBody(char *out, size_t size)
         std::strcmp(s_ask_id, "RAISE") == 0) {
         bool ok = false;
         const core::BetAction a = ct::betOf(s_ask_id, ok);
-        const int debit = ok ? ct::betDebit(m.ph.street, 0, a) : 0;
+        const core::Street *street = ct::betStreet(m);   // ドローとホールデムで別物
+        const int debit = (ok && street != nullptr) ? ct::betDebit(*street, 0, a) : 0;
         std::snprintf(out, size, "今回、追加する点数：%d点\n確定後の変更はできません。", debit);
         return;
     }
@@ -2404,6 +2667,8 @@ void t31MarketCb(lv_event_t *e)
 void startTutorial(int game, View back)
 {
     s_tut_game = (int8_t)game;
+    // POKER 卓はいま選んでいる種類の説明を出す（入口から開いたときは既定のホールデム）
+    s_tut_holdem = (game == 0) ? (s_pick_variant == 0) : true;
     s_tut_page = 0;
     s_tut_first_play = false;
     s_tut_return = back;
@@ -2415,6 +2680,7 @@ void startTutorial(int game, View back)
 void startFirstPlayGuide(int game)
 {
     s_tut_game = (int8_t)game;
+    s_tut_holdem = (game == 0) ? (s_pick_variant == 0) : true;
     s_tut_page = 0;
     s_tut_first_play = true;
     s_tut_dont_show = true;     // 既定はオン
@@ -2425,19 +2691,20 @@ void startFirstPlayGuide(int game)
 // 説明を終えて試合へ。「次回から表示しない」がオンならその卓の印を立てる
 void finishFirstPlayGuide()
 {
+    const size_t slot = seenSlot((int)s_pick_game, (int)s_pick_variant);
     if (s_tut_dont_show) {
-        cards::store::markSeen(s_pick_game);
+        cards::store::markSeen(slot);
     }
     // この電源セッションでは、最初の 1 局だけ卓の上に一言を出す
-    s_guided = (uint8_t)(s_guided | (1u << s_pick_game));
+    s_guided = (uint8_t)(s_guided | (1u << slot));
     s_tut_first_play = false;
     beginMatch();
 }
 
 void startChosenMatch()
 {
-    // はじめての卓なら、配る前に説明をはさむ
-    if (!cards::store::seenFlag(s_pick_game)) {
+    // はじめての卓（ホールデムとドローは別々）なら、配る前に説明をはさむ
+    if (!cards::store::seenFlag(seenSlot((int)s_pick_game, (int)s_pick_variant))) {
         startFirstPlayGuide(s_pick_game);
         return;
     }
@@ -2447,7 +2714,9 @@ void startChosenMatch()
 void nextStep()
 {
     // 種類のあるゲームは種類 → 相手、無ければ相手だけ
-    setView((s_pick_game == 1 || s_pick_game == 3) ? View::Variant : View::Opponent);
+    // 種類を選ぶのは POKER（ホールデム / ドロー）・GOPS（7 / 13）・BACCARAT（OPEN / CLASSIC）。
+    // THIRTY-ONE だけ種類がひとつ
+    setView(s_pick_game != 2 ? View::Variant : View::Opponent);
 }
 
 void tableBtnCb(lv_event_t *e)
@@ -2491,6 +2760,10 @@ void tableBtnCb(lv_event_t *e)
         break;
     case Role::Next:
         if (ct::nextUnit(m, hwRandom, nullptr)) {
+            if (m.fault != nullptr) {
+                Serial.printf("[CARDS] %s\n", m.fault);
+                m.fault = nullptr;
+            }
             resetDrafts();
             s_sess->jev_valid = false;
             setView(View::Table);
@@ -2609,7 +2882,7 @@ void actionCb(lv_event_t *e)
         startChosenMatch();
         break;
     case Act::OppBack:
-        setView((s_pick_game == 1 || s_pick_game == 3) ? View::Variant : View::Records);
+        setView(s_pick_game != 2 ? View::Variant : View::Records);
         break;
 
     case Act::TutPrev:
@@ -2938,12 +3211,13 @@ void debugPrintPublicState()
         ct::liveScores(m, human_score, ai_score);      // 途中でも読める、いまの得点
     }
     // はじめての説明を見た卓（poker|gops|31|bac の順に 1 / 0）
+    // poker-holdem | gops | 31 | bac | poker-draw の 5 桁
     const uint8_t seen = cards::store::seenFlags();
-    char seen_text[5];
-    for (int i = 0; i < 4; ++i) {
+    char seen_text[cards::store::kSeenSlots + 1];
+    for (size_t i = 0; i < cards::store::kSeenSlots; ++i) {
         seen_text[i] = (seen & (1u << i)) ? '1' : '0';
     }
-    seen_text[4] = '\0';
+    seen_text[cards::store::kSeenSlots] = '\0';
     // **手札と、公開前の相手の選択は出さない。** 公開されている数字だけを出す
     Serial.printf("[CARDS] view=%s game=%s variant=%s slot=%s unit=%u/%d phase=%s rev=%lu "
                   "score=%d-%d provider=%s pending=%u try=%u local=%u seen=%s\n",

@@ -3,7 +3,8 @@
     "設計一式の content.ja.json に足りない文言と、丸い画面の枠に収めるための改行。",
     "同じ鍵があればこちらが勝つ（ReversiContent の findText がここを先に見る）。",
     "正本 data/content.ja.json と data/tutorial.ja.json は 1 文字も書き換えない。",
-    "1 行に入る目安は 312px の枠で全角 13 文字（ct_font_jp_22）／全角 15 文字（ct_font_jp_20）。"
+    "1 行に入る目安は 312px の枠で全角 13 文字（ct_font_jp_22）／全角 15 文字（ct_font_jp_20）。",
+    "ui.board.think1〜3 は考え中の表示（240px の枠）に出すので全角 10 文字まで。"
   ],
 
   "start.no_online": "Jevに接続できません。\n端末AIで遊べます。",
@@ -55,6 +56,9 @@
   "ui.detail.conf": "自信指標",
   "ui.detail.cached": "前に決めた手をそのまま",
   "ui.board.waiting": "Jevの返事を待っています",
+  "ui.board.think1": "盤面を読んでいます…",
+  "ui.board.think2": "手をくらべています…",
+  "ui.board.think3": "先を読んでいます…",
   "ui.board.frozen": "この対局は端末AIが担当",
   "ui.board.save_failed": "保存できません",
   "ui.detail.more": "ほか",
