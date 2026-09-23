@@ -139,17 +139,25 @@ static void pulse(lv_obj_t *obj)
     lv_anim_start(&a);
 }
 
+static lv_timer_t *s_toast_timer = nullptr;
+
 static void toastHideCb(lv_timer_t *t)
 {
     lv_obj_add_flag(s_toast, LV_OBJ_FLAG_HIDDEN);
     lv_timer_del(t);
+    s_toast_timer = nullptr;
 }
 
+// 続けて出したときに前のタイマーで新しいトーストが早く消えないよう、2 秒を数え直す
 static void showToast(const char *text)
 {
     lv_label_set_text(s_toast, text);
     lv_obj_clear_flag(s_toast, LV_OBJ_FLAG_HIDDEN);
-    lv_timer_create(toastHideCb, 2000, nullptr);
+    if (s_toast_timer) {
+        lv_timer_reset(s_toast_timer);
+    } else {
+        s_toast_timer = lv_timer_create(toastHideCb, 2000, nullptr);
+    }
 }
 
 // 杯数が変わった出来事を、GAS（Wi-Fi）と SD の操作ログの両方へ記録する
@@ -175,6 +183,11 @@ void addOneCup()
     refreshCups();
     if (ui::isHome()) {
         pulse(s_taken);
+        // 残り 0 でも「今日」は数える（設定 10 杯でも実際は 11〜12 杯出ることがある。ユーザー決定 9/23）。
+        // 「残り」は 0 のままなので、補充の操作を思い出してもらう
+        if (prev == 0) {
+            showToast("残りは 0 のままです。\n補充したら『残り』を長押し");
+        }
     }
 }
 
@@ -387,6 +400,7 @@ bool create()
     lv_obj_set_style_radius(s_toast, 18, 0);
     lv_obj_set_style_pad_hor(s_toast, 18, 0);
     lv_obj_set_style_pad_ver(s_toast, 8, 0);
+    lv_obj_set_style_text_align(s_toast, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_align(s_toast, LV_ALIGN_CENTER, 0, -10);
     lv_obj_add_flag(s_toast, LV_OBJ_FLAG_HIDDEN);
 
