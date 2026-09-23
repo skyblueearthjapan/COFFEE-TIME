@@ -439,6 +439,25 @@ void debugRefill()
     refreshCups();
 }
 
+// 自動操作の誤タップで入ってしまった本物の「+1」を取り消す（2026-09-22 / 23 の後始末）。
+// recordEvent は使わない＝GAS へは送らない。SD の操作ログにだけ "undo" を 1 行残す
+bool debugUndoCup()
+{
+    int bucket = -2;
+    if (!cup::undoOne(bucket)) {
+        return false;
+    }
+    char note[48];
+    if (bucket >= 0) {
+        snprintf(note, sizeof(note), "serial hour=%02d", bucket);
+    } else {
+        snprintf(note, sizeof(note), "serial bucket=%s", bucket == -1 ? "unknown" : "none");
+    }
+    sdlog::event("undo", cup::taken(), cup::remaining(), cup::remaining(), note);
+    refreshCups();
+    return true;
+}
+
 void debugForceHour(int hour)
 {
     s_forced_hour = hour;

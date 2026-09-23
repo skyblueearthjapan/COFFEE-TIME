@@ -111,6 +111,69 @@ static void setTimeFromSerial()
     sdlog::event("timeset", cup::taken(), cup::remaining(), cup::remaining(), "from serial");
 }
 
+static bool allDigits(const String &s)
+{
+    if (s.length() == 0) {
+        return false;
+    }
+    for (size_t i = 0; i < s.length(); ++i) {
+        if (s[i] < '0' || s[i] > '9') {
+            return false;
+        }
+    }
+    return true;
+}
+
+/**
+ * 開発用：誤って入った記録を消す。杯数はこの製品のいちばん大事なデータなので、
+ * **合言葉を同じ行に書かないと動かない**（'Y' を 1 文字打っただけでは何も起きない）。
+ *   Y!undo                  … 今日の杯数を 1 減らす（残り杯数 left はそのまま）
+ *   Y!hist,YYYYMMDD,杯数    … 履歴の輪にあるその日の杯数を書き換える（その日が輪に無ければ断る）
+ * どちらも GAS（シート）へは何も送らない。シートの行は手で消すこと
+ */
+static void undoFromSerial()
+{
+    Serial.setTimeout(1000);
+    String arg = Serial.readStringUntil('\n');
+    arg.trim();     // 改行の種類の違い（末尾の \r）と前後の空白を落とす
+
+    if (arg == "!undo") {
+        home::debugUndoCup();       // 結果（taken n->m／減らせなかった理由）は cup:: 側が表示する
+        return;
+    }
+
+    if (arg.startsWith("!hist,")) {
+        const String rest = arg.substring(6);
+        const int comma = rest.indexOf(',');
+        if (comma > 0) {
+            const String ymd_s = rest.substring(0, comma);
+            const String cups_s = rest.substring(comma + 1);
+            if (allDigits(ymd_s) && ymd_s.length() == 8 && allDigits(cups_s) && cups_s.length() <= 3) {
+                const uint32_t ymd = strtoul(ymd_s.c_str(), nullptr, 10);
+                const uint32_t cups = strtoul(cups_s.c_str(), nullptr, 10);
+                cup::DayRecord rec = {};
+                if (!cup::historyFor(ymd, rec)) {
+                    Serial.printf("[DEV] histfix: %lu is not in the history ring\n", (unsigned long)ymd);
+                    return;
+                }
+                if (!cup::setHistoryCups(ymd, (uint16_t)cups)) {
+                    Serial.println("[DEV] histfix: save failed (history kept as it was)");
+                    return;
+                }
+                Serial.printf("[CUP] histfix: %lu cups %u->%lu (refills/games kept)\n",
+                              (unsigned long)ymd, (unsigned)rec.cups, (unsigned long)cups);
+                char note[48];
+                snprintf(note, sizeof(note), "%lu %u->%lu", (unsigned long)ymd,
+                         (unsigned)rec.cups, (unsigned long)cups);
+                sdlog::event("histfix", cup::taken(), cup::remaining(), cup::remaining(), note);
+                return;
+            }
+        }
+    }
+
+    Serial.printf("[DEV] ignored: bad input \"%s\" (use Y!undo or Y!hist,YYYYMMDD,cups)\n", arg.c_str());
+}
+
 void setup()
 {
     Serial.begin(115200);
@@ -266,6 +329,10 @@ void loop()
             case 'X': detective::debugResetProgress(); break;
             case 'C': setTimeFromSerial(); break;    // PC の時計から時刻を設定（tools/settime.py）
             case 'P': tapFromSerial(); break;        // 開発用：P<x>,<y> でタップ
+            // 開発用：誤って入った記録を消す。合言葉が同じ行に無ければ何もしない（打ち間違い避け）。
+            //   Y!undo                … 今日の杯数を 1 減らす（残り杯数 left はそのまま・GAS へは送らない）
+            //   Y!hist,YYYYMMDD,杯数  … 履歴の輪にあるその日の杯数を書き換える（無い日は断る）
+            case 'Y': undoFromSerial(); break;
             case 'L': dump_log = true; break;        // 開発用：SD の操作ログの末尾を表示
             default: break;
             }

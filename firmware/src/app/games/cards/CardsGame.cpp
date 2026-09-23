@@ -67,12 +67,14 @@ constexpr Rect kMeta    {100,  74, 280, 24};
 constexpr Rect kCafeBtn {176, 414, 128, 44};    // 卓の画面の「カフェへ」
 
 // --- 入口（lobby）------------------------------------------------------------
-constexpr Rect kTile[4] = {{100, 104, 132, 94}, {248, 104, 132, 94},
-                           {100, 206, 132, 94}, {248, 206, 132, 94}};
-constexpr Rect kEntryResume{108, 308, 124, 46};
-constexpr Rect kEntryHow   {248, 308, 124, 46};
-constexpr Rect kEntryNote  { 98, 358, 284, 22};
-constexpr Rect kEntryBack  {176, 402, 128, 46};
+// 「説明をもう一度」を足したぶん、4 つの卓を少し上げて縮めた
+constexpr Rect kTile[4] = {{100, 100, 132, 88}, {248, 100, 132, 88},
+                           {100, 194, 132, 88}, {248, 194, 132, 88}};
+constexpr Rect kEntryResume{108, 290, 124, 44};
+constexpr Rect kEntryHow   {248, 290, 124, 44};
+constexpr Rect kEntryAgain {130, 340, 220, 40};
+constexpr Rect kEntryNote  { 98, 384, 284, 20};
+constexpr Rect kEntryBack  {176, 410, 128, 44};
 
 // --- 本人選び（AI DUEL と同じ位置）-------------------------------------------
 constexpr Rect kPlayerNote {104,  66, 272, 24};   // 四隅が半径 228px の円に入るよう DUEL より少し狭い
@@ -99,13 +101,14 @@ constexpr Rect kPickBack   {150, 356, 180, 46};
 constexpr Rect kPickHow    {108, 356, 124, 46};     // 相手選びだけ 2 ボタン
 constexpr Rect kPickGo     {248, 356, 124, 46};
 
-// --- 遊び方 ------------------------------------------------------------------
-constexpr Rect kTutTitle { 88, 112, 304, 34};
-constexpr Rect kTutBody  { 84, 156, 312, 150};
-constexpr Rect kTutNote  { 90, 310, 300, 24};
-constexpr Rect kTutPrev  {108, 342, 124, 50};
-constexpr Rect kTutNext  {248, 342, 124, 50};
-constexpr Rect kTutBack  {176, 402, 128, 44};
+// --- 遊び方 / はじめての説明 --------------------------------------------------
+// 「この卓の流れ」は 5 行あるので本文を 6 行ぶん（156px）取ってある
+constexpr Rect kTutTitle { 88, 110, 304, 34};
+constexpr Rect kTutBody  { 84, 152, 312, 156};
+constexpr Rect kTutNote  { 90, 312, 300, 38};   // 最後のページは「次回から表示しない」
+constexpr Rect kTutPrev  {108, 356, 124, 46};
+constexpr Rect kTutNext  {248, 356, 124, 46};
+constexpr Rect kTutBack  {176, 406, 128, 42};   // スキップ / 閉じる
 
 // --- 共通の操作行（設計一式 02A）---------------------------------------------
 constexpr Rect kAct2[2] = {{108, 350, 124, 52}, {248, 350, 124, 52}};
@@ -139,7 +142,8 @@ constexpr Rect kFoldNoProb { 90, 280, 300, 26};
 
 // --- GOPS --------------------------------------------------------------------
 constexpr Rect kGopsOpp   { 98, 105, 284, 24};
-constexpr Rect kGopsPrizeL{142, 132, 196, 22};
+// はじめての人むけの一言をここに足すので、設計一式の 142,132,196,22 より横に広い
+constexpr Rect kGopsPrizeL{ 88, 132, 304, 22};
 constexpr Rect kGopsYou   { 66, 157,  94, 62};
 constexpr Rect kGopsAi    {320, 157,  94, 62};
 constexpr Rect kGopsPrize {204, 158,  72, 62};
@@ -164,7 +168,8 @@ constexpr Rect kRemBack   {160, 348, 160, 52};
 
 // --- THIRTY-ONE --------------------------------------------------------------
 constexpr Rect kT31Opp    {112, 100, 256, 24};
-constexpr Rect kT31MarketT{108, 128, 264, 22};
+// はじめての人むけの一言をここに足すので、設計一式の 108,128,264,22 より横に広い
+constexpr Rect kT31MarketT{ 88, 128, 304, 22};
 constexpr Rect kT31Market[3] = {{124, 160, 64, 70}, {208, 160, 64, 70}, {292, 160, 64, 70}};
 constexpr Rect kT31Human  { 80, 238, 320, 24};
 constexpr Rect kT31Hand[3] = {{124, 268, 64, 70}, {208, 268, 64, 70}, {292, 268, 64, 70}};
@@ -237,7 +242,8 @@ enum class Role : uint8_t {
 
 enum class Act : int {
     EntryTable0 = 1, EntryTable1, EntryTable2, EntryTable3,
-    EntryResume, EntryHow, EntryBack,
+    EntryResume, EntryHow, EntryAgain, EntryBack,
+    TutToggle,
     PlayerGuest, PlayerBack,
     RecPlay, RecBack,
     Variant0, Variant1, VariantBack,
@@ -315,10 +321,10 @@ constexpr TutorialPage kTutorial[22] = {
     {"最後まで考えよう", "小さな得点に大きな札を使うと、\n後で困るかもしれません。最後は\n合計点で勝負。"},
     {"同じマークを集める", "手札は3枚。4種類のマークごとに\n足し、一番高い合計があなたの点\n数です。"},
     {"Aは11、絵札は10", "Aは11点、J・Q・Kは10点。同じ数\n字3枚の特別点はありません。"},
-    {"場と1枚ずつ交換", "自分の1枚と場の1枚を選んで交換。\n場へ出した札は相手にも見えます。"},
+    {"場と1枚ずつ交換", "自分の1枚と場の1枚を選んで\n交換。場へ出した札は相手にも\n見えます。"},
     {"勝負を仕掛ける", "交換の代わりにノックすると、相\n手に最後の交換チャンスが1回あ\nります。"},
     {"31なら即決着", "31点になったらすぐに公開。同点\nは引き分け。長く続いたら20手で\n比べます。"},
-    {"この端末だけの短期戦", "通常の流派とは一部違うカフェルー\nルです。3回の勝ち数で決めます。"},
+    {"この端末だけの短期戦", "通常の流派とは一部違う\nカフェルールです。\n3回の勝ち数で決めます。"},
     {"二つの側を予想", "PLAYER側とBANKER側は手札の呼び\n名。人間とJevの呼び名ではあり\nません。"},
     {"9点に近い方が勝ち", "Aは1点、10・J・Q・Kは0点。足し\nた数字の一の位だけを比べます。"},
     {"引くかどうかは自動", "追加カードは決まったルールで配\nられます。人間もJevも引き方を\n変更できません。"},
@@ -328,6 +334,55 @@ constexpr TutorialPage kTutorial[22] = {
 };
 constexpr uint8_t kTutStart[4] = {0, 6, 10, 16};
 constexpr uint8_t kTutCount[4] = {6, 4, 6, 6};
+
+// はじめての人むけの「この卓の流れ」。何が見える / 何を決める / どう勝つ /
+// いちばん間違えやすいこと、を 5 行で。1 行は全角 15 文字（312px）まで
+constexpr TutorialPage kSummary[4] = {
+    {"この卓の流れ",
+     "手札5枚だけが見えます。\n出す・受ける・降りるを選ぶ。\n交換は1回だけ、0〜5枚。\n"
+     "上乗せは各段階2回まで。\n5ハンド後の持ち点で決着。"},
+    {"この卓の流れ",
+     "同じ札を1組ずつ持ちます。\n場の得点札を見て1枚を選ぶ。\n大きい札を出した側が得点。\n"
+     "同じ数字なら得点は消えます。\n合計点が多い側の勝ちです。"},
+    {"この卓の流れ",
+     "手札3枚と場の3枚を見ます。\n自分の1枚と場の1枚を交換。\n同じマークの合計が点数です。\n"
+     "通常ターンにパスはありません。\nここで勝負＝相手に最後の1手。"},
+    {"この卓の流れ",
+     "PLAYERとBANKERは手札の呼び名。\nあなたもJevも同じ側を予想。\n追加の札は規則で自動です。\n"
+     "当たれば1点、5回で比べます。\n前の結果は次に影響しません。"},
+};
+
+// 説明のページ数（卓ごと: 流れ 1 ＋ tutorials.ja.json のページ。game < 0 は 4 卓ぶん）
+int guideCount(int game)
+{
+    int n = 0;
+    for (int g = (game < 0 ? 0 : game); g <= (game < 0 ? 3 : game); ++g) {
+        n += 1 + kTutCount[g];
+    }
+    return n;
+}
+
+// 通し番号からページを取り出す（何番目の卓のページかも返す）
+bool guidePage(int game, int index, const char *&title, const char *&body, int &of_game)
+{
+    for (int g = (game < 0 ? 0 : game); g <= (game < 0 ? 3 : game); ++g) {
+        if (index == 0) {
+            title = kSummary[g].title;
+            body = kSummary[g].body;
+            of_game = g;
+            return true;
+        }
+        --index;
+        if (index < kTutCount[g]) {
+            title = kTutorial[kTutStart[g] + index].title;
+            body = kTutorial[kTutStart[g] + index].body;
+            of_game = g;
+            return true;
+        }
+        index -= kTutCount[g];
+    }
+    return false;
+}
 
 // ---------------------------------------------------------------------------
 // 電源が入っている間ずっと持つ試合（計画 §4。PSRAM に 1 個だけ）
@@ -392,8 +447,13 @@ uint32_t s_step_ms = 0;
 
 uint8_t s_pick_game = 0;            // これから始めるテーブル
 uint8_t s_pick_variant = 0;
-uint8_t s_tut_page = 0;
-uint8_t s_tut_from = 0, s_tut_to = 22;
+
+// 遊び方 / はじめての説明
+uint8_t s_tut_page = 0;             // 通し番号（0 から）
+int8_t s_tut_game = -1;             // -1 = 4 卓ぶん、0〜3 = その卓だけ
+bool s_tut_first_play = false;      // 初回の自動表示（スキップ・次回から表示しない つき）
+bool s_tut_dont_show = true;        // 「次回から表示しない」の既定はオン
+uint8_t s_guided = 0;               // この電源セッションで説明を出した卓（最初の 1 局だけ一言を出す）
 uint8_t s_page = 0;                 // GOPS の候補のページ
 
 // 人間の仮選択（draft）。確定ボタンを押すまでゲームは 1 ミリも動かない
@@ -470,6 +530,19 @@ bool isGuest()
 bool resumable()
 {
     return s_sess != nullptr && s_sess->in_match && !s_sess->match.finished;
+}
+
+// 卓の上に出す「はじめての人むけの一言」。その卓の最初のハンド / ラウンドだけ。
+// もう説明を見た（印が立っている）卓では出さないが、その場で説明を見たばかりの
+// 卓では最初の 1 局だけ出す（説明の最後に印を立てるので、印だけでは判定できない）
+bool showHint()
+{
+    if (s_sess == nullptr || !s_sess->in_match || s_sess->match.finished) {
+        return false;
+    }
+    const size_t g = s_sess->game;
+    const bool first_time = !cards::store::seenFlag(g) || (s_guided & (1u << g)) != 0;
+    return first_time && ct::unitNo(s_sess->match) == 1;
 }
 
 const char *playerName()
@@ -1341,6 +1414,9 @@ void buildEntry()
     }
     rectButton(layout::kEntryResume, "つづきから", Act::EntryResume, resume, resume);
     rectButton(layout::kEntryHow, "遊び方", Act::EntryHow);
+    // はじめての説明をまた自動で出すようにする（4 卓ぶんの「見た」印を消す）
+    const bool any_seen = cards::store::seenFlags() != 0;
+    rectButton(layout::kEntryAgain, "説明をもう一度", Act::EntryAgain, any_seen);
     rectLabel(layout::kEntryNote, &ct_font_jp_20, CD_MUTED, "対戦内の点数のみ・換金なし");
     rectButton(layout::kEntryBack, "もどる", Act::EntryBack);
 }
@@ -1446,18 +1522,38 @@ void buildOpponent()
 void buildTutorial()
 {
     buildFrame();
-    const uint8_t page = s_tut_page < s_tut_to ? s_tut_page : s_tut_from;
-    char title[48];
-    std::snprintf(title, sizeof(title), "遊び方 %u / %u", (unsigned)(page - s_tut_from + 1),
-                  (unsigned)(s_tut_to - s_tut_from));
-    makeTitle("遊び方");
-    makeMeta(title);
-    rectLabel(layout::kTutTitle, &ct_font_jp_22, CD_GOLD, kTutorial[page].title);
-    rectLabel(layout::kTutBody, &ct_font_jp_20, CD_TEXT, kTutorial[page].body);
-    rectLabel(layout::kTutNote, &ct_font_jp_20, CD_MUTED, "現金・景品交換はありません");
-    rectButton(layout::kTutPrev, "戻る", Act::TutPrev, page > s_tut_from);
-    rectButton(layout::kTutNext, "次へ", Act::TutNext, page + 1 < s_tut_to, true);
-    rectButton(layout::kTutBack, "閉じる", Act::TutBack);
+    const int total = guideCount(s_tut_game);
+    int page = s_tut_page < total ? (int)s_tut_page : 0;
+    const char *title = "";
+    const char *body = "";
+    int of_game = s_tut_game < 0 ? 0 : s_tut_game;
+    if (!guidePage(s_tut_game, page, title, body, of_game)) {
+        page = 0;
+        guidePage(s_tut_game, 0, title, body, of_game);
+    }
+    const bool last = page + 1 >= total;
+
+    makeTitle(s_tut_first_play ? "はじめての方へ" : "遊び方");
+    char meta[48];
+    std::snprintf(meta, sizeof(meta), "%s ・ %d / %d", kTableName[of_game], page + 1, total);
+    makeMeta(meta);
+    rectLabel(layout::kTutTitle, &ct_font_jp_22, CD_GOLD, title);
+    rectLabel(layout::kTutBody, &ct_font_jp_20, CD_TEXT, body);
+
+    if (s_tut_first_play && last) {
+        // 最後のページだけ「次回から表示しない」。既定はオン（2 回目からは出ない）
+        char toggle[64];
+        std::snprintf(toggle, sizeof(toggle), "次回から表示しない：%s",
+                      s_tut_dont_show ? "オン" : "オフ");
+        rectButton(layout::kTutNote, toggle, Act::TutToggle, true, s_tut_dont_show);
+    } else {
+        rectLabel(layout::kTutNote, &ct_font_jp_20, CD_MUTED, "現金・景品交換はありません");
+    }
+    rectButton(layout::kTutPrev, "前へ", Act::TutPrev, page > 0);
+    rectButton(layout::kTutNext, last ? (s_tut_first_play ? "はじめる" : "閉じる") : "次へ",
+               Act::TutNext, true, true);
+    // スキップはどのページからでも押せる（2 回目以降の人がすぐ始められるように）
+    rectButton(layout::kTutBack, s_tut_first_play ? "スキップ" : "閉じる", Act::TutBack);
 }
 
 // --- POKER -------------------------------------------------------------------
@@ -1486,7 +1582,10 @@ void buildPokerTable()
 
     const bool drawing = m.phase == ct::Phase::PokerDraw;
     char pot_head[64];
-    if (drawing) {
+    if (!drawing && !after_draw && showHint() && ct::canAct(m, 0)) {
+        // はじめての人へ、最初のハンドだけ（ボタンには重ねない。POT の数字は下の行に残る）
+        std::snprintf(pot_head, sizeof(pot_head), "続ける＝追加なし／出す＝%d点", s.unit);
+    } else if (drawing) {
         std::snprintf(pot_head, sizeof(pot_head), "交換する札を選択");
     } else if (after_draw && m.draw_counts[0] >= 0 && m.draw_counts[1] >= 0) {
         // 双方の交換枚数は、両方が確定してから初めてここに出る（設計書 P4 の 5）
@@ -1644,7 +1743,8 @@ void buildGopsTable()
     const char *state = ct::sealed(m, 1) ? "相手の選択は確定済み"
                       : (s_step == Step::Wait ? "JEVに問い合わせ中" : "相手が選んでいます");
     rectLabel(layout::kGopsOpp, &ct_font_jp_20, CD_MUTED, state);
-    rectLabel(layout::kGopsPrizeL, &ct_font_jp_20, CD_MUTED, "今回の得点");
+    rectLabel(layout::kGopsPrizeL, &ct_font_jp_20, CD_MUTED,
+              showHint() ? "今回の得点・同じ数字なら消滅" : "今回の得点");
     char you[32], ai[32];
     std::snprintf(you, sizeof(you), "あなた\n%d pt", m.gops.score[0]);
     std::snprintf(ai, sizeof(ai), "%s\n%d pt", shortOpponentName(), m.gops.score[1]);
@@ -1775,7 +1875,8 @@ void buildThirtyTable()
     char opp[64];
     std::snprintf(opp, sizeof(opp), "%s　非公開 %d枚", opponentName(), 3 - known);
     rectLabel(layout::kT31Opp, &ct_font_jp_20, CD_MUTED, opp);
-    rectLabel(layout::kT31MarketT, &ct_font_jp_20, CD_MUTED, "場のカード（共有）");
+    rectLabel(layout::kT31MarketT, &ct_font_jp_20, CD_MUTED,
+              showHint() ? "場の3枚（共有）・交換は1枚だけ" : "場のカード（共有）");
     for (int j = 0; j < 3; ++j) {
         const core::Card c = m.t31.market[j];
         makeCard(layout::kT31Market[j], Face::Front, core::rank(c), core::suit(c),
@@ -1926,8 +2027,10 @@ void buildBaccaratTable()
     }
 
     const bool ready = ct::sealed(m, 1);
+    const char *ready_note = showHint() ? "PLAYER/BANKER は札の側の名前"
+                                        : "同じ札を見て、勝敗を予想";
     rectLabel(layout::kBacNote, &ct_font_jp_20, CD_MUTED,
-              ready ? "同じ札を見て、勝敗を予想"
+              ready ? ready_note
                     : (s_step == Step::Wait ? "JEVに問い合わせ中" : "相手が予想しています"));
     tableButton(0, layout::kAct3[0], "PLAYER\n勝ち", Role::ActionId, "PLAYER", ready, false);
     tableButton(1, layout::kAct3[1], "BANKER\n勝ち", Role::ActionId, "BANKER", ready, false);
@@ -2297,13 +2400,48 @@ void t31MarketCb(lv_event_t *e)
     s_dirty = true;
 }
 
+// 読み物として開く（前へ / 次へ / 閉じる だけ）
 void startTutorial(int game, View back)
 {
-    s_tut_from = game < 0 ? 0 : kTutStart[game];
-    s_tut_to = game < 0 ? 22 : (uint8_t)(kTutStart[game] + kTutCount[game]);
-    s_tut_page = s_tut_from;
+    s_tut_game = (int8_t)game;
+    s_tut_page = 0;
+    s_tut_first_play = false;
     s_tut_return = back;
     setView(View::Tutorial);
+}
+
+// 初めてその卓を始めるときの説明（スキップ・次回から表示しない つき）。
+// 終わったら（はじめる でも スキップ でも）そのまま試合が始まる
+void startFirstPlayGuide(int game)
+{
+    s_tut_game = (int8_t)game;
+    s_tut_page = 0;
+    s_tut_first_play = true;
+    s_tut_dont_show = true;     // 既定はオン
+    s_tut_return = View::Opponent;
+    setView(View::Tutorial);
+}
+
+// 説明を終えて試合へ。「次回から表示しない」がオンならその卓の印を立てる
+void finishFirstPlayGuide()
+{
+    if (s_tut_dont_show) {
+        cards::store::markSeen(s_pick_game);
+    }
+    // この電源セッションでは、最初の 1 局だけ卓の上に一言を出す
+    s_guided = (uint8_t)(s_guided | (1u << s_pick_game));
+    s_tut_first_play = false;
+    beginMatch();
+}
+
+void startChosenMatch()
+{
+    // はじめての卓なら、配る前に説明をはさむ
+    if (!cards::store::seenFlag(s_pick_game)) {
+        startFirstPlayGuide(s_pick_game);
+        return;
+    }
+    beginMatch();
 }
 
 void nextStep()
@@ -2416,12 +2554,19 @@ void actionCb(lv_event_t *e)
         }
         break;
     case Act::EntryHow:
-        // 入口からは 22 ページ全部、相手選びからはその卓のページだけ
+        // 入口からは 4 卓ぶん全部、相手選びからはその卓のページだけ
         if (s_view == View::Opponent) {
             startTutorial((int)s_pick_game, View::Opponent);
         } else {
             startTutorial(-1, View::Entry);
         }
+        break;
+    case Act::EntryAgain:
+        // 4 卓ぶんの「見た」印を消して、次に始めるときまた自動で説明を出す
+        cards::store::clearSeen();
+        s_guided = 0;
+        ui::showToast(s_screen, "次から説明を表示します");
+        s_dirty = true;
         break;
     case Act::EntryBack:
         leaveScreen(false);
@@ -2457,30 +2602,42 @@ void actionCb(lv_event_t *e)
 
     case Act::OppJev:
         s_sess->want_jev = true;
-        beginMatch();
+        startChosenMatch();     // はじめての卓なら、配る前に説明をはさむ
         break;
     case Act::OppLocal:
         s_sess->want_jev = false;
-        beginMatch();
+        startChosenMatch();
         break;
     case Act::OppBack:
         setView((s_pick_game == 1 || s_pick_game == 3) ? View::Variant : View::Records);
         break;
 
     case Act::TutPrev:
-        if (s_tut_page > s_tut_from) {
+        if (s_tut_page > 0) {
             --s_tut_page;
         }
         s_dirty = true;
         break;
     case Act::TutNext:
-        if (s_tut_page + 1 < s_tut_to) {
+        if (s_tut_page + 1 < guideCount(s_tut_game)) {
             ++s_tut_page;
+            s_dirty = true;
+        } else if (s_tut_first_play) {
+            finishFirstPlayGuide();     // 「はじめる」
+        } else {
+            setView(s_tut_return);      // 「閉じる」
         }
+        break;
+    case Act::TutToggle:
+        s_tut_dont_show = !s_tut_dont_show;
         s_dirty = true;
         break;
     case Act::TutBack:
-        setView(s_tut_return);
+        if (s_tut_first_play) {
+            finishFirstPlayGuide();     // 「スキップ」もそのまま試合へ
+        } else {
+            setView(s_tut_return);
+        }
         break;
 
     case Act::AskYes: {
@@ -2721,6 +2878,7 @@ lv_obj_t *createGameScreen()
     }
 
     cards::store::loadStats();
+    cards::store::loadSeen();
     // 前回の残り（遅れて届いた返事）を捨ててから始める
     net::gasCancel();
     net::gasTakeResult(s_sess->reply);
@@ -2739,6 +2897,10 @@ lv_obj_t *createGameScreen()
     s_req_reason[0] = '\0';
     s_pick_game = s_sess->in_match ? s_sess->game : 0;
     s_pick_variant = s_sess->in_match ? s_sess->variant : 0;
+    s_tut_game = -1;
+    s_tut_page = 0;
+    s_tut_first_play = false;
+    s_tut_dont_show = true;
     resetDrafts();
     s_view_ms = millis();
 
@@ -2775,16 +2937,23 @@ void debugPrintPublicState()
     if (live) {
         ct::liveScores(m, human_score, ai_score);      // 途中でも読める、いまの得点
     }
+    // はじめての説明を見た卓（poker|gops|31|bac の順に 1 / 0）
+    const uint8_t seen = cards::store::seenFlags();
+    char seen_text[5];
+    for (int i = 0; i < 4; ++i) {
+        seen_text[i] = (seen & (1u << i)) ? '1' : '0';
+    }
+    seen_text[4] = '\0';
     // **手札と、公開前の相手の選択は出さない。** 公開されている数字だけを出す
     Serial.printf("[CARDS] view=%s game=%s variant=%s slot=%s unit=%u/%d phase=%s rev=%lu "
-                  "score=%d-%d provider=%s pending=%u try=%u local=%u\n",
+                  "score=%d-%d provider=%s pending=%u try=%u local=%u seen=%s\n",
                   viewName(s_view), live ? ct::gameId(m.game) : "-",
                   live ? ct::variantId(m) : "-", slot,
                   (unsigned)(live ? ct::unitNo(m) : 0), live ? ct::totalUnits(m) : 0,
                   live ? ct::phaseId(m.phase) : "-", (unsigned long)(live ? m.revision : 0),
                   human_score, ai_score, live ? opponentClass() : "-",
                   s_step == Step::Wait ? 1u : 0u, (unsigned)s_attempt,
-                  s_sess->local_only ? 1u : 0u);
+                  s_sess->local_only ? 1u : 0u, seen_text);
 }
 
 }  // namespace cards

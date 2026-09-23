@@ -35,6 +35,18 @@ struct Record {
 // NVS から読む（無ければ全部 0 で true。壊れていたら全部 0 で false）
 bool loadStats();
 
+// --- はじめての説明を見たか（キー `seen`。8 バイト・版と CRC つき）---------
+//
+// **`stats` の塊とは別のキー**にしてある（勝敗の形は 1 バイトも変えない）。
+// 4 ゲームぶんの 1 ビットずつだけを持つ: bit0 POKER / bit1 GOPS /
+// bit2 THIRTY-ONE / bit3 BACCARAT。ゲストと本人は区別しない（端末の設定と同じ扱い）
+
+bool loadSeen();                    // 画面を開いたときに 1 回読む
+uint8_t seenFlags();                // 4 ビットぶん
+bool seenFlag(size_t game);         // その卓の説明をもう見たか
+bool markSeen(size_t game);         // 「次回から表示しない」で立てる
+bool clearSeen();                   // 入口の「説明をもう一度」で全部おろす
+
 const Record &stats();
 
 // 1 試合ぶん数えて保存する。slot が kGuestSlot 以上なら RAM だけ（NVS は触らない）。

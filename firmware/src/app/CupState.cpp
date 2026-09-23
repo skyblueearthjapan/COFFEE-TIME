@@ -557,6 +557,78 @@ bool historyFor(uint32_t ymd, DayRecord &out)
     return false;
 }
 
+bool undoOne(int &out_bucket)
+{
+    out_bucket = -2;
+    if (s_taken == 0) {
+        Serial.println("[CUP] undo: nothing to undo (taken=0)");
+        return false;
+    }
+    const uint32_t before = s_taken;
+    --s_taken;
+    // 残り杯数 left は動かさない。朝いちばんは 0 杯から始まるので、
+    // 誤って入った 1 杯でも left は減っていない（takeOne は left>0 のときだけ減らす）
+
+    // どの時間帯の 1 杯だったかは記録に残っていないので、
+    // **いまの時刻に近い順に、数の入っている時間帯を 1 つだけ探して減らす**。
+    // 順番は 今の時 →(1 時間前 → 1 時間後)→(2 時間前 → 2 時間後)→ … で、0 時より前・23 時より後へは回らない。
+    // 時刻が分からない、または時間帯のグラフが空なら unknown（時刻不明で数えた分）を減らす
+    int hour_hit = -1;
+    const int16_t minutes = nowMinutes();
+    if (minutes >= 0) {
+        const int now_h = minutes / 60;
+        for (int d = 0; d <= 23 && hour_hit < 0; ++d) {
+            const int cand[2] = {now_h - d, now_h + d};
+            for (int k = 0; k < (d == 0 ? 1 : 2); ++k) {
+                const int h = cand[k];
+                if (h < 0 || h > 23 || s_today.hour[h] == 0) {
+                    continue;
+                }
+                hour_hit = h;
+                break;
+            }
+        }
+    }
+    if (hour_hit >= 0) {
+        --s_today.hour[hour_hit];
+        out_bucket = hour_hit;
+    } else if (s_today.unknown > 0) {
+        --s_today.unknown;
+        out_bucket = -1;
+    }
+    // last_take_min はそのまま（「最後の 1 杯の時刻」を作り直す手立てが無いため）
+    s_dirty = true;
+    Serial.printf("[CUP] undo: taken %lu->%lu\n", (unsigned long)before, (unsigned long)s_taken);
+    if (out_bucket >= 0) {
+        Serial.printf("[CUP] undo: hour %02d -> %u (left=%lu, last_take_min kept)\n",
+                      out_bucket, (unsigned)s_today.hour[out_bucket], (unsigned long)s_remaining);
+    } else if (out_bucket == -1) {
+        Serial.printf("[CUP] undo: unknown -> %u (left=%lu, last_take_min kept)\n",
+                      (unsigned)s_today.unknown, (unsigned long)s_remaining);
+    } else {
+        Serial.printf("[CUP] undo: no bucket to decrement (left=%lu)\n", (unsigned long)s_remaining);
+    }
+    return true;
+}
+
+bool setHistoryCups(uint32_t ymd, uint16_t cups)
+{
+    for (size_t i = 0; i < s_hist.count; ++i) {
+        const size_t pos = (s_hist.head + kHistoryDays - s_hist.count + i) % kHistoryDays;
+        if (s_hist.days[pos].ymd != ymd) {
+            continue;
+        }
+        const uint16_t before = s_hist.days[pos].cups;
+        s_hist.days[pos].cups = cups;       // 補充回数とゲームの回数には触らない
+        if (!saveHistory()) {               // 書いて読み返す通常の経路。駄目なら元に戻す
+            s_hist.days[pos].cups = before;
+            return false;
+        }
+        return true;
+    }
+    return false;       // その日が輪に無い。記録を新しく作ることはしない
+}
+
 namespace stats {
 
 void gamePlayed(GameId id, const char *note)

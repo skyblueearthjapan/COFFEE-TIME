@@ -11,6 +11,7 @@ namespace {
 
 constexpr const char *kNvsNamespace = "ct_cards";
 constexpr const char *kStatsKey = "stats";
+constexpr const char *kSeenKey = "seen";
 
 // きろくの塊: 版 1 + 予備 3 + 勝敗 (8×4×4)×2 + 的中 8×4 + CRC 4
 constexpr uint8_t kStatsVersion = 1;
@@ -21,6 +22,12 @@ static_assert(kStatsBytes == 296, "stats blob layout changed");
 
 Record s_stats = {};
 bool s_loaded = false;
+
+// はじめての説明を見たか。版 1 + フラグ 1 + 予備 2 + CRC 4
+constexpr uint8_t kSeenVersion = 1;
+constexpr size_t kSeenBytes = 8;
+uint8_t s_seen = 0;
+bool s_seen_loaded = false;
 
 uint32_t crc32(const uint8_t *data, size_t len)
 {
@@ -112,6 +119,36 @@ bool writeStats()
            std::memcmp(blob, back, kStatsBytes) == 0;
 }
 
+bool writeSeen()
+{
+    uint8_t blob[kSeenBytes] = {};
+    uint8_t back[kSeenBytes] = {};
+    blob[0] = kSeenVersion;
+    blob[1] = (uint8_t)(s_seen & 0x0Fu);
+    put32(blob + kSeenBytes - 4, crc32(blob, kSeenBytes - 4));
+
+    Preferences prefs;
+    if (!prefs.begin(kNvsNamespace, false)) {
+        Serial.println("[CARDS] cannot open NVS for writing (seen)");
+        return false;
+    }
+    const size_t written = prefs.putBytes(kSeenKey, blob, kSeenBytes);
+    const size_t read = prefs.getBytes(kSeenKey, back, kSeenBytes);
+    prefs.end();
+    return written == kSeenBytes && read == kSeenBytes &&
+           std::memcmp(blob, back, kSeenBytes) == 0;
+}
+
+bool saveSeen()
+{
+    if (writeSeen() || writeSeen()) {
+        return true;
+    }
+    Serial.println("[CARDS] seen save failed, reloading from flash");
+    loadSeen();
+    return false;
+}
+
 }  // namespace
 
 bool loadStats()
@@ -188,6 +225,78 @@ void totals(size_t slot, size_t game, uint32_t &win, uint32_t &loss, uint32_t &d
     loss = r.counts[slot][game][(size_t)Outcome::Loss];
     draw = r.counts[slot][game][(size_t)Outcome::Draw];
     aborted = r.counts[slot][game][(size_t)Outcome::Aborted];
+}
+
+bool loadSeen()
+{
+    s_seen = 0;
+    s_seen_loaded = true;
+
+    Preferences prefs;
+    if (!prefs.begin(kNvsNamespace, true)) {
+        return true;        // まだ一度も遊んでいない
+    }
+    const size_t length = prefs.getBytesLength(kSeenKey);
+    bool ok = true;
+    if (length == kSeenBytes) {
+        uint8_t blob[kSeenBytes];
+        if (prefs.getBytes(kSeenKey, blob, kSeenBytes) != kSeenBytes ||
+            blob[0] != kSeenVersion ||
+            get32(blob + kSeenBytes - 4) != crc32(blob, kSeenBytes - 4)) {
+            // 壊れていたら「まだ見ていない」に倒す（説明が余分に出るだけで害がない）
+            Serial.println("[CARDS] the seen flags are broken; showing the walkthrough again");
+            s_seen = 0;
+            ok = false;
+        } else {
+            s_seen = (uint8_t)(blob[1] & 0x0Fu);
+        }
+    } else if (length != 0) {
+        Serial.printf("[CARDS] the seen blob has an unknown length (%u)\n", (unsigned)length);
+        ok = false;
+    }
+    prefs.end();
+    return ok;
+}
+
+uint8_t seenFlags()
+{
+    if (!s_seen_loaded) {
+        loadSeen();
+    }
+    return s_seen;
+}
+
+bool seenFlag(size_t game)
+{
+    return game < kGames && (seenFlags() & (uint8_t)(1u << game)) != 0;
+}
+
+bool markSeen(size_t game)
+{
+    if (game >= kGames) {
+        return false;
+    }
+    if (!s_seen_loaded) {
+        loadSeen();
+    }
+    const uint8_t next = (uint8_t)(s_seen | (1u << game));
+    if (next == s_seen) {
+        return true;        // すでに立っている。フラッシュは触らない
+    }
+    s_seen = next;
+    return saveSeen();
+}
+
+bool clearSeen()
+{
+    if (!s_seen_loaded) {
+        loadSeen();
+    }
+    if (s_seen == 0) {
+        return true;
+    }
+    s_seen = 0;
+    return saveSeen();
 }
 
 }  // namespace store
