@@ -280,6 +280,7 @@ public:
         session_.seed = seed;
         session_.candidates = Mask::from(session_.modeInfo().items);
         session_.phase = Phase::Question;
+        session_.revision = 1;      // 0 は「まだ始まっていない」。局面が動くたびに 1 つ増える
         memoClear();
         advance();
     }
@@ -353,8 +354,48 @@ public:
     void guessNow()
     {
         if (session_.phase == Phase::Question) {
+            ++session_.revision;    // 局面が変わる＝進行中の依頼の返事は捨てる（段階 2）
             enterGuess();
         }
+    }
+
+    // --- 段階 2：Jev の助言をあとから差し込む（設計書 3.5 / 4.5） ----------
+    //
+    // **answer() / guessNow() / start() が終わったあと、画面を出す前に 1 回だけ**呼ぶ。
+    // 候補の絞り込み・安全な質問の計算・最終予想の既定値はすべてコードが済ませてあり、
+    // ここは「安全な質問の中での選び直し」と「情報不足のときの予想の選び直し」だけを行う。
+    // つまり Jev が何を返してもルールは曲がらない（設計書 3.1「差し替え可能な判断部品」）。
+    //
+    //   question : 安全な質問一覧（shortlist）に入っている質問だけ通す。phase が
+    //              Question でなければ無視。kNoQuestion なら質問は差し替えない
+    //   guess    : 残っている候補だけ通す。phase が Guess かつ根拠が「情報不足」の
+    //              ときだけ差し替える（|S|=1 の唯一候補は絶対に上書きしない）
+    //   revision : 依頼を出したときの session().revision。1 つでも違えば
+    //              （取り消し・わからない・次の回答で局面が動いた）まるごと無視する
+    //
+    // 戻り値は「1 つでも差し替えたか」。false なら黙って基準のまま進める
+    bool applyAdvice(uint16_t question, uint16_t guess, uint16_t revision)
+    {
+        if (revision != session_.revision) {
+            return false;
+        }
+        bool applied = false;
+        if (question != kNoQuestion && session_.phase == Phase::Question) {
+            for (uint8_t i = 0; i < shortlist_.count && i < kShortlistMax; ++i) {
+                if (shortlist_.question[i] == question) {
+                    session_.current_question = question;
+                    applied = true;
+                    break;
+                }
+            }
+        }
+        if (guess != kNoItem && session_.phase == Phase::Guess &&
+            session_.guess_reason == GuessReason::InsufficientInformation &&
+            guess < content::kItemCount && session_.candidates.test(guess)) {
+            session_.guess = guess;
+            applied = true;
+        }
+        return applied;
     }
 
     // 最終予想への「はい／いいえ」。1 回だけ確定する（設計書 1.2 / E09）

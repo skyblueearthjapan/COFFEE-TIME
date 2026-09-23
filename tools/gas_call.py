@@ -6,7 +6,8 @@
   python tools/gas_call.py duel                    AI DUEL の予測を 1 回頼む（架空の集計。シートには書かない）
   python tools/gas_call.py duel withlog=1          上に加えて DuelRounds シートへ guest の試験行を 1 行書く
   python tools/gas_call.py reversi [mode=jev_pro|casual] [same=1]   JEV REVERSI の 1 手を頼む（シートには書かない）
-  python tools/gas_call.py cards [game=gops] [same=1]               POKER TABLE の 1 手を頼む（シートには書かない）
+  python tools/gas_call.py esper [same=1]                            エスパー対決の 1 局面を Jev に聞く（シートには書かない）
+  python tools/gas_call.py cards [game=gops] [same=1]              POKER TABLE の 1 手を頼む（シートには書かない）
   python tools/gas_call.py ping-unauthorized    わざと違う合言葉で呼び、doPost が動いているかだけ確かめる
                                                    （{"ok":false,"error":"unauthorized"} が返れば正常。何も記録されない）
 
@@ -53,6 +54,15 @@ if event == "reversi":
     gid = "0" * 32 if payload.pop("same", 0) else _secrets.token_hex(16)
     payload["req"] = 1
     payload["snapshot"] = {"game_id": gid, "n": 6, "human": "B", "mode": mode, "history": ["C2:H"]}
+
+if event == "esper":
+    # エスパー対決: 「食べ物か飲み物 → はい」のあと、飲み物 4 つが残り、安全な質問が 2 問ある局面。シートには書かない
+    import secrets as _secrets
+    sid = "0" * 32 if payload.pop("same", 0) else _secrets.token_hex(16)
+    payload.update({"req": 1, "session": sid, "rev": 2, "mode": "mini",
+                    "history": [{"q": "Q001", "a": "yes"}],
+                    "candidates": ["D01", "D04", "D15", "D20"],
+                    "shortlist": ["Q002", "Q003"], "remaining": 2})
 
 if event == "cards":
     # POKER TABLE: バカラ（OPEN。P1=S7, B1=C2）の予想を 1 回頼む。手札の要らないゲームなので試験に向く。シートには書かない。

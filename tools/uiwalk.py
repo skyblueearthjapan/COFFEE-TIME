@@ -35,7 +35,7 @@ s.open()
 def show(raw: bytes) -> None:
     """待っている間に流れてきた、ゲームと通信の 1 行ログを表示する（数え漏れを防ぐ）。"""
     text = raw.decode("utf-8", "replace").strip()
-    if text.startswith(("[DUEL]", "[REV]", "[CARDS]", "[GAS]", "[DEV]")) and " view=" not in text:
+    if text.startswith(("[DUEL]", "[REV]", "[CARDS]", "[ESP]", "[GAS]", "[DEV]")) and " view=" not in text:
         print(time.strftime("%H:%M:%S"), text)
 
 
@@ -121,7 +121,7 @@ for step in steps:
             seen = s.readline().decode("utf-8", "replace").strip()
             # 状態表示の行（view= を含む）だけを返事として扱う。通信の 1 行ログ（[DUEL] req=…）は読み飛ばす
             if " view=" not in seen:
-                if seen.startswith(("[DUEL]", "[REV]", "[CARDS]", "[GAS]", "[DEV]")):
+                if seen.startswith(("[DUEL]", "[REV]", "[CARDS]", "[ESP]", "[GAS]", "[DEV]")):
                     print(time.strftime("%H:%M:%S"), seen)
                 continue
             if want in seen:
@@ -148,7 +148,7 @@ for step in steps:
                 if " view=" in seen:
                     ok = want in seen
                     break
-                if seen.startswith(("[DUEL]", "[REV]", "[CARDS]", "[GAS]", "[DEV]")):
+                if seen.startswith(("[DUEL]", "[REV]", "[CARDS]", "[ESP]", "[GAS]", "[DEV]")):
                     print(time.strftime("%H:%M:%S"), seen)
             if not ok:
                 time.sleep(0.5)
@@ -160,7 +160,7 @@ for step in steps:
         s.timeout = 0.5
         while time.time() < deadline:
             line = s.readline().decode("utf-8", "replace").strip()
-            if line.startswith(("[DUEL]", "[REV]", "[CARDS]", "[GAS]", "[DEV]")):
+            if line.startswith(("[DUEL]", "[REV]", "[CARDS]", "[ESP]", "[GAS]", "[DEV]")):
                 print(time.strftime("%H:%M:%S"), line)
         s.timeout = 5
     elif kind == "snap":

@@ -60,14 +60,14 @@ struct GameRow {
     cup::GameId id;
     const char *name;
 };
-// 並び順はゲーム一覧と同じ（AI DUEL → エスパー → 探偵 → 人狼 → リバーシ → POKER TABLE）
+// 並び順はゲーム一覧と同じ（ユーザー指定 2026-09-23: AI DUEL → エスパー → リバーシ → POKER TABLE → 探偵 → 人狼）
 const GameRow kGameRows[] = {
     {cup::GameId::Duel, "AI DUEL"},
     {cup::GameId::Esper, "エスパー"},
-    {cup::GameId::Detective, "事件簿"},
-    {cup::GameId::Werewolf, "人狼会"},
     {cup::GameId::Reversi, "リバーシ"},
     {cup::GameId::Cards, "POKER TABLE"},   // ゲームの名前はユーザー指定（2026-09-23）
+    {cup::GameId::Detective, "事件簿"},
+    {cup::GameId::Werewolf, "人狼会"},
 };
 constexpr int kGameRowCount = (int)(sizeof(kGameRows) / sizeof(kGameRows[0]));
 

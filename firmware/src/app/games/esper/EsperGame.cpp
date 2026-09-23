@@ -1,8 +1,11 @@
 #include "EsperGame.h"
 
 #include <Arduino.h>
+#include <ArduinoJson.h>
 #include <esp_heap_caps.h>
+#include <esp_random.h>
 
+#include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -11,11 +14,13 @@
 #include "../../CupState.h"
 #include "../../Display.h"
 #include "../../HomeScreen.h"
+#include "../../NetService.h"
 #include "../../ui/ScreenManager.h"
 #include "../../ui/UiKit.h"
 #include "EsperContent.h"
 #include "EsperStats.h"
 #include "core/esper_core.hpp"
+#include "core/esper_request.hpp"
 
 LV_FONT_DECLARE(ct_font_jp_20);
 LV_FONT_DECLARE(ct_font_jp_22);
@@ -84,9 +89,10 @@ constexpr Rect kReadyStart {130, 330, 220, 52};
 constexpr Rect kReadyBack  {132, 390, 100, 44};
 constexpr Rect kReadyCafe  {248, 390, 100, 44};
 
-// --- G41 考えています -------------------------------------------------------
+// --- G41 考えています / G43 AI が考え中（Jev の返事待ち） -------------------
 constexpr Rect kThinkBig   { 94, 186, 292, 60};
 constexpr Rect kThinkSub   { 94, 252, 292, 30};
+constexpr Rect kWaitCafe   {152, 404, 176, 40};   // 待っている間もコーヒーは記録できる
 
 // --- G40 質問（設計書 5.2） -------------------------------------------------
 constexpr Rect kQProgress  {140,  66, 200, 26};
@@ -118,6 +124,9 @@ constexpr Rect kAskSecond  {110, 332, 260, 48};
 constexpr Rect kGuessName  { 88,  62, 304, 50};
 constexpr Rect kGuessDef   { 94, 116, 292, 116};
 constexpr Rect kGuessLead  { 94, 234, 292, 52};
+// 情報が足りないときは 52px の枠を 2 段に分ける（上＝ Jev の確率か残り候補数・下＝ことわり）
+constexpr Rect kGuessInfo  { 94, 232, 292, 26};
+constexpr Rect kGuessNear  { 94, 258, 292, 28};
 constexpr Rect kGuessYes   { 86, 292, 144, 68};
 constexpr Rect kGuessNo    {250, 292, 144, 68};
 constexpr Rect kGuessBack  {112, 366, 116, 42};
@@ -167,6 +176,7 @@ enum class View : uint8_t {
     Card,        // G21 カード
     Ready,       // G30 じゅんび
     Thinking,    // G41 考えています（重い計算はこの画面が出ている間に行う）
+    Waiting,     // G43 AI が考え中（Jev の返事待ち。最大 8 秒・コーヒーは押せる）
     Question,    // G40 質問
     Help,        // G42 この質問について
     Quit,        // やめる確認
@@ -239,6 +249,67 @@ const c::Mode &playMode()
 
 Pending s_pending = Pending::None;
 uint32_t s_view_ms = 0;          // この画面を作った時刻。指が触れたままの誤回答を防ぐ
+
+// ---------------------------------------------------------------------------
+// 段階 2（Jev）の状態（docs/ESPER_STAGE2_PLAN.md §3）
+//
+// **LVGL のコールバックの中で通信しない。** net:: の依頼箱に預けるだけで、
+// 実際の送受信はメインループ（net::poll）が行う。返事は 100ms の tick で受け取る。
+// 送るのは ID だけ（core/esper_request.hpp）。**メモ（s_memo）と申告（s_reveal）は
+// 送らないしログにも出さない。** 失敗しても画面は出さず、黙ってルール方式で続ける
+// （設計書 6.3。リバーシのような「通信の状態」画面は作らない）。
+// ---------------------------------------------------------------------------
+constexpr uint32_t kJevWaitMs = 10000;     // ここで見切る（計画 §2。GAS の往復は 4〜7 秒。TLS の接続に 5 秒までかかることがある）
+constexpr uint8_t kJevAttempts = 2;        // 1 回だけ黙って送り直す（GAS の控えが返る）
+// 依頼箱がふさがっているときにねばる時間。リバーシ（8 秒）より短くしてある：
+// エスパーは失敗しても黙ってルール方式で続けられるので、人を待たせるほうが損
+constexpr uint32_t kSendBusyMs = 3000;
+// 1 つの判断で人を待たせてよい上限（送り直しを含めた総時間）
+constexpr uint32_t kJevTotalMs = 13000;
+// 時間切れで見切ったあと、依頼箱が空くまでにかかる時間（依頼を出した時刻から数える。
+// つなぐまで 3 秒 ＋ POST 6.5 秒 ＋ 転送先の GET 5 秒 = 最大 14.5 秒／NetService.h）。
+// この間の判断は 3 秒ねばっても必ず失敗するので、待たずにルール方式で出す
+constexpr uint32_t kMailboxBusyMs = 15000;
+constexpr uint8_t kJevTopMax = 5;          // 返事に入れてよい確率の件数（計画 §4）
+constexpr uint8_t kNoPercent = 0xFF;       // 「AI の予想 n%」を出さない
+
+// 依頼の本文と返事の置き場。**内蔵メモリを増やさないよう PSRAM に置く**（engine と同じ）
+struct JevIo {
+    char body[net::kGasRequestMax] = {};
+    net::GasResult reply;
+};
+JevIo *s_io = nullptr;
+
+bool s_jev_wait = false;         // 返事を待っている（V の pending）
+// 依頼の通し番号。**1 局ごとに 0 に戻さない**（遅れて届いた古い返事を req 番号で
+// 確実に捨てるため。番号を戻すと、次の局の返事とたまたま一致してしまう）
+uint32_t s_req_no = 0;
+uint32_t s_req_ms = 0;
+uint32_t s_jev_since_ms = 0;     // この判断で待ち始めた時刻（送り直しをまたぐ）
+uint32_t s_jev_blocked_until_ms = 0;  // ここまでは依頼箱がふさがっている（0 = 見合わせなし）
+uint16_t s_req_rev = 0;          // 依頼を出したときの session().revision
+uint8_t s_attempt = 0;           // 1 = 最初の依頼、2 = 自動の送り直し
+bool s_send_pending = false;     // 依頼箱がふさがっていて、まだ預けられていない
+uint32_t s_send_since_ms = 0;
+char s_req_reason[40] = {0};
+char s_session_id[33] = {0};     // GAS の控えの鍵（32 桁の 16 進。局ごとに作り直す）
+
+uint8_t s_jev_percent = kNoPercent;   // 最終予想の画面に出す Jev の確率
+uint16_t s_jev_hits = 0;              // Jev の助言を使えた判断の数
+uint16_t s_jev_misses = 0;            // 使えるはずが使えなかった判断の数
+
+// 処理系の名前（設計書 11：jev / mixed / rule を混ぜない）。
+// 候補が 1 つ・安全な質問が 1 問で呼ばなかった判断は、どちらにも数えない
+const char *engineName()
+{
+    if (s_jev_hits == 0) {
+        return "rule";
+    }
+    return s_jev_misses == 0 ? "jev" : "mixed";
+}
+
+// 依頼の本文の上限は依頼箱と同じ値にしておく（PC 上の検査も同じ値で確かめる）
+static_assert(core::kRequestJsonMax == net::kGasRequestMax, "request cap must match mailbox");
 
 bool s_recorded = false;         // この局の結果をもう数えたか（二重計上しない）
 uint16_t s_reveal = core::kNoItem;
@@ -577,6 +648,16 @@ void buildThinking()
     // ボタンは 1 つも置かない＝指が触れたままでも次の質問に答えてしまわない（設計書 5.4）
 }
 
+// Jev の返事待ち。はい／いいえは置かない（指が触れたままの誤回答を防ぐ）が、
+// **コーヒーの記録だけはいつでもできる**ようにする（設計書 4.6「カウンターを止めない」）
+void buildWaiting()
+{
+    makeTitle(layout::kTitleWide, "エスパー対決");
+    rectLabel(layout::kThinkBig, &ct_font_jp_40, CT_COLOR_ACCENT_HI, "AI が考え中…");
+    rectLabel(layout::kThinkSub, &ct_font_jp_20, CT_COLOR_SUBTEXT, text("thinking_sub"));
+    rectButton(layout::kWaitCafe, "カフェ", Act::Cafe);
+}
+
 void buildQuestion()
 {
     const core::Session &s = session();
@@ -656,9 +737,20 @@ void buildGuess()
               CT_COLOR_ACCENT_HI, it.name);
     rectLabel(layout::kGuessDef, &ct_font_jp_22, CT_COLOR_SUBTEXT, it.definition);
     // 候補が 1 つに絞れていないときは、当てられる自信があるように見せない（設計書 3.6）
-    rectLabel(layout::kGuessLead, &ct_font_jp_20, CT_COLOR_TEXT,
-              text(s.guess_reason == core::GuessReason::Unique ? "guess_lead"
-                                                               : "guess_low_info"));
+    if (s.guess_reason == core::GuessReason::Unique) {
+        rectLabel(layout::kGuessLead, &ct_font_jp_20, CT_COLOR_TEXT, text("guess_lead"));
+    } else {
+        // 「AI の予想 42%」は **Jev の確率が届いたときだけ**。
+        // ルール方式のときは架空の割合を出さず、残り候補数を出す（設計書 3.7）
+        char info[40];
+        if (s_jev_percent <= 100) {
+            std::snprintf(info, sizeof(info), "AI の予想 %u%%", (unsigned)s_jev_percent);
+        } else {
+            std::snprintf(info, sizeof(info), "のこり %u こ", (unsigned)s.remainingCount());
+        }
+        rectLabel(layout::kGuessInfo, &ct_font_jp_20, CT_COLOR_ACCENT_HI, info);
+        rectLabel(layout::kGuessNear, &ct_font_jp_20, CT_COLOR_TEXT, "いちばん近いものです。");
+    }
     rectButton(layout::kGuessYes, "はい\n正解", Act::GuessYes, true, true);
     rectButton(layout::kGuessNo, "いいえ\nちがう", Act::GuessNo, true, true);
     rectButton(layout::kGuessBack, "1つ戻る", Act::GuessUndo, s.canUndo());
@@ -673,10 +765,15 @@ void buildResult()
     rectLabel(layout::kResHead, &ct_font_jp_22, ai_win ? CT_COLOR_ACCENT_HI : CT_COLOR_TEXT,
               text(ai_win ? "result_ai_win" : "result_human_win"));
 
-    char detail[96];
-    std::snprintf(detail, sizeof(detail), "%s  %s\n聞いた質問 %u 問\nわからない %u 回",
+    // 処理系は jev / mixed / rule を混ぜずに 1 つだけ出す（設計書 11）。
+    // 3 行目は 20px で全角 14 文字ぶん（292px）までなので、短い言い方にしてある
+    const char *engine_ja = std::strcmp(engineName(), "jev") == 0     ? "Jev 対戦"
+                          : std::strcmp(engineName(), "mixed") == 0   ? "Jev＋ルール"
+                                                                      : "ルール対戦";
+    char detail[120];
+    std::snprintf(detail, sizeof(detail), "%s  %s\n聞いた質問 %u 問\nわからない %u 回・%s",
                   playMode().label, playMode().name_ja,
-                  (unsigned)s.asked, (unsigned)s.skip_count);
+                  (unsigned)s.asked, (unsigned)s.skip_count, engine_ja);
     rectLabel(layout::kResDetail, &ct_font_jp_20, CT_COLOR_SUBTEXT, detail);
 
     const ModeStats &st = stats(s_mode);
@@ -817,6 +914,7 @@ void rebuild()
     case View::Card:       buildCard(); break;
     case View::Ready:      buildReady(); break;
     case View::Thinking:   buildThinking(); break;
+    case View::Waiting:    buildWaiting(); break;
     case View::Question:   buildQuestion(); break;
     case View::Help:       buildHelp(); break;
     case View::Quit:       buildQuit(); break;
@@ -851,14 +949,329 @@ bool inputReady()
     return s_pending == Pending::None && (millis() - s_view_ms) >= kInputLatchMs;
 }
 
+// ---------------------------------------------------------------------------
+// 段階 2：Jev への依頼（計画 §3・§4）
+// ---------------------------------------------------------------------------
+
+// GAS の控えの鍵になる 32 桁の 16 進（局ごとに作り直す）。端末を特定できる値は使わない
+void newSessionId()
+{
+    std::snprintf(s_session_id, sizeof(s_session_id), "%08lx%08lx%08lx%08lx",
+                  (unsigned long)esp_random(), (unsigned long)esp_random(),
+                  (unsigned long)esp_random(), (unsigned long)esp_random());
+}
+
+// 局面が動いた・画面を閉じた・やめた。進行中の依頼は捨てる。
+// gasCancel は錠を 2ms で取れないと false を返すので、取れるまで数回やり直す
+void cancelJev()
+{
+    if (s_jev_wait || s_send_pending) {
+        bool dropped = false;
+        for (uint8_t i = 0; i < 3 && !dropped; ++i) {
+            dropped = net::gasCancel();
+        }
+        if (!dropped) {
+            // 箱は次の返事で自然に空く。こちらは req 番号と revision で捨てるので害はない
+            Serial.println("[ESP] gasCancel failed (mailbox lock busy)");
+        }
+    }
+    s_jev_wait = false;
+    s_send_pending = false;
+    s_attempt = 0;
+}
+
+// 依頼箱がまだふさがっている見込みか（時間切れの直後。計画の独立レビュー 2026-09-23）
+bool jevCoolingDown()
+{
+    if (s_jev_blocked_until_ms == 0) {
+        return false;
+    }
+    if ((int32_t)(millis() - s_jev_blocked_until_ms) >= 0) {
+        s_jev_blocked_until_ms = 0;     // 空いたはず。次の判断からまた Jev に聞く
+        return false;
+    }
+    return true;
+}
+
+// この判断で Jev に聞く意味があるか（設計書 4.3：値が決まっているものは聞かない）
+bool jevWorthAsking()
+{
+    const core::Session &s = session();
+    if (s_engine == nullptr || s.remainingCount() < 2) {
+        return false;
+    }
+    if (s.phase == core::Phase::Question) {
+        return s_engine->shortlist().count >= 2;
+    }
+    if (s.phase == core::Phase::Guess) {
+        return s.guess_reason == core::GuessReason::InsufficientInformation;
+    }
+    return false;
+}
+
+// ルール方式のまま進む。聞く意味があった判断だけ「使えなかった」と数える（設計書 11）
+void fallbackToRule(const char *why, uint32_t elapsed_ms, bool had_request)
+{
+    ++s_jev_misses;
+    char req[16];
+    if (had_request) {
+        std::snprintf(req, sizeof(req), "%lu", (unsigned long)s_req_no);
+    } else {
+        std::snprintf(req, sizeof(req), "-");
+    }
+    Serial.printf("[ESP] req=%s -> rule %lums (%s)\n", req, (unsigned long)elapsed_ms, why);
+    cancelJev();
+    const core::Session &s = session();
+    setView(s.phase == core::Phase::Question ? View::Question : View::Guess);
+}
+
+// 依頼箱へ預ける。ふさがっていたら次の巡回でまた試し、8 秒ねばっても空かなければ諦める
+void tryPostJev()
+{
+    const uint32_t req = s_req_no + 1;
+    const size_t n = core::buildRequestJson(session(), s_engine->shortlist(), req,
+                                            s_session_id, s_io->body, sizeof(s_io->body));
+    if (n > 0 && net::gasRequest(req, s_io->body)) {
+        s_req_no = req;
+        s_req_ms = millis();
+        s_req_rev = session().revision;
+        s_send_pending = false;
+        s_req_reason[0] = '\0';
+        s_jev_blocked_until_ms = 0;     // 預けられた＝箱は空いていた
+        return;
+    }
+    if (n == 0) {
+        fallbackToRule("not sent: too long", 0, false);
+        return;
+    }
+    s_send_pending = true;
+    if (millis() - s_send_since_ms >= kSendBusyMs) {
+        fallbackToRule("not sent: busy", millis() - s_send_since_ms, false);
+    }
+}
+
+// attempt = 1 で新しい依頼、2 で自動の送り直し（画面は「AI が考え中…」のまま）
+void beginJevRequest(uint8_t attempt)
+{
+    if (s_engine == nullptr || s_io == nullptr) {
+        fallbackToRule("not sent: no buffer", 0, false);
+        return;
+    }
+    if (!net::gasReady()) {
+        fallbackToRule("not sent: offline", 0, false);
+        return;
+    }
+    s_attempt = attempt;
+    s_jev_wait = true;
+    s_send_since_ms = millis();
+    s_req_ms = millis();
+    if (attempt <= 1) {
+        s_jev_since_ms = millis();
+    }
+    setView(View::Waiting);
+    tryPostJev();
+}
+
+// 返事を読む（設計書 4.5 の検証）。採用してよい値だけを取り出す。
+// **ここを通らなかった返事は黙って捨て、ルール方式で続ける**
+bool parseJevReply(const net::GasResult &r, uint16_t &question, uint16_t &guess,
+                   uint8_t &percent, bool &cached, char *reason, size_t reason_size)
+{
+    question = core::kNoQuestion;
+    guess = core::kNoItem;
+    percent = kNoPercent;
+    cached = false;
+
+    if (r.req != s_req_no) {
+        std::snprintf(reason, reason_size, "stale reply");
+        return false;
+    }
+    if (!r.ok) {
+        // HTTPClient の戻り値。負の値は接続・読み取りの失敗（-11 = 読み取り待ちの時間切れ）
+        std::snprintf(reason, reason_size, "http %d", r.status);
+        return false;
+    }
+    JsonDocument doc;
+    if (deserializeJson(doc, r.body) != DeserializationError::Ok ||
+        doc["ok"].as<bool>() != true || doc["req"].as<uint32_t>() != s_req_no) {
+        std::snprintf(reason, reason_size, "bad reply");
+        return false;
+    }
+    const char *status = doc["status"] | "failed";
+    if (std::strcmp(status, "ready") != 0) {
+        const char *why = doc["reason"] | "none";
+        std::snprintf(reason, reason_size, "none:%.20s", why);
+        return false;
+    }
+    // 局面が動いたあとに届いた返事は捨てる（計画 §3-3）
+    if ((doc["rev"].is<uint16_t>() && doc["rev"].as<uint16_t>() != s_req_rev) ||
+        s_req_rev != session().revision) {
+        std::snprintf(reason, reason_size, "stale reply");
+        return false;
+    }
+    // 確率は上位 5 件まで（計画 §4）。多ければ形が違う＝採用しない
+    JsonArrayConst top = doc["top"].as<JsonArrayConst>();
+    if (!top.isNull() && top.size() > kJevTopMax) {
+        std::snprintf(reason, reason_size, "bad reply");
+        return false;
+    }
+    cached = doc["cached"] | false;
+
+    // GAS は使えない助言を省く（質問の局面で候補が多いときは guess / guess_p / top を入れない）。
+    // **その局面で使えるものだけ**を見る。片方だけ壊れていても、もう片方は採用する（設計書 4.5）
+    const bool in_question = session().phase == core::Phase::Question;
+    const char *qid = doc["question"] | "";
+    const char *gid = doc["guess"] | "";
+    const bool q_offered = in_question && qid[0] != '\0';
+    const bool g_offered = !in_question && gid[0] != '\0';
+
+    if (q_offered) {
+        question = core::questionInShortlist(s_engine->shortlist(), qid);
+    }
+    if (g_offered) {
+        guess = core::itemInCandidates(session().candidates, gid);
+    }
+    if (guess != core::kNoItem && doc["guess_p"].is<float>()) {
+        const float p = doc["guess_p"].as<float>();
+        if (!std::isfinite(p) || p < 0.0f || p > 1.0f) {
+            std::snprintf(reason, reason_size, "bad reply");
+            guess = core::kNoItem;
+            return false;
+        }
+        // 1% に満たない確率は出さない（「AI の予想 0%」は意味を成さない／設計書 3.7）。
+        // そのときは候補数を出す
+        percent = (p < 0.01f) ? kNoPercent : (uint8_t)(p * 100.0f + 0.5f);
+    }
+    if ((q_offered || g_offered) && question == core::kNoQuestion && guess == core::kNoItem) {
+        // 送ってきた ID が一覧・候補の外だった（設計書 3.5：黙って基準へ戻す）
+        std::snprintf(reason, reason_size, "bad ids");
+        return false;
+    }
+    // どちらも入っていない返事は「今回は助言なし」。失敗ではないので送り直さない
+    return true;
+}
+
+// 返事を採用して画面へ進む。**applyAdvice が断ったらルールのまま**
+void applyJevReply(uint16_t question, uint16_t guess, uint8_t percent, bool cached)
+{
+    if (question == core::kNoQuestion && guess == core::kNoItem) {
+        // GAS が「この局面では助言しない」と返した。基準のまま進むだけで、
+        // 処理系は jev のまま（使えなかったわけではないので mixed に落とさない／設計書 11）
+        Serial.printf("[ESP] req=%lu -> jev none %lums%s\n", (unsigned long)s_req_no,
+                      (unsigned long)s_io->reply.elapsed_ms, cached ? " (cached)" : "");
+        cancelJev();
+        const core::Session &none = session();
+        setView(none.phase == core::Phase::Question ? View::Question : View::Guess);
+        return;
+    }
+    const bool applied = s_engine->applyAdvice(question, guess, s_req_rev);
+    if (!applied) {
+        fallbackToRule("rejected", s_io->reply.elapsed_ms, true);
+        return;
+    }
+    ++s_jev_hits;
+    // 「AI の予想 n%」は、その予想が実際に採用された局面でだけ出す
+    s_jev_percent = (session().phase == core::Phase::Guess && guess != core::kNoItem &&
+                     session().guess == guess) ? percent : kNoPercent;
+
+    char what[32];
+    if (question != core::kNoQuestion && guess != core::kNoItem) {
+        std::snprintf(what, sizeof(what), "%s / %s", c::kQuestions[question].id,
+                      c::kItems[guess].id);
+    } else if (question != core::kNoQuestion) {
+        std::snprintf(what, sizeof(what), "%s", c::kQuestions[question].id);
+    } else {
+        std::snprintf(what, sizeof(what), "%s", c::kItems[guess].id);
+    }
+    char pct[12] = {0};
+    if (s_jev_percent <= 100) {
+        std::snprintf(pct, sizeof(pct), " %u%%", (unsigned)s_jev_percent);
+    }
+    const char *note = cached ? (s_attempt > 1 ? " (cached, auto-retry)" : " (cached)")
+                              : (s_attempt > 1 ? " (auto-retry)" : "");
+    Serial.printf("[ESP] req=%lu -> jev %s%s %lums%s\n", (unsigned long)s_req_no, what, pct,
+                  (unsigned long)s_io->reply.elapsed_ms, note);
+
+    cancelJev();
+    const core::Session &s = session();
+    setView(s.phase == core::Phase::Question ? View::Question : View::Guess);
+}
+
+// 返事を待つ。8 秒で見切ってルール方式へ（画面は出さない／設計書 6.3）
+void pollJev()
+{
+    if (!s_jev_wait || s_engine == nullptr || s_io == nullptr) {
+        return;
+    }
+    // 送り直しや依頼箱の待ちを合わせても、1 つの判断でここまでしか待たせない
+    if (millis() - s_jev_since_ms >= kJevTotalMs) {
+        const uint32_t waited = millis() - s_jev_since_ms;
+        const bool posted = !s_send_pending;
+        s_jev_blocked_until_ms = s_req_ms + kMailboxBusyMs;
+        net::gasCancel();
+        s_jev_wait = false;
+        s_send_pending = false;
+        fallbackToRule("timeout", waited, posted);
+        return;
+    }
+    if (s_send_pending) {
+        tryPostJev();       // まだ依頼箱に入れられていない
+        return;
+    }
+    if (net::gasTakeResult(s_io->reply)) {
+        uint16_t question = core::kNoQuestion;
+        uint16_t guess = core::kNoItem;
+        uint8_t percent = kNoPercent;
+        bool cached = false;
+        if (parseJevReply(s_io->reply, question, guess, percent, cached, s_req_reason,
+                          sizeof(s_req_reason))) {
+            applyJevReply(question, guess, percent, cached);
+            return;
+        }
+        // 早く返ってきた失敗なら、1 回だけ黙って送り直す（GAS の控えが返るので速い）。
+        // 総時間の残りが 2 秒を切っていたらもう送らない
+        if (s_attempt < kJevAttempts && millis() - s_jev_since_ms + 2000 < kJevTotalMs) {
+            Serial.printf("[ESP] req=%lu -> retry %lums (%s)\n", (unsigned long)s_req_no,
+                          (unsigned long)s_io->reply.elapsed_ms, s_req_reason);
+            beginJevRequest((uint8_t)(s_attempt + 1));
+            return;
+        }
+        fallbackToRule(s_req_reason, s_io->reply.elapsed_ms, true);
+        return;
+    }
+    if (millis() - s_req_ms >= kJevWaitMs) {
+        // 遅れて届く返事は依頼箱ごと捨てる。**時間切れのときは送り直さない**：
+        // 箱は前の通信（最大 14.5 秒）が終わるまで空かないので、送り直すと人を
+        // もう 10 秒待たせることになる。黙ってルール方式で続ける（計画 §3-3）
+        const uint32_t waited = millis() - s_req_ms;
+        // 箱は依頼から最大 14.5 秒ふさがったまま。次の判断はねばらずルール方式で出す
+        s_jev_blocked_until_ms = s_req_ms + kMailboxBusyMs;
+        net::gasCancel();
+        s_jev_wait = false;
+        fallbackToRule("timeout", waited, true);
+    }
+}
+
 void afterEngineStep()
 {
     const core::Session &s = session();
     if (s.phase == core::Phase::Guess && s.remainingCount() == 0) {
         // 候補が 0＝データ不一致か状態の壊れ。存在しない答えを作らない（設計書 3.2）
+        cancelJev();
         setView(View::Error);
         return;
     }
+    s_jev_percent = kNoPercent;     // 前の判断の確率を持ち越さない
+    if (jevWorthAsking()) {
+        if (jevCoolingDown()) {
+            // 箱がふさがっている間は 3 秒ねばらずに、すぐルール方式の質問を出す
+            fallbackToRule("not sent: mailbox cooling down", 0, false);
+            return;
+        }
+        beginJevRequest(1);         // 「AI が考え中…」を出して返事を待つ
+        return;
+    }
+    cancelJev();
     setView(s.phase == core::Phase::Question ? View::Question : View::Guess);
 }
 
@@ -870,6 +1283,7 @@ void runPending()
         setView(View::Error);
         return;
     }
+    cancelJev();        // 局面が動く。前の依頼の返事はもう使えない
     switch (what) {
     case Pending::Start:
         // 推論コアの表では、遊び用のモードは設計書の 3 モードの後ろに並んでいる
@@ -878,6 +1292,11 @@ void runPending()
         s_reveal = core::kNoItem;
         s_contra_count = 0;
         s_contra_at = 0;
+        newSessionId();             // GAS の控えの鍵。局ごとに作り直す
+        s_jev_hits = 0;
+        s_jev_misses = 0;
+        s_jev_percent = kNoPercent;
+        s_jev_blocked_until_ms = 0;   // 新しい局。見合わせは持ち越さない
         break;
     case Pending::Yes:      s_engine->answer(core::Answer::Yes); break;
     case Pending::No:       s_engine->answer(core::Answer::No); break;
@@ -903,10 +1322,11 @@ void finishGame(bool ai_win)
             Serial.println("[ESP] stats save failed, reloading from flash");
             loadStats();
         }
-        // 数えるのは回数だけ。モード・問数・当たり外れ以外は残さない（答えは持っていない）
-        char note[40];
-        std::snprintf(note, sizeof(note), "esper %s q=%u ok=%u", playMode().id,
-                      (unsigned)s.asked, ai_win ? 1u : 0u);
+        // 数えるのは回数だけ。モード・問数・当たり外れ・処理系以外は残さない
+        //（頭の中の答えも、選んだもののメモも持っていない）
+        char note[56];
+        std::snprintf(note, sizeof(note), "esper %s q=%u ok=%u engine=%s", playMode().id,
+                      (unsigned)s.asked, ai_win ? 1u : 0u, engineName());
         cup::stats::gamePlayed(cup::GameId::Esper, note);
     }
     setView(View::Result);
@@ -915,6 +1335,7 @@ void finishGame(bool ai_win)
 // 最初の画面へ戻す（遊び終わり・やめる・入り直し）
 void resetToMode()
 {
+    cancelJev();
     s_page = 0;
     s_card = core::kNoItem;
     s_memo = core::kNoItem;
@@ -922,6 +1343,10 @@ void resetToMode()
     s_contra_count = 0;
     s_contra_at = 0;
     s_pending = Pending::None;
+    s_jev_hits = 0;
+    s_jev_misses = 0;
+    s_jev_percent = kNoPercent;
+    s_jev_blocked_until_ms = 0;
     setView(View::Mode);
 }
 
@@ -1041,6 +1466,9 @@ void actionCb(lv_event_t *e)
         break;
     case Act::AnsUndo:
         if (s_engine != nullptr && s_engine->undo()) {
+            // 局面が戻った＝進行中の依頼は捨てる（計画 §3-4。当時の質問をそのまま出す）
+            cancelJev();
+            s_jev_percent = kNoPercent;
             setView(View::Question);
         }
         break;
@@ -1078,6 +1506,8 @@ void actionCb(lv_event_t *e)
         break;
     case Act::GuessUndo:
         if (s_engine != nullptr && s_engine->undo()) {
+            cancelJev();
+            s_jev_percent = kNoPercent;
             setView(View::Question);
         }
         break;
@@ -1153,7 +1583,7 @@ bool isPlayingView(View v)
 {
     return v == View::Catalog || v == View::Card || v == View::Ready ||
            v == View::Question || v == View::Help || v == View::Guess || v == View::Result ||
-           v == View::RevealPick || v == View::RevealCard;
+           v == View::RevealPick || v == View::RevealCard || v == View::Waiting;
 }
 
 void tickCb(lv_timer_t *t)
@@ -1168,6 +1598,18 @@ void tickCb(lv_timer_t *t)
         runPending();
         return;
     }
+    if (s_jev_wait || s_send_pending) {
+        if (s_view == View::Cafe || s_view == View::Paused) {
+            // カフェ・ひと休みを読んでいる間に返事で画面を切り替えない。
+            // 返事は依頼箱に置いたままにし、待ち時間は**戻ったところから測り直す**
+            s_req_ms = millis();
+            s_send_since_ms = millis();
+            s_jev_since_ms = millis();
+        } else {
+            pollJev();
+            return;
+        }
+    }
 
     // 180 秒さわられなければ「ひと休み」を重ねる。途中の状態は RAM に残したまま
     // なので「つづける」で同じ場面へ戻れる。捨てるのは「やめて 一覧へ」と HOME だけ
@@ -1180,12 +1622,24 @@ void tickCb(lv_timer_t *t)
 // ---------------------------------------------------------------------------
 // 画面の生成・破棄
 // ---------------------------------------------------------------------------
+// PSRAM（8MB）から取る。取れなければ内部 RAM へ落とす
+void *bigAlloc(size_t bytes)
+{
+    void *buf = heap_caps_malloc(bytes, MALLOC_CAP_SPIRAM);
+    return buf != nullptr ? buf : heap_caps_malloc(bytes, MALLOC_CAP_8BIT);
+}
+
 void destroyEngine()
 {
     if (s_engine != nullptr) {
         s_engine->~Engine();
         heap_caps_free(s_engine);
         s_engine = nullptr;
+    }
+    if (s_io != nullptr) {
+        s_io->~JevIo();
+        heap_caps_free(s_io);
+        s_io = nullptr;
     }
 }
 
@@ -1194,18 +1648,22 @@ bool createEngine()
     if (s_engine != nullptr) {
         return true;
     }
-    // まず PSRAM（8MB）から。取れなければ内部 RAM へ落とす
-    void *buf = heap_caps_malloc(sizeof(core::Engine), MALLOC_CAP_SPIRAM);
-    if (buf == nullptr) {
-        buf = heap_caps_malloc(sizeof(core::Engine), MALLOC_CAP_8BIT);
-    }
+    void *buf = bigAlloc(sizeof(core::Engine));
     if (buf == nullptr) {
         Serial.printf("[ESP] cannot allocate the engine (%u bytes)\n",
                       (unsigned)sizeof(core::Engine));
         return false;
     }
     s_engine = new (buf) core::Engine();
-    s_engine->setAdvisor(&s_advisor);   // 段階 1 はルール基準。段階 2 でここを Jev へ差し替える
+    // 候補の絞り込み・安全な質問・基準の予想はいつもコードが決める（段階 2 でも同じ）。
+    // Jev の助言は返事が届いたあと applyAdvice で差し込むだけ
+    s_engine->setAdvisor(&s_advisor);
+    // 依頼の本文と返事の置き場（約 4.4KB）。取れなければ Jev を使わずルール方式で遊べる
+    void *io = bigAlloc(sizeof(JevIo));
+    s_io = (io != nullptr) ? new (io) JevIo() : nullptr;
+    if (s_io == nullptr) {
+        Serial.println("[ESP] no buffer for Jev; playing with the rule engine");
+    }
     return true;
 }
 
@@ -1221,6 +1679,8 @@ void screenDeletedCb(lv_event_t *e)
         lv_timer_del(s_tick);
         s_tick = nullptr;
     }
+    // 依頼箱を空けてから置き場を手放す（遅れて届く返事が消えた場所を触らないように）
+    cancelJev();
     destroyEngine();
     s_dirty = false;
     s_pending = Pending::None;
@@ -1234,6 +1694,12 @@ void screenDeletedCb(lv_event_t *e)
     s_reveal = core::kNoItem;
     s_contra_count = 0;
     s_contra_at = 0;
+    s_jev_hits = 0;
+    s_jev_misses = 0;
+    s_jev_percent = kNoPercent;
+    s_jev_blocked_until_ms = 0;
+    s_req_reason[0] = '\0';
+    s_session_id[0] = '\0';
     // 解放済みオブジェクトを触らないよう、静的ポインタは必ず全部消す
     s_screen = nullptr;
     s_content = nullptr;
@@ -1281,6 +1747,13 @@ lv_obj_t *createGameScreen()
     s_recorded = false;
     s_pending = Pending::None;
     s_view_ms = millis();
+    cancelJev();
+    s_jev_hits = 0;
+    s_jev_misses = 0;
+    s_jev_percent = kNoPercent;
+    s_jev_blocked_until_ms = 0;
+    s_req_reason[0] = '\0';
+    s_session_id[0] = '\0';
 
     rebuild();
     s_dirty = false;
@@ -1295,7 +1768,7 @@ void debugPrintPublicState()
     // 公開情報のみ。そもそもプレイヤーの答えは端末のどこにも無い
     const core::Session &s = session();
     Serial.printf("[ESP] view=%u mode=%s phase=%u q=%s asked=%u/%u skip=%u undo=%u "
-                  "remain=%u guess=%s reason=%u verdict=%u engine=%s\n",
+                  "remain=%u guess=%s reason=%u verdict=%u engine=%s pending=%u try=%u\n",
                   (unsigned)s_view,
                   s_engine != nullptr ? playMode().id : "-",
                   (unsigned)s.phase,
@@ -1306,7 +1779,8 @@ void debugPrintPublicState()
                   (unsigned)s.remainingCount(),
                   s.guess < c::kItemCount ? c::kItems[s.guess].id : "-",
                   (unsigned)s.guess_reason, (unsigned)s.verdict,
-                  s_advisor.engineName());
+                  engineName(), (s_jev_wait || s_send_pending) ? 1u : 0u,
+                  (unsigned)s_attempt);
 }
 
 void debugResetStats()

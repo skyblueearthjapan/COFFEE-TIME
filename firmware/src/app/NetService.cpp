@@ -373,7 +373,7 @@ static bool sendGas(const char *body, GasResult &out)
     client.setInsecure();
     HTTPClient http;
     // setTimeout は**読み取りの待ち時間だけ**。つなぐところで止まらないよう別に上限を付ける
-    http.setConnectTimeout(3000);
+    http.setConnectTimeout(5000);   // 3 秒だと iPhone のテザリングで TLS の接続が間に合わないことが多かった（2026-09-23 実機: 電波 -52dBm でも 2 回に 1 回）
     http.setTimeout(6500);      // GAS は Jev とシート書き込みを終えてから 302 を返す
     if (!http.begin(client, GAS_URL)) {
         return false;
@@ -411,7 +411,7 @@ static bool sendGas(const char *body, GasResult &out)
             WiFiClientSecure client2;
             client2.setInsecure();
             HTTPClient http2;
-            http2.setConnectTimeout(3000);
+            http2.setConnectTimeout(5000);
             http2.setTimeout(kGetReadMs[attempt]);
             if (!http2.begin(client2, location)) {
                 Serial.printf("[GAS] req=%lu redirect unusable (location %u bytes)\n", (unsigned long)out.req,

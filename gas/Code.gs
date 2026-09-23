@@ -83,6 +83,11 @@ function doPost(e) {
     return json_(cardsHandle_(body));
   }
 
+  // エスパー対決 第 2 段階: 残った候補と安全な質問（ID）を英文に置き換えて Jev に選ばせる（gas/Esper.gs）
+  if (body.event === 'esper') {
+    return json_(esperHandle_(body));
+  }
+
   // デザイン確認用：スクリプト所有者だけに見本メールを送る（ログには残さない）
   if (body.event === 'preview') {
     const left = body.left === undefined ? NOTIFY_AT : Number(body.left);

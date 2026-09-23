@@ -11,13 +11,18 @@
 //   4. 安全な質問から乱数で選ぶ試験（設計書 16 章の 30 seed × 全候補 = 5,040 局）
 //   5. わからない（skip）・1 つ戻る（undo）を混ぜた乱数試験と、その場その場の不変条件
 //   6. 答え合わせまわり（食い違いの数え方・勝敗は 1 回だけ・申告の扱い）
+//   7. **段階 2（Jev）の差し込み口 applyAdvice**（一覧外・候補外・revision 違いは無視／
+//      Jev の返事をまねる ScriptedAdvisor で遊んでもルールが曲がらない）
+//   8. **端末 → GAS の要求 JSON**（ID だけ・メモや答えが混ざらない・依頼箱に収まる）
 #include <cstdarg>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <string>
 #include <vector>
 
 #include "../firmware/src/app/games/esper/core/esper_core.hpp"
+#include "../firmware/src/app/games/esper/core/esper_request.hpp"
 #include "esper_golden.inc"
 
 namespace es = coffee::esper;
@@ -566,6 +571,471 @@ static void checkVerdictAndReveal()
 }
 
 // ---------------------------------------------------------------------------
+// 7. 段階 2（Jev）の差し込み口 applyAdvice
+//
+// **ここが「Jev が何を返してもルールは曲がらない」ことの証明**。
+// 候補の絞り込み・安全な質問の計算・唯一候補の予想はコードが決めたままで、
+// applyAdvice が通すのは「安全な質問の中での選び直し」と
+// 「情報不足のときの予想の選び直し」だけ。
+// ---------------------------------------------------------------------------
+
+// 今の shortlist に入っていない、出題できる質問を 1 つ探す（無ければ kNoQuestion）
+static uint16_t questionOutsideShortlist()
+{
+    const es::Shortlist &list = g_engine.shortlist();
+    for (uint16_t q = 0; q < ct::kQuestionCount; ++q) {
+        bool inside = false;
+        for (uint8_t i = 0; i < list.count; ++i) {
+            if (list.question[i] == q) { inside = true; break; }
+        }
+        if (!inside) return q;
+    }
+    return es::kNoQuestion;
+}
+
+static void checkApplyAdvice()
+{
+    std::printf("[7] Jev の助言（applyAdvice）の受け付けと拒否\n");
+    g_engine.setAdvisor(&g_local);
+
+    // (a) 質問の局面で、一覧の中の質問なら差し替わる／一覧の外は無視される
+    uint32_t swapped = 0, rejected_out = 0, rejected_rev = 0;
+    for (uint8_t m = 0; m < ct::kRefModeCount; ++m) {
+        g_engine.start(m, 12345u);
+        const es::Session &s = g_engine.session();
+        CHECK(s.phase == Phase::Question);
+        CHECK(s.revision == 1);                 // start で 0 のままにしない（段階 2 の番号）
+        const uint16_t baseline = s.current_question;
+        const es::Shortlist &list = g_engine.shortlist();
+        CHECK(list.count >= 1);
+        CHECK(list.question[0] == baseline);    // 基準は「一覧の先頭」
+
+        // 一覧の外の質問は通らない
+        const uint16_t outside = questionOutsideShortlist();
+        CHECK(outside != es::kNoQuestion);
+        CHECK(!g_engine.applyAdvice(outside, es::kNoItem, s.revision));
+        CHECK(s.current_question == baseline);
+        ++rejected_out;
+
+        // revision が違えば、正しい質問でも無視する
+        if (list.count >= 2) {
+            const uint16_t other = list.question[list.count - 1];
+            CHECK(other != baseline);
+            CHECK(!g_engine.applyAdvice(other, es::kNoItem, (uint16_t)(s.revision + 1)));
+            CHECK(s.current_question == baseline);
+            ++rejected_rev;
+
+            // 正しい revision なら差し替わる。**そのあとも出題の条件を満たしている**
+            CHECK(g_engine.applyAdvice(other, es::kNoItem, s.revision));
+            CHECK(s.current_question == other);
+            CHECK(s.candidates.subsetOf(Mask::from(ct::kQuestions[other].scope)));
+            CHECK(!s.blocked.test(other));
+            ++swapped;
+        }
+        // 予想の局面ではないので、候補の中の item でも無視される
+        const uint16_t alive = s.candidates.first();
+        CHECK(!g_engine.applyAdvice(es::kNoQuestion, alive, s.revision));
+        CHECK(s.guess == es::kNoItem);
+    }
+    CHECK(swapped > 0 && rejected_out > 0 && rejected_rev > 0);
+
+    // (b) 予想の局面：情報不足のときだけ、残っている候補に差し替えられる
+    {
+        // 超難関（5 問で 128 こ）は最後に候補が複数残る＝情報不足の局面が作れる
+        const uint8_t mode = (uint8_t)(ct::kPlayModeFirst + 3);
+        g_engine.start(mode, 7u);
+        uint32_t guard = 0;
+        while (g_engine.session().phase == Phase::Question) {
+            g_engine.answer(truthful(g_engine.session().current_question, 100));
+            if (++guard > 64) { CHECK(false); break; }
+        }
+        const es::Session &s = g_engine.session();
+        CHECK(s.phase == Phase::Guess);
+        CHECK(s.guess_reason == GuessReason::InsufficientInformation);
+        CHECK(s.remainingCount() >= 2);
+        const uint16_t baseline = s.guess;
+
+        // 候補の外の item は無視される
+        uint16_t dead = es::kNoItem;
+        for (uint16_t i = 0; i < ct::kItemCount; ++i) {
+            if (!s.candidates.test(i)) { dead = i; break; }
+        }
+        CHECK(dead != es::kNoItem);
+        CHECK(!g_engine.applyAdvice(es::kNoQuestion, dead, s.revision));
+        CHECK(s.guess == baseline);
+        // 番号としてあり得ない値も無視される
+        CHECK(!g_engine.applyAdvice(es::kNoQuestion, 9999, s.revision));
+        CHECK(s.guess == baseline);
+
+        // 残っている別の候補なら差し替わる
+        uint16_t other = es::kNoItem;
+        for (uint16_t i = 0; i < ct::kItemCount; ++i) {
+            if (s.candidates.test(i) && i != baseline) { other = i; break; }
+        }
+        CHECK(other != es::kNoItem);
+        CHECK(!g_engine.applyAdvice(es::kNoQuestion, other, (uint16_t)(s.revision + 7)));
+        CHECK(s.guess == baseline);
+        CHECK(g_engine.applyAdvice(es::kNoQuestion, other, s.revision));
+        CHECK(s.guess == other);
+        CHECK(s.candidates.test(s.guess));
+
+        // 勝敗を確定したあとは受け付けない
+        CHECK(g_engine.verdict(false));
+        CHECK(!g_engine.applyAdvice(es::kNoQuestion, baseline, s.revision));
+        CHECK(s.guess == other);
+    }
+
+    // (c) 唯一候補（|S|=1）の予想は絶対に上書きしない
+    {
+        const uint16_t target = Mask::from(ct::kModes[0].items).first();
+        Tally t;
+        play(0, target, t, false);
+        const es::Session &s = g_engine.session();
+        CHECK(s.guess_reason == GuessReason::Unique);
+        CHECK(s.remainingCount() == 1);
+        const uint16_t only = s.guess;
+        uint16_t other = (uint16_t)((only + 1) % ct::kItemCount);
+        CHECK(!g_engine.applyAdvice(es::kNoQuestion, other, s.revision));
+        CHECK(s.guess == only);
+    }
+
+    // (d) revision が「回答・わからない・1 つ戻る」で必ず動く
+    {
+        g_engine.start(2, 99u);
+        const es::Session &s = g_engine.session();
+        uint16_t rev = s.revision;
+        CHECK(g_engine.answer(Answer::Yes));
+        CHECK(s.revision == (uint16_t)(rev + 1));
+        rev = s.revision;
+        CHECK(g_engine.answer(Answer::Skip));
+        CHECK(s.revision == (uint16_t)(rev + 1));
+        rev = s.revision;
+        CHECK(g_engine.undo());
+        CHECK(s.revision == (uint16_t)(rev + 1));
+        rev = s.revision;
+        g_engine.guessNow();
+        CHECK(s.phase == Phase::Guess);
+        CHECK(s.revision == (uint16_t)(rev + 1));
+    }
+
+    std::printf("  差し替え %u 件 / 一覧外を拒否 %u 件 / revision 違いを拒否 %u 件\n",
+                swapped, rejected_out, rejected_rev);
+}
+
+// Jev の返事をまねる助言者。端末と同じ順序（コアが 1 手決める → 返事を applyAdvice）で
+// 差し込み、**ときどきわざと壊れた助言**（一覧外・候補外・古い revision）を混ぜる
+struct ScriptedAdvice {
+    uint16_t question;
+    uint16_t guess;
+    uint16_t revision;
+};
+
+class ScriptedJev {
+public:
+    explicit ScriptedJev(uint64_t seed) : rng_(seed) {}
+
+    // いまの局面に対する「返事」を作る
+    ScriptedAdvice next(const es::Session &s, const es::Shortlist &list, bool &expect_applied)
+    {
+        ScriptedAdvice a{es::kNoQuestion, es::kNoItem, s.revision};
+        const uint32_t roll = rng_.below(100);
+        expect_applied = false;
+        if (s.phase == Phase::Question) {
+            if (roll < 15) {
+                a.question = questionOutsideShortlist();    // 壊れた返事（一覧外）
+            } else if (roll < 25) {
+                a.question = list.count > 0 ? list.question[rng_.below(list.count)]
+                                            : es::kNoQuestion;
+                a.revision = (uint16_t)(s.revision + 1);    // 古い返事
+            } else if (list.count > 0) {
+                a.question = list.question[rng_.below(list.count)];
+                expect_applied = true;
+            }
+        } else if (s.phase == Phase::Guess) {
+            const uint32_t n = s.remainingCount();
+            if (n == 0) {
+                return a;
+            }
+            if (roll < 15) {
+                for (uint16_t i = 0; i < ct::kItemCount; ++i) {
+                    if (!s.candidates.test(i)) { a.guess = i; break; }   // 候補外
+                }
+            } else {
+                a.guess = s.candidates.nth(rng_.below(n));
+                expect_applied = (s.guess_reason == GuessReason::InsufficientInformation);
+            }
+        }
+        return a;
+    }
+
+private:
+    Rng rng_;
+};
+
+// 端末の流れをそのまま再現して 1 局遊ぶ（答えのあと → applyAdvice → 次の画面）
+static void playWithJev(uint8_t mode, uint16_t target, ScriptedJev &jev, Tally &t,
+                        uint32_t &applied_count)
+{
+    g_engine.start(mode, (uint32_t)target * 2654435761u + 13u);
+    uint32_t guard = 0;
+    for (;;) {
+        const es::Session &s = g_engine.session();
+        bool expect = false;
+        const ScriptedAdvice a = jev.next(s, g_engine.shortlist(), expect);
+        const uint16_t before_q = s.current_question;
+        const uint16_t before_guess = s.guess;
+        const bool applied = g_engine.applyAdvice(a.question, a.guess, a.revision);
+        CHECK(applied == expect);
+        if (applied) ++applied_count;
+
+        if (s.phase == Phase::Question) {
+            const uint16_t q = s.current_question;
+            CHECK(q < ct::kQuestionCount);
+            if (!applied) CHECK(q == before_q);
+            // Jev が選んでも出題の条件は必ず満たす（E12・設計書 3.3）
+            CHECK(s.candidates.subsetOf(Mask::from(ct::kQuestions[q].scope)));
+            CHECK(!s.blocked.test(q));
+            for (uint8_t i = 0; i < s.history_count; ++i) {
+                if (s.history[i].active) CHECK(s.history[i].question != q);
+            }
+            CHECK(s.candidates.test(target));
+            CHECK(s.asked < s.maxQuestions());
+            g_engine.answer(truthful(q, target));
+        } else {
+            if (!applied) CHECK(s.guess == before_guess);
+            break;
+        }
+        if (++guard > 64) { CHECK(false); break; }
+    }
+    const es::Session &s = g_engine.session();
+    ++t.games;
+    CHECK(s.phase == Phase::Guess);
+    CHECK(s.asked <= s.maxQuestions());              // E07: 問数の上限は Jev でも動かない
+    CHECK(s.candidates.test(target));
+    CHECK(s.guess < ct::kItemCount && s.candidates.test(s.guess));
+    CHECK((s.remainingCount() == 1) == (s.guess_reason == GuessReason::Unique));
+    if (s.guess_reason == GuessReason::Unique) CHECK(s.guess == target);
+    checkContradictionsMatchSet(mode, target);
+    if (s.guess == target) ++t.solved;
+    t.q_sum += s.asked;
+    if (s.asked < t.q_min) t.q_min = s.asked;
+    if (s.asked > t.q_max) t.q_max = s.asked;
+}
+
+static void checkScriptedJev()
+{
+    std::printf("[7b] Jev の返事をまねて遊ぶ（壊れた返事を混ぜてもルールは曲がらない）\n");
+    g_engine.setAdvisor(&g_local);
+    uint32_t applied = 0;
+    for (uint8_t m = 0; m < ct::kRefModeCount; ++m) {
+        const Mask items = Mask::from(ct::kModes[m].items);
+        Tally t;
+        ScriptedJev jev(0xE5E00001ull + m * 131u);
+        for (uint16_t i = 0; i < ct::kItemCount; ++i) {
+            if (!items.test(i)) continue;
+            playWithJev(m, i, jev, t, applied);
+        }
+        CHECK(t.solved == t.games);      // 基準モードは Jev が選んでも必ず当たる
+        std::printf("  %-6s %3u 局 / 全部当てた %s / 問数 %u〜%u（平均 %.3f）\n",
+                    ct::kModes[m].id, t.games, t.solved == t.games ? "はい" : "いいえ",
+                    t.q_min, t.q_max, (double)t.q_sum / (double)(t.games ? t.games : 1));
+    }
+    // 遊び用のモードは最後に候補が残る＝予想の差し替えも通る
+    for (uint8_t i = 0; i < ct::kPlayModeCount; ++i) {
+        const uint8_t m = (uint8_t)(ct::kPlayModeFirst + i);
+        const Mask items = Mask::from(ct::kModes[m].items);
+        Tally t;
+        ScriptedJev jev(0xE5E00500ull + m * 131u);
+        for (uint16_t k = 0; k < ct::kItemCount; ++k) {
+            if (!items.test(k)) continue;
+            playWithJev(m, k, jev, t, applied);
+        }
+        std::printf("  %-8s %3u 局 / 当たり %u（Jev の助言でも上限・出題条件は守られた）\n",
+                    ct::kModes[m].id, t.games, t.solved);
+    }
+    CHECK(applied > 0);
+    std::printf("  助言が通った回数 %u\n", applied);
+}
+
+// ---------------------------------------------------------------------------
+// 8. 端末 → GAS の要求 JSON（docs/ESPER_STAGE2_PLAN.md §4）
+// ---------------------------------------------------------------------------
+
+// "<key>":[ … ] の中の "…" を順に取り出す（自分で作った形なので簡易でよい）
+static std::vector<std::string> jsonIdArray(const std::string &json, const char *key)
+{
+    std::vector<std::string> out;
+    const std::string needle = std::string("\"") + key + "\":[";
+    const size_t at = json.find(needle);
+    if (at == std::string::npos) return out;
+    size_t i = at + needle.size();
+    while (i < json.size() && json[i] != ']') {
+        if (json[i] == '"') {
+            const size_t end = json.find('"', i + 1);
+            if (end == std::string::npos) break;
+            out.push_back(json.substr(i + 1, end - i - 1));
+            i = end + 1;
+        } else {
+            ++i;
+        }
+    }
+    return out;
+}
+
+// 要求 JSON が「送ってよいものだけ」でできているか（設計書 4.2 / 計画 §1）
+static void validateRequestJson(const std::string &json, const es::Session &s,
+                                const es::Shortlist &list)
+{
+    CHECK(json.size() <= es::kRequestJsonMax);      // 依頼箱に入る
+    CHECK(json.size() >= 2 && json.front() == '{' && json.back() == '}');
+
+    // 端末は ID しか送らない。日本語（非 ASCII）が 1 バイトでもあれば不合格
+    bool ascii = true;
+    for (char ch : json) {
+        if ((unsigned char)ch > 0x7E || (unsigned char)ch < 0x20) ascii = false;
+    }
+    CHECK(ascii);
+
+    // 送ってはいけないものの名残が無いこと
+    static const char *kForbidden[] = {"memo", "reveal", "target", "secret", "name",
+                                       "definition", "text", "seed", "device", "token",
+                                       "cup", "player"};
+    for (const char *bad : kForbidden) {
+        CHECK(json.find(std::string("\"") + bad) == std::string::npos);
+    }
+
+    // 括弧の対応
+    int braces = 0, brackets = 0;
+    for (char ch : json) {
+        if (ch == '{') ++braces;
+        if (ch == '}') --braces;
+        if (ch == '[') ++brackets;
+        if (ch == ']') --brackets;
+        CHECK(braces >= 0 && brackets >= 0);
+    }
+    CHECK(braces == 0 && brackets == 0);
+
+    CHECK(json.find("\"event\":\"esper\"") != std::string::npos);
+    CHECK(json.find("\"req\":") != std::string::npos);
+    CHECK(json.find("\"session\":\"") != std::string::npos);
+    CHECK(json.find("\"history\":[") != std::string::npos);
+    CHECK(json.find("\"candidates\":[") != std::string::npos);
+    CHECK(json.find("\"shortlist\":[") != std::string::npos);
+    char want[64];
+    std::snprintf(want, sizeof(want), "\"rev\":%u,", (unsigned)s.revision);
+    CHECK(json.find(want) != std::string::npos);
+    std::snprintf(want, sizeof(want), "\"mode\":\"%s\"", s.modeInfo().id);
+    CHECK(json.find(want) != std::string::npos);
+    std::snprintf(want, sizeof(want), "\"remaining\":%u}", (unsigned)s.remainingQuestions());
+    CHECK(json.find(want) != std::string::npos);
+
+    // 残った候補：カタログにある ID で、重複なし・128 件以下・S と完全一致
+    const std::vector<std::string> cands = jsonIdArray(json, "candidates");
+    CHECK(cands.size() == (size_t)s.remainingCount());
+    CHECK(cands.size() <= 128);
+    Mask seen;
+    for (const std::string &id : cands) {
+        uint16_t at = es::kNoItem;
+        for (uint16_t i = 0; i < ct::kItemCount; ++i) {
+            if (id == ct::kItems[i].id) { at = i; break; }
+        }
+        CHECK(at != es::kNoItem);                   // カタログにある
+        if (at == es::kNoItem) continue;
+        CHECK(!seen.test(at));                      // 重複なし
+        seen.set(at);
+        CHECK(s.candidates.test(at));               // いま残っている候補だけ
+    }
+    CHECK(seen == s.candidates);
+
+    // 安全な質問：質問の局面のときだけ入り、8 件以下・shortlist と完全一致
+    const std::vector<std::string> shorts = jsonIdArray(json, "shortlist");
+    CHECK(shorts.size() <= es::kShortlistMax);
+    if (s.phase != Phase::Question) {
+        CHECK(shorts.empty());
+    } else {
+        CHECK(shorts.size() == (size_t)list.count);
+        for (size_t k = 0; k < shorts.size() && k < list.count; ++k) {
+            CHECK(shorts[k] == ct::kQuestions[list.question[k]].id);
+        }
+    }
+
+    // 履歴：有効な Yes/No の数と並びが合っている
+    size_t active = 0;
+    for (uint8_t i = 0; i < s.history_count; ++i) {
+        if (s.history[i].active && s.history[i].answer != Answer::Skip) ++active;
+    }
+    // {"q":"Q001","a":"yes"} なので、1 行につき "q" / ID / "a" / 答え の 4 つ
+    const std::vector<std::string> hist = jsonIdArray(json, "history");
+    CHECK(hist.size() == active * 4);
+    size_t at = 0;
+    for (uint8_t i = 0; i < s.history_count; ++i) {
+        const es::HistoryEntry &h = s.history[i];
+        if (!h.active || h.answer == Answer::Skip) continue;
+        if (at + 3 >= hist.size()) break;
+        CHECK(hist[at] == "q");
+        CHECK(hist[at + 1] == ct::kQuestions[h.question].id);
+        CHECK(hist[at + 2] == "a");
+        CHECK(hist[at + 3] == (h.answer == Answer::Yes ? "yes" : "no"));
+        at += 4;
+    }
+}
+
+static void checkRequestJson()
+{
+    std::printf("[8] 端末 → GAS の要求 JSON（ID だけ・依頼箱に収まる）\n");
+    g_engine.setAdvisor(&g_local);
+    static char buf[es::kRequestJsonMax];
+    const char *session_id = "0123456789abcdef0123456789abcdef";
+
+    size_t biggest = 0;
+    uint32_t built = 0, skipped_guess = 0;
+    std::string sample;
+
+    for (uint8_t m = 0; m < ct::kModeCount; ++m) {
+        const Mask items = Mask::from(ct::kModes[m].items);
+        for (uint16_t k = 0; k < ct::kItemCount; k += 7) {
+            if (!items.test(k)) continue;
+            g_engine.start(m, (uint32_t)k * 2654435761u);
+            uint32_t guard = 0;
+            for (;;) {
+                const es::Session &s = g_engine.session();
+                const size_t n = es::buildRequestJson(s, g_engine.shortlist(),
+                                                      (uint32_t)(built + 1), session_id,
+                                                      buf, sizeof(buf));
+                CHECK(n > 0);
+                CHECK(n == std::strlen(buf));
+                const std::string json(buf, n);
+                validateRequestJson(json, s, g_engine.shortlist());
+                if (n > biggest) { biggest = n; }
+                if (sample.empty() && s.phase == Phase::Question && s.asked == 2) {
+                    sample = json;
+                }
+                ++built;
+                if (s.phase != Phase::Question) { ++skipped_guess; break; }
+                g_engine.answer(truthful(s.current_question, k));
+                if (++guard > 64) { CHECK(false); break; }
+            }
+        }
+    }
+
+    // 入りきらない大きさを渡したら、途中まで書いた文字列を送らない（0 を返す）
+    {
+        g_engine.start(2, 1u);
+        char tiny[40];
+        CHECK(es::buildRequestJson(g_engine.session(), g_engine.shortlist(), 1, session_id,
+                                   tiny, sizeof(tiny)) == 0);
+        CHECK(es::buildRequestJson(g_engine.session(), g_engine.shortlist(), 1, session_id,
+                                   nullptr, 0) == 0);
+    }
+
+    std::printf("  %u 通ぶんを検査（最終予想の局面 %u 通）/ いちばん大きい要求 %u バイト（上限 %u）\n",
+                built, skipped_guess, (unsigned)biggest, (unsigned)es::kRequestJsonMax);
+    if (!sample.empty()) {
+        std::printf("  例: %.400s%s\n", sample.c_str(), sample.size() > 400 ? "…" : "");
+    }
+}
+
+// ---------------------------------------------------------------------------
 int main()
 {
     std::printf("=== エスパー対決 推論コアの試験 ===\n");
@@ -587,6 +1057,12 @@ int main()
     checkSkipUndoFuzz();
     std::printf("\n");
     checkVerdictAndReveal();
+    std::printf("\n");
+    checkApplyAdvice();
+    std::printf("\n");
+    checkScriptedJev();
+    std::printf("\n");
+    checkRequestJson();
     std::printf("\n");
 
     std::printf("=== 確認 %d 件 / 失敗 %d 件 ===\n", g_checks, g_fail);

@@ -14,6 +14,7 @@ constexpr uint8_t kFormatVersion = 1;
 constexpr size_t kBlobBytes = 40;     // 4 + 8 × 4 モード + CRC 4
 constexpr size_t kHeaderBytes = 4;
 constexpr size_t kRecordBytes = 8;
+static_assert(kHeaderBytes + kRecordBytes * kModeSlots + 4 == kBlobBytes, "esper stats blob layout");
 
 ModeStats s_records[kModeSlots] = {};
 bool s_loaded = false;
@@ -52,11 +53,13 @@ void encode(std::array<uint8_t, kBlobBytes> &out)
         out[at + 3] = (uint8_t)((s_records[i].human_win >> 8) & 0xFFu);
         out[at + 4] = s_records[i].best_questions;
     }
+    // CRC は末尾の 4 バイト。4 モードに広げたとき（2026-09-21）ここが 3 モード時代の 28〜31 のままで、
+    // 4 番目のモードの記録に上書きしていた → 読み込みのたびに「壊れている」と判定され、きろくが毎回消えていた（2026-09-23 に発見）
     const uint32_t crc = crc32(out.data(), kBlobBytes - 4);
-    out[28] = (uint8_t)(crc & 0xFFu);
-    out[29] = (uint8_t)((crc >> 8) & 0xFFu);
-    out[30] = (uint8_t)((crc >> 16) & 0xFFu);
-    out[31] = (uint8_t)((crc >> 24) & 0xFFu);
+    out[kBlobBytes - 4] = (uint8_t)(crc & 0xFFu);
+    out[kBlobBytes - 3] = (uint8_t)((crc >> 8) & 0xFFu);
+    out[kBlobBytes - 2] = (uint8_t)((crc >> 16) & 0xFFu);
+    out[kBlobBytes - 1] = (uint8_t)((crc >> 24) & 0xFFu);
 }
 
 bool decode(const std::array<uint8_t, kBlobBytes> &in)
@@ -64,8 +67,8 @@ bool decode(const std::array<uint8_t, kBlobBytes> &in)
     if (in[0] != kFormatVersion || in[1] != (uint8_t)kModeSlots) {
         return false;   // 版が違う。移行は管理者の明示的な作業で行う
     }
-    const uint32_t want = (uint32_t)in[28] | ((uint32_t)in[29] << 8) |
-                          ((uint32_t)in[30] << 16) | ((uint32_t)in[31] << 24);
+    const uint32_t want = (uint32_t)in[kBlobBytes - 4] | ((uint32_t)in[kBlobBytes - 3] << 8) |
+                          ((uint32_t)in[kBlobBytes - 2] << 16) | ((uint32_t)in[kBlobBytes - 1] << 24);
     if (crc32(in.data(), kBlobBytes - 4) != want) {
         return false;
     }
