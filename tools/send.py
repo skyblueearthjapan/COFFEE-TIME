@@ -2,14 +2,9 @@
 import sys
 import time
 
-import serial
+import ctport
 
-s = serial.Serial()
-s.port = sys.argv[1]
-s.baudrate = 115200
-s.dtr = False
-s.rts = False
-s.open()
+s = ctport.open_port(sys.argv[1])     # COM8 / net（Wi-Fi の遠隔コンソール）
 s.write(sys.argv[2].encode())
 s.flush()
 time.sleep(0.5)

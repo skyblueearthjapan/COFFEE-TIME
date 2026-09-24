@@ -22,6 +22,9 @@ bool wifiConnected();
 // ゲームの画面が開いている間は true にする（display::setGameActive が呼ぶ）。Wi-Fi の省電力を切って、
 // GAS とのやり取りの取りこぼしを減らす。どのタスクから呼んでもよい（実際の切り替えは poll() が行う）
 void setLowLatency(bool on);
+// 遠隔コンソール・ソフトの更新（RemoteConsole）の相手がいる間は true にする。省電力を切る理由は setLowLatency と同じ。
+// **loop() タスクから呼ぶ**（その場で切り替える。更新の最中は poll() が回らないため）
+void holdAwake(bool on);
 void debugScan();          // 開発用：周囲の Wi-Fi をスキャンしてログに出す
 bool timeSynced();
 
@@ -29,6 +32,11 @@ bool timeSynced();
 int rssi();                // 接続中の電波の強さ (dBm)。未接続なら 0
 int registeredCount();     // secrets.h に登録された Wi-Fi の数
 bool ntpSynced();          // 起動後に一度でも NTP で時刻が合ったか
+// 端末の IP アドレス（"a.b.c.d" の形）。未接続なら false で out は "--"
+bool localIp(char *out, size_t cap);
+
+// まだ GAS に届いていないコーヒーの記録の数（ソフトの更新の前に 0 であることを確かめる）
+int pendingReports();
 
 // 杯数イベントを送信キューに積む（どのタスクからでも呼べる）。
 // event: "take" / "refill" / "newday"。prev はイベント前の残り杯数（通知の重複防止に使う）

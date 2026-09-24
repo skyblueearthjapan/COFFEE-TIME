@@ -5,18 +5,12 @@
 import sys
 import time
 
-import serial
+import ctport
 from PIL import Image
 
 port, out = sys.argv[1], sys.argv[2]
 
-s = serial.Serial()
-s.port = port
-s.baudrate = 115200
-s.timeout = 5
-s.dtr = False
-s.rts = False
-s.open()
+s = ctport.open_port(port, timeout=5)     # COM8 / net（Wi-Fi の遠隔コンソール）
 s.reset_input_buffer()
 s.write(b"S")
 

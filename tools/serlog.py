@@ -2,24 +2,21 @@
 
 使い方: python tools/serlog.py COM8 20 [reset] [send=RTT]
   send=... を付けると、接続直後にその文字を 1.5 秒間隔で送る（開発用コマンド）
+  COM8 の代わりに net（= coffee-time.local）や IP を書くと Wi-Fi の遠隔コンソールで読む（reset は効かない）
 """
 import sys
 import time
 
 import serial
 
+import ctport
+
 port, secs = sys.argv[1], float(sys.argv[2])
 reset = "reset" in sys.argv[3:]
 send = next((a[5:] for a in sys.argv[3:] if a.startswith("send=")), "")
 
-s = serial.Serial()
-s.port = port
-s.baudrate = 115200
-s.timeout = 0.2
-s.dtr = False
-s.rts = False
-s.open()
-if reset:
+s = ctport.open_port(port, timeout=0.2)
+if reset and ctport.is_serial_port(port):
     s.rts = True
     time.sleep(0.1)
     s.rts = False
@@ -42,8 +39,11 @@ while time.time() < end:
         time.sleep(0.5)
         try:
             s.close()
-            s.open()
-        except serial.SerialException:
+            if ctport.is_serial_port(port):
+                s.open()
+            else:
+                s = ctport.open_port(port, timeout=0.2)     # 遠隔コンソールは合言葉からつなぎ直す
+        except (serial.SerialException, OSError):
             pass
         continue
     if d:

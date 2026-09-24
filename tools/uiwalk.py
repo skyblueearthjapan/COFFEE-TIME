@@ -17,19 +17,13 @@ import pathlib
 import sys
 import time
 
-import serial
+import ctport
 from PIL import Image
 
 port, out_dir, steps = sys.argv[1], pathlib.Path(sys.argv[2]), sys.argv[3:]
 out_dir.mkdir(parents=True, exist_ok=True)
 
-s = serial.Serial()
-s.port = port
-s.baudrate = 115200
-s.timeout = 5
-s.dtr = False
-s.rts = False
-s.open()
+s = ctport.open_port(port, timeout=5)     # COM8 / net（Wi-Fi の遠隔コンソール）
 
 
 def show(raw: bytes) -> None:

@@ -86,7 +86,14 @@ enum class GasSlot : uint8_t {
 // 入れたままだと GAS の転送先からの返事が 5 秒待っても届かない失敗が 10 回に 3〜5 回起きた（2026-09-22 実機。
 // 切ると 8 回に 1 回）。電池の持ちと引き換えなので、ゲームの画面が開いている間と、GAS とやり取りする間だけにする
 static volatile bool s_want_low_latency = false;
+static bool s_remote_awake = false;             // 遠隔コンソール・ソフトの更新の相手がいる（loop タスクだけが触る）
 static bool s_low_latency = false;
+
+// 省電力を切りたい理由がどれか 1 つでもあるか（ゲーム中 / 遠隔の相手がいる）
+static bool wantAwake()
+{
+    return s_want_low_latency || s_remote_awake;
+}
 
 static SemaphoreHandle_t s_gas_lock = nullptr;
 static volatile GasSlot s_gas_slot = GasSlot::Idle;
@@ -109,6 +116,9 @@ void begin()
     snprintf(id, sizeof(id), "coffee-%02x%02x%02x", mac[3], mac[4], mac[5]);
     s_device_id = id;
 
+    // DHCP に名乗る名前（ルーターの一覧で見分ける用）。WiFi.mode() より前に設定しないと効かない。
+    // mDNS の coffee-time.local は RemoteConsole が接続後に始める
+    WiFi.setHostname("coffee-time");
     WiFi.mode(WIFI_STA);
     // 再接続は poll() の WiFiMulti に任せる。ドライバーの自動再接続を有効にすると、つながらない間ずっと
     // 裏で接続を試み続け、その間のスキャンが「0 件」になって他の登録先を見つけられなくなる
@@ -244,7 +254,7 @@ static bool sendReport(const Report &r)
 {
     WiFi.setSleep(false);
     const bool ok = sendReportInner(r);
-    WiFi.setSleep(!s_want_low_latency);
+    WiFi.setSleep(!wantAwake());
     return ok;
 }
 
@@ -451,6 +461,37 @@ void setLowLatency(bool on)
     s_want_low_latency = on;
 }
 
+// 省電力の切り替えを実際に行う（loop タスクから）
+static void applyPowerSave()
+{
+    if (s_low_latency != wantAwake() && WiFi.status() == WL_CONNECTED) {
+        s_low_latency = wantAwake();
+        WiFi.setSleep(!s_low_latency);
+        Serial.printf("[NET] Wi-Fi power save %s\n", s_low_latency ? "off (game/remote)" : "on");
+    }
+}
+
+void holdAwake(bool on)
+{
+    s_remote_awake = on;
+    applyPowerSave();
+}
+
+bool localIp(char *out, size_t cap)
+{
+    if (WiFi.status() != WL_CONNECTED) {
+        snprintf(out, cap, "--");
+        return false;
+    }
+    snprintf(out, cap, "%s", WiFi.localIP().toString().c_str());
+    return true;
+}
+
+int pendingReports()
+{
+    return s_reports == nullptr ? 0 : (int)uxQueueMessagesWaiting(s_reports);
+}
+
 bool gasReady()
 {
     return strlen(GAS_URL) > 0 && WiFi.status() == WL_CONNECTED;
@@ -541,7 +582,7 @@ static void pollGasRequest()
     // 5 秒待っても届かない失敗 (-11) が 10 回に 3〜5 回起きた（2026-09-22 実機。電波は -52dBm で十分だった）
     WiFi.setSleep(false);
     sendGas(s_gas_sending, result);
-    WiFi.setSleep(!s_want_low_latency);     // ゲーム中（setLowLatency(true)）なら切ったままにする
+    WiFi.setSleep(!wantAwake());     // ゲーム中（setLowLatency(true)）・遠隔の相手がいる間は切ったままにする
     result.elapsed_ms = millis() - started;
 
     xSemaphoreTake(s_gas_lock, portMAX_DELAY);
@@ -561,11 +602,7 @@ static void pollGasRequest()
 
 bool poll(Weather &out)
 {
-    if (s_low_latency != s_want_low_latency && WiFi.status() == WL_CONNECTED) {
-        s_low_latency = s_want_low_latency;
-        WiFi.setSleep(!s_low_latency);
-        Serial.printf("[NET] Wi-Fi power save %s\n", s_low_latency ? "off (game)" : "on");
-    }
+    applyPowerSave();
     // 未接続なら 10 秒ごとに周囲をスキャンして、登録済みの Wi-Fi に接続を試みる
     if (WiFi.status() != WL_CONNECTED && (int32_t)(millis() - s_next_wifi_try_ms) >= 0) {
         s_next_wifi_try_ms = millis() + 10000;

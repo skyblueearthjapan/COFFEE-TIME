@@ -15,6 +15,7 @@
 #include "Display.h"
 #include "HomeScreen.h"
 #include "NetService.h"
+#include "RemoteConsole.h"
 #include "Settings.h"
 #include "SysInfo.h"
 #include "ui/HistoryScreen.h"
@@ -249,6 +250,7 @@ void setup()
     }
 
     net::begin();
+    remote::begin();    // Wi-Fi 越しのコンソール（TCP 2323）とソフトの更新（TCP 2324）
     s_ready = true;
     Serial.println("COFFEE TIME ready");
 }
@@ -273,6 +275,8 @@ void loop()
 
     net::Weather weather;
     const bool got_weather = net::poll(weather);
+    // 遠隔コンソールの接続・合言葉・ソフトの更新（更新中はここで数十秒止まる）。LVGL のロックの外で呼ぶ
+    remote::poll();
     bool dump_log = false;
 
     if (lvgl_port_lock(-1)) {

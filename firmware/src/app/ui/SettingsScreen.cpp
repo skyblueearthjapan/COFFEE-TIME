@@ -485,11 +485,12 @@ void buildSystemInfo(lv_obj_t *p)
 {
     makeHeading(p, "システム情報");
 
-    const char *icons[6] = {icon::kBattery, icon::kWifi, icon::kSdCard,
-                            icon::kSchedule, icon::kRestart, icon::kInfo};
-    const char *names[6] = {"電池", "Wi-Fi", "SD カード", "時計", "前回の起動", "ソフトの版"};
+    // 最後の行（IP アドレス）は Wi-Fi の続きなのでマークを付けない。遠隔コンソール（tools/ctport.py）の接続先の確認用
+    const char *icons[7] = {icon::kBattery, icon::kWifi, icon::kSdCard,
+                            icon::kSchedule, icon::kRestart, icon::kInfo, ""};
+    const char *names[7] = {"電池", "Wi-Fi", "SD カード", "時計", "前回の起動", "ソフトの版", "IP アドレス"};
     // 日本語は 1 文字 3 バイト。「2 時間前（電源投入）」だけで 30 バイト近くになる
-    char values[6][56];
+    char values[7][56];
 
     const uint32_t mv = battery::millivolts();
     snprintf(values[0], sizeof(values[0]), "%lu.%02lu V (%d%%)", (unsigned long)(mv / 1000),
@@ -517,14 +518,18 @@ void buildSystemInfo(lv_obj_t *p)
     uptimeText(up, sizeof(up));
     snprintf(values[4], sizeof(values[4]), "%s（%s）", up, resetReasonJa());
     snprintf(values[5], sizeof(values[5]), "%s", sysinfo::revision());
+    net::localIp(values[6], sizeof(values[6]));
 
-    for (int i = 0; i < 6; ++i) {
+    for (int i = 0; i < 7; ++i) {
         const int16_t y = (int16_t)(92 + 40 * i);
-        makeIconLabel(p, Rect{82, y, 36, 38}, &ct_font_icons_36, CT_COLOR_ACCENT_HI, icons[i]);
+        if (icons[i][0] != '\0') {
+            makeIconLabel(p, Rect{82, y, 36, 38}, &ct_font_icons_36, CT_COLOR_ACCENT_HI, icons[i]);
+        }
         makeRectLabel(p, Rect{124, y, 120, 38}, &ct_font_jp_20, CT_COLOR_TEXT, names[i],
                       LV_TEXT_ALIGN_LEFT);
-        makeRectLabel(p, Rect{248, y, 150, 38}, &ct_font_jp_20, CT_COLOR_SUBTEXT, values[i],
-                      LV_TEXT_ALIGN_RIGHT);
+        // IP アドレスは最長 15 文字あるので、値の枠を左へ広げる（名前とは重ならない）
+        const Rect value_rect = i == 6 ? Rect{218, y, 180, 38} : Rect{248, y, 150, 38};
+        makeRectLabel(p, value_rect, &ct_font_jp_20, CT_COLOR_SUBTEXT, values[i], LV_TEXT_ALIGN_RIGHT);
     }
     makeMenuBackButton(p);
 }

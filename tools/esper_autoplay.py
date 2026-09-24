@@ -10,18 +10,14 @@ import re
 import sys
 import time
 
-import serial
+import ctport
 from PIL import Image
 
 port, out_dir = sys.argv[1], pathlib.Path(sys.argv[2])
 limit = float(sys.argv[3]) if len(sys.argv) > 3 else 240.0
 out_dir.mkdir(parents=True, exist_ok=True)
 
-s = serial.Serial()
-s.port, s.baudrate, s.timeout = port, 115200, 3
-s.dtr = False
-s.rts = False
-s.open()
+s = ctport.open_port(port, timeout=3)     # COM8 / net（Wi-Fi の遠隔コンソール）
 
 VIEW = {"0": "mode", "1": "catalog", "2": "card", "3": "ready", "4": "thinking", "5": "waiting", "6": "question",
         "7": "help", "8": "quit", "9": "guess", "10": "result", "11": "reveal_pick", "12": "reveal_card",

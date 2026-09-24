@@ -1,6 +1,6 @@
 # COFFEE TIME 引き継ぎ書
 
-- 最終更新: 2026-09-23 夜（**第 7 版・全面整理**に、同日夜の「残り 0 の ＋1 トースト」を追記。第 6 版までの内容をすべて含む）。最新コミットは `git log`（この文書に固定の番号は書かない）
+- 最終更新: 2026-09-24（**第 7 版・全面整理**に、9/23 夜の「残り 0 の ＋1 トースト」と 9/24 の「**Wi-Fi 越しの作業（遠隔コンソール・無線更新）**」を追記。第 6 版までの内容をすべて含む）。最新コミットは `git log`（この文書に固定の番号は書かない）
 - リポジトリ: https://github.com/skyblueearthjapan/COFFEE-TIME （ブランチ `main`。作業ツリーは `C:\Users\imaizumi.LINEWORKS-NET\Documents\COFFEE TIME`）
 - **この文書だけ読めば「何のアプリか・どこまでできているか・次に何をするか」が分かり、作業を再開できる**ように書いてある。詳細は関連文書へ
 
@@ -64,7 +64,8 @@ AI を使うゲーム（AI DUEL・エスパー・リバーシ・POKER TABLE）�
 | JEV REVERSI | ✅ 6×6 / 8×8、JEV / JEV PRO / CASUAL / 端末AI、保存・再開、投了。実機で各モード 1 局以上完走 |
 | POKER TABLE（名前はユーザー指定） | ✅ 4 卓（POKER = **テキサス・ホールデム（既定）/ 5 カードドロー**、GOPS 7/13、THIRTY-ONE、BACCARAT OPEN/CLASSIC）。8 アイコン + ゲスト。初回だけの説明ページ。実機で 4 卓とも端末 AI と Jev の両方で試合を完走 |
 | 「考え中」の演出 | ✅ Jev 待ちの共通部品 `ui/Thinking`（回る印 + 言葉の切り替え）を 4 ゲームに導入。実機で確認 |
-| フラッシュ / RAM | 約 67.2%（アプリ領域 6.25MB 中 約 4.40MB）/ 静的 RAM 26.6%。ゲーム用フォント 899 字。内蔵メモリの空きは約 60〜110KB（TLS 1 本で約 35KB。§4「気になる点」） |
+| Wi-Fi 越しの作業 | ✅ 9/24。**USB なしで**ログ・状態・スクショ・自動操作（`net`）と書き換え（`tools/ota.py`、4.5MB を約 22 秒）。会社の Wi-Fi で PC から端末に届くことを確認。合言葉つき（§8「遠隔コンソール」） |
+| フラッシュ / RAM | 約 68.2%（アプリ領域 6.25MB 中 約 4.47MB）/ 静的 RAM 27.6%。ゲーム用フォント 899 字。内蔵メモリの空きは約 60〜110KB（TLS 1 本で約 35KB。§4「気になる点」） |
 
 ## 3b. これまでにやったこと（時系列。詳細は各節）
 
@@ -81,6 +82,10 @@ AI を使うゲーム（AI DUEL・エスパー・リバーシ・POKER TABLE）�
   4. ビルド（6 分）→ `serlog.py … send=GDVUJKQ` で全ゲーム待機中・HOME（depth=1）を確認 → 書き込み → スクリーンショットで HOME の正常表示を確認（今日 0・残り 0・電池 4.17V）
   5. 独立レビュー（code-reviewer）: 指摘なしで承認。低の注意 1 件 = トーストの幅を固定していないので、将来長い文言を入れると丸い画面の端に届く（今の文言は 322×68px で余裕あり）
   6. 見本画像をデスクトップ `残り0のトースト見本.png` に置いた（ユーザー了承済み）。秘密の検査 → コミット `70f85ba` → push
+
+- **9/24 の作業内容**: 「残り 3 のメールが来ない」→ GAS・メール送信は正常（見本メールで確認）、ユーザーの受信箱に遅れて届いていた（原因は未特定。端末の再送 30 秒ごと or Google の配信遅延）。
+  続けて**遠隔コンソール（TCP 2323）と無線更新（TCP 2324）**を実装（executor）→ USB で最後の書き込み → Wi-Fi 越しに状態・スクショ・uiwalk・無線更新・合言葉違いの拒否・ゲーム中の更新拒否を確認 →
+  独立レビュー（承認・修正 2 件: 無線更新後の再起動が「見張り」になっていた → 再起動前に `WiFi.disconnect(true)` で「software」に / `s_game_active` を volatile）→ 無線更新で反映・確認 → コミット
 
 ## 4. 残タスク（優先順）
 
@@ -275,6 +280,8 @@ python -m platformio run -e hwtest / wifitest / app_uart          # LCD・タッ
 | `python tools/uiwalk.py COM8 <dir> key:2 expect:Q:depth=2 tap:240,266 wait:1 expect:K:view=entry snap:name …` | **画面を自動で操作して順に撮る**。`expect:<状態命令>:<文言>` = 違えば中止、`until:J:phase=idle:45` = その状態まで待つ、`watch:10` = ログ表示。ゲームと通信の 1 行ログは待ち時間中の分も表示 |
 | `python tools/cards_autoplay.py` / `esper_autoplay.py COM8 <dir>` | 卓の状態を読みながら 1 試合 / 1 局を打ち切る（タップの直前に画面を確かめる。＋1 は押さない） |
 | `python tools/serlog.py COM8 30 [send=GD]` | ログ表示（＋開発コマンド送信。1 文字ずつ 1.5 秒間隔なので複数文字の命令は `uiwalk.py key:` で） |
+| `COM8` の代わりに `net` | **Wi-Fi の遠隔コンソール**（USB なしで同じ操作）。`serlog` `send` `snapshot` `settime` `uiwalk` `cards_autoplay` `esper_autoplay` の最初の引数に `net`（= `coffee-time.local`）か端末の IP を書く。例 `python tools/serlog.py net 30 send=GDVUJK`。中身は `tools/ctport.py`（下の「遠隔コンソール」） |
+| `python tools/ota.py [net または IP] [--bin …]` | **Wi-Fi 越しのソフト更新**。先に `python -m platformio run -e app` でビルドし、できた `firmware.bin` を送る。進み具合（10% ごと）と最後の 1 行（`[OTA] ok, rebooting` / `[OTA] failed: …` / `[OTA] busy: …`）を表示。失敗なら終了コード 1 |
 | `python tools/settime.py COM8` | PC の時計を端末と RTC に設定 |
 | `python tools/collect_ui_chars.py [--check]` | 日本語の文字一覧を更新 / **一覧とフォントの実体の両方を検査** |
 | `bash tools/gen_fonts.sh` | フォント再生成（Git Bash が動かないときは同じ `npx -y lv_font_conv@1.5.3 …` を PowerShell から。§10-3） |
@@ -286,6 +293,19 @@ python -m platformio run -e hwtest / wifitest / app_uart          # LCD・タッ
 `0`=HOME / `1`=メニュー / `2`=ゲーム一覧 / `3`=人狼 / `4`=探偵 / `5`〜`9`=今日の状況・時間ごと・履歴・日ごと・設定 / `B`=明るさ / `F`=時刻合わせ / `I`=システム情報（これらは `[KEY]` の返事あり）/
 `G`=人狼の公開状態 / `D`=探偵 / `V`=エスパー / `U`=AI DUEL / `J`=リバーシ / `K`=POKER TABLE の状態 / `Q`=画面の重なりの数（1 = HOME）/ `O`=手札のスクショ許可の切り替え /
 `Y!undo`=今日の 1 杯を取り消す / `Y!hist,YYYYMMDD,cups`=履歴の 1 日の杯数を直す（合言葉付き・GAS には送らない）/ `X`=探偵の進み具合を初期化。秘密が画面に出ている間は `S` と画面切替を受け付けない
+
+### 遠隔コンソールと Wi-Fi 越しの更新（USB なしで作業する）
+- 端末は Wi-Fi につながると `[NET] remote console coffee-time.local / <IP> :2323 (update :2324)` を出す。名前は mDNS の `coffee-time.local`（DHCP のホスト名も `coffee-time`）。
+  名前が引けないときは「設定 → システム情報」の **IP アドレス**の行（シリアル `I` でも開ける）を使う
+- **コンソール = TCP 2323**。USB のシリアルとまったく同じ（上の開発コマンドもログも全部）。ファームは `Serial` を `ct_serial_tee.h`（`build_src_flags` の `-include`）で差し替えているだけで、ほかのソースは変えていない。
+  最初の 1 行が `AUTH <REMOTE_PASSWORD>` で、返事は `[CON] ok` / `[CON] denied`。**3 回続けて違うと 60 秒は誰も入れない**。合言葉を待つのは 10 秒
+- **相手は 1 人だけ**。新しい接続が合言葉を通ると前の相手は `[CON] replaced by a new connection` で切られる（眠った PC の古い接続に居座られないため）。つないでいる間は Wi-Fi の省電力を切る
+- 画面を切り替える命令とタップは**USB と同じ注意**（§10-11。`expect:Q:depth=2` など）。遠隔でも ＋1 の誤記録は起こりうる
+- **更新 = TCP 2324**（`tools/ota.py`）。`AUTH …` → `OTA <バイト数> <md5>` → `[OTA] ready` → 本体 → `[OTA] ok, rebooting`。端末は更新中「ソフトを更新しています」と % を全画面に出す。
+  **断る条件**: ゲームの画面が開いている / コーヒーの記録が GAS に未送信 / 秘密が画面に出ている / 大きすぎる（`[OTA] busy: …`）。失敗しても今のソフトのまま動く（アプリ領域が 2 つ = app0/app1）
+- 更新が終わると杯数を保存し SD に `ota` を書いてから、**Wi-Fi を止めて**再起動する（止めないと再起動の理由が「見張り」になった。9/24）。書き換え中は画面が乱れることがあるが、再起動で直る
+- 通信は暗号化していない（社内 LAN 用）。合言葉は同じネットワークで盗み見られうる
+- `REMOTE_PASSWORD` が空なら両方とも開かない（`[CON] disabled (no REMOTE_PASSWORD)`）。ArduinoOTA（espota）は PC 側に受け口が要り Windows のファイアウォールで止まるので使っていない
 
 ### GAS
 - 必ず `clasp -u work …`（既定ユーザーは個人 Gmail）。反映は `cd gas; clasp -u work push -f` → `list-deployments` で **@数字** の ID → `update-deployment <ID> --description "…"`（URL 不変）。`create-deployment` は URL が変わるので使わない。デプロイ ID は画面に出さない（伏せ字）
@@ -302,7 +322,7 @@ python -m platformio run -e hwtest / wifitest / app_uart          # LCD・タッ
 
 | 場所 | 中身 |
 |---|---|
-| `firmware/include/secrets.h` | `WIFI_SSID` `WIFI_PASSWORD`（会社）/ `…2`（自宅）/ `…3`（テザリング）、`GAS_URL`、`GAS_TOKEN`。**表示しない**。名前と文字数だけ確かめる。ユーザーに入力してもらうときはメモ帳で開く |
+| `firmware/include/secrets.h` | `WIFI_SSID` `WIFI_PASSWORD`（会社）/ `…2`（自宅）/ `…3`（テザリング）、`GAS_URL`、`GAS_TOKEN`、`REMOTE_PASSWORD`（遠隔コンソールと Wi-Fi 越しの更新の合言葉。英数字 20 文字を乱数で作って追記済み。`ctport.py` `ota.py` もここから読む）。**表示しない**。名前と文字数だけ確かめる。ユーザーに入力してもらうときはメモ帳で開く |
 | `gas/Secret.gs` | `TOKEN`（`GAS_TOKEN` と同じ値） |
 | `gas/.clasp.json` | scriptId / parentId |
 | GAS のスクリプト プロパティ | `JEV_API_KEY`（ユーザー本人が設定）、任意で `JEV_MODEL`、`JEV_DAILY_MAX` |
@@ -318,7 +338,7 @@ python -m platformio run -e hwtest / wifitest / app_uart          # LCD・タッ
 3. **フォント**: HOME 用（`ct_font_22/30`）とゲーム用（`ct_font_jp_20/22/40`）は統合しない（リンクエラー）。文字一覧だけ更新して `.c` を作り直し忘れると □ になる → `collect_ui_chars.py --check`。
    PowerShell での作り直し: 文字一覧を `Get-Content -Raw -Encoding UTF8` で読み改行を除いて `--symbols` に渡す。フォントの元は `%LOCALAPPDATA%\Temp\coffee_time_fonts`。アイコン: Material Icons Round（`ct_font_icons_*`）、天気（Weather Icons）、手（Font Awesome Free Solid の 3 字）
 4. LVGL: ボタンは `pad_all` 0 で座標配置 / 日本語は自動折り返しされない（データ側で改行）/ 空で作ったラベルに後から複数行を入れると位置がずれる / 画面遷移中に `lv_obj_del` しない / LVGL タスクのスタックは 8KB / NVS 書き込み中は画面が一瞬止まる。UTF-8 のバイト列でアイコンを書くときはコードポイントと突き合わせる（U+EFEF を `\xEE\xBE\xAF` と書き間違えて □ になった）
-5. シェルのヒアドキュメント経由でソースを書くと `\n` が本物の改行になる → スクリプトをファイルに書いて実行するか Edit を使う。PowerShell の 1 行コマンドに日本語やバッククォートを含む文字列を入れると構文エラーになりやすい → Python の小さなスクリプトに逃がす
+5. シェルのヒアドキュメント経由でソースを書くと `\n` が本物の改行になる（Bash ツールに渡した `python - <<'EOF'` の中の `'\\0'` も NUL 文字 1 つになった。9/24） → スクリプトをファイルに書いて実行するか Edit を使う。PowerShell の 1 行コマンドに日本語やバッククォートを含む文字列を入れると構文エラーになりやすい → Python の小さなスクリプトに逃がす
 6. Open-Meteo は `useHTTP10(true)`、GAS の 302 は新しい接続で GET、curl は `-d` だけ
 7. `serlog.py … reset` は native USB ではリセットがかからない → `python -m esptool --chip esp32s3 --port COM8 chip_id` の直後に `serlog.py`
 8. SD は GPIO1・2 を LCD の初期化線と共用 → `board->begin()` の後にマウント
@@ -335,6 +355,8 @@ python -m platformio run -e hwtest / wifitest / app_uart          # LCD・タッ
 17. **push の認証に使う環境変数は 3 つとも消す**（`GIT_CONFIG_COUNT` `GIT_CONFIG_KEY_0` `GIT_CONFIG_VALUE_0`）。9/23 夜、`VALUE_0` だけ消したら後続の git が `missing config value GIT_CONFIG_VALUE_0` で失敗した（push 自体は成功）。
     PowerShell の `$env:` は同じ 1 回のコマンドの中だけ有効なので、push と後片付けは同じコマンドに書く
 18. Bash ツールで `cat > ファイル` のように入力の無いコマンドを書くと、標準入力を待って 2 分で時間切れになる（9/23 夜に 1 回）。ファイルは Write / Edit ツールで作る
+19. **`firmware/src/app/ct_serial_tee.h`（`Serial` の差し替え。`build_src_flags` の `-include`）を変えたら `firmware/.pio/build/app/src`（と `app_uart/src`）を消してからビルドする**。SCons は強制インクルードの変更を追わないので、古い .o が残って `undefined reference` になった（9/24）
+20. `ct_serial_tee.h` で `Arduino.h` を読み込むと、人狼のコア（`werewolf_core.hpp` の `bit()`）が Arduino の `bit` マクロとぶつかる。読み込むのは `Stream.h` だけにし、`NO_GLOBAL_SERIAL` で HardwareSerial.h の `#define Serial` を止めている。差し替え先の名前空間は `ct_tee`（`cards` に `ct` という名前空間があり `ct::con` が化けた）
 
 ## 11. 仕様の要点（カフェ機能）
 

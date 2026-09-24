@@ -5,17 +5,11 @@
 import sys
 import time
 
-import serial
+import ctport
 
 port = sys.argv[1]
 
-s = serial.Serial()
-s.port = port
-s.baudrate = 115200
-s.timeout = 0.3
-s.dtr = False
-s.rts = False
-s.open()
+s = ctport.open_port(port, timeout=0.3)     # COM8 / net（Wi-Fi の遠隔コンソール）
 s.reset_input_buffer()
 
 # UNIX 秒（UTC 基準）を送る。ESP32 側で日本時間として表示される

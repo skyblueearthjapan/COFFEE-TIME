@@ -16,3 +16,7 @@
 // iPhone は「インターネット共有」の「互換性を優先」をオンにし、iPhone の名前は半角英数字にしておくと確実
 #define WIFI_SSID3     ""
 #define WIFI_PASSWORD3 ""
+
+// Wi-Fi 越しの開発用コンソール（TCP 2323）とソフトの更新（TCP 2324）の合言葉。英数字 20 文字ほどを推奨。
+// 空なら両方とも開かない（tools/ctport.py と tools/ota.py がこのファイルから読む）
+#define REMOTE_PASSWORD ""

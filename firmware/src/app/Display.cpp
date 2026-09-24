@@ -26,7 +26,7 @@ uint32_t s_dim_s = 300;                 // 暗くするまでの秒数。0 な�
 int s_applied = -1;                     // 最後にハードへ書いた値（無駄な I2C/LEDC 操作を避ける）
 bool s_dimmed = false;
 bool s_privacy_cut = false;
-bool s_game_active = false;
+volatile bool s_game_active = false;   // LVGL タスクが書き、メインループ（無線の更新の可否）が読む
 uint32_t s_last_activity_ms = 0;
 
 lv_obj_t *s_catcher = nullptr;          // 暗い間だけ最前面に置く透明な板
@@ -136,6 +136,11 @@ void noteActivity()
 bool dimmed()
 {
     return s_dimmed;
+}
+
+bool gameActive()
+{
+    return s_game_active;
 }
 
 void setGameActive(bool active)
