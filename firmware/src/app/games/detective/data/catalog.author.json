@@ -3,7 +3,7 @@
   "pack_id": "YOHAKU_CH01",
   "content_version": "1.0.0",
   "language": "ja-JP",
-  "title": "喫茶「余白」第一章 — つづきは、ここで。",
+  "title": "喫茶CaféTamu 第一章 — つづきは、ここで。",
   "characters": [
     {
       "id": "NARRATOR",
@@ -16,7 +16,7 @@
     {
       "id": "LATTE",
       "name": "ラテ",
-      "role": "喫茶「余白」の店主",
+      "role": "喫茶CaféTamuの店主",
       "voice": "落ち着いた短文。相手の間違いを責めず、最後に少しだけ冗談。",
       "motif": "ROUND_GLASSES",
       "color": "#596B57"
@@ -62,7 +62,7 @@
           {
             "speaker": "NARRATOR",
             "emotion": "neutral",
-            "text": "閉店前の喫茶「余白」。\n窓際の席に、白いカップと\n青いカップが並んでいた。"
+            "text": "閉店前の喫茶CaféTamu。\n窓際の席に、白いカップと\n青いカップが並んでいた。"
           },
           {
             "speaker": "MOCHA",
@@ -810,7 +810,7 @@
           {
             "speaker": "LATTE",
             "emotion": "smile",
-            "text": "誰も主催者のつもりじゃ\nないのに、会ができたね。\n名前は「余白の一ページ」。"
+            "text": "誰も主催者のつもりじゃ\nないのに、会ができたね。\n名前は\n「CaféTamuの一ページ」。"
           },
           {
             "speaker": "NARRATOR",
@@ -822,7 +822,7 @@
           {
             "speaker": "NARRATOR",
             "emotion": "neutral",
-            "text": "青い封筒はラテの招待状。\n3人の手紙から、明日の\n「余白の一ページ」が生まれた。"
+            "text": "青い封筒はラテの招待状。\n3人の手紙から、明日の\n「CaféTamuの一ページ」が\n生まれた。"
           }
         ],
         "collectible": {
@@ -848,7 +848,7 @@
           {
             "speaker": "NARRATOR",
             "emotion": "neutral",
-            "text": "「余白の一ページ」の当日。\n雨が上がると、青いカップの横に\n銀色のしおりが置かれていた。"
+            "text": "「CaféTamuの一ページ」\nの当日。雨が上がると、\n青いカップの横に\n銀色のしおりが置かれていた。"
           },
           {
             "speaker": "CHAI",
@@ -1158,14 +1158,14 @@
           {
             "speaker": "NARRATOR",
             "emotion": "neutral",
-            "text": "三つの小さな謎が、\n一つの「おかえり」になった。\n喫茶「余白」は、今日も営業中。"
+            "text": "三つの小さな謎が、\n一つの「おかえり」になった。\n喫茶CaféTamuは、今日も営業中。"
           }
         ],
         "recap": [
           {
             "speaker": "NARRATOR",
             "emotion": "neutral",
-            "text": "モカがしおりの糸を直した。\n戻ったココアを迎えて、\n「余白の一ページ」が始まった。"
+            "text": "モカがしおりの糸を直した。\n戻ったココアを迎えて、\n「CaféTamuの一ページ」が\n始まった。"
           }
         ],
         "collectible": {

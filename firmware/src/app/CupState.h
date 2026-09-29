@@ -17,7 +17,7 @@ namespace cup {
 // ゲームの種類。**並びは NVS に保存されるので絶対に変えない**
 enum class GameId : uint8_t {
     Werewolf = 0,   // 閉店後の人狼会
-    Detective = 1,  // 喫茶「余白」の事件簿
+    Detective = 1,  // 喫茶CaféTamuの事件簿
     Esper = 2,      // エスパー対決
     Duel = 3,       // AI DUEL
     Reversi = 4,    // リバーシ（JEV REVERSI）

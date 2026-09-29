@@ -5,7 +5,7 @@
 namespace coffee { namespace det { namespace content {
 
 static const Page kPg_CD001_intro[] = {
-    {Speaker::Narrator, Emotion::Neutral, "閉店前の喫茶「余白」。\n窓際の席に、白いカップと\n青いカップが並んでいた。"},
+    {Speaker::Narrator, Emotion::Neutral, "閉店前の喫茶CaféTamu。\n窓際の席に、白いカップと\n青いカップが並んでいた。"},
     {Speaker::Mocha, Emotion::Puzzled, "注文は一杯だけです。\nあれ、ぼくが二つ\n用意したんでしたっけ？"},
     {Speaker::Latte, Emotion::Neutral, "慌てなくていいよ。\n青い方を置いたのが誰か、\n順番に確かめてみよう。"},
     {Speaker::Chai, Emotion::Puzzled, "……椅子も、二つとも\n引いてあるね。"},
@@ -166,16 +166,16 @@ static const Page kPg_CD002_epi[] = {
     {Speaker::Chai, Emotion::Soft, "「明日16時、窓際にて。\n一冊と、一人分の\nおかえりを持ち寄ること」"},
     {Speaker::Mocha, Emotion::Smile, "あ、ぼくの金色は\nラテさんへの招待状です。\n同じことを考えてました。"},
     {Speaker::Chai, Emotion::Smile, "僕の赤い封筒は、\n戻ってくる友人へ。\n店の住所だけ、もう一度。"},
-    {Speaker::Latte, Emotion::Smile, "誰も主催者のつもりじゃ\nないのに、会ができたね。\n名前は「余白の一ページ」。"},
+    {Speaker::Latte, Emotion::Smile, "誰も主催者のつもりじゃ\nないのに、会ができたね。\n名前は\n「CaféTamuの一ページ」。"},
     {Speaker::Narrator, Emotion::Neutral, "三つの封筒が、\n同じ明日の窓際へ\nつながっていた。"},
 };
 
 static const Page kPg_CD002_recap[] = {
-    {Speaker::Narrator, Emotion::Neutral, "青い封筒はラテの招待状。\n3人の手紙から、明日の\n「余白の一ペー\nジ」が生まれた。"},
+    {Speaker::Narrator, Emotion::Neutral, "青い封筒はラテの招待状。\n3人の手紙から、明日の\n「CaféTamuの一ページ」が\n生まれた。"},
 };
 
 static const Page kPg_CD003_intro[] = {
-    {Speaker::Narrator, Emotion::Neutral, "「余白の一ページ」の当日。\n雨が上がると、\n青いカップの横に\n銀色のしおりが\n置かれていた。"},
+    {Speaker::Narrator, Emotion::Neutral, "「CaféTamuの一ページ」\nの当日。雨が上がると、\n青いカップの横に\n銀色のしおりが\n置かれていた。"},
     {Speaker::Chai, Emotion::Puzzled, "このしおり、見覚えがある。\nでも、結んだ糸が\n新しくなってるね。"},
     {Speaker::Mocha, Emotion::Neutral, "誰が置いたか確かめてから、\nちゃんと渡したいですね。"},
     {Speaker::Latte, Emotion::Soft, "三人の記憶を並べてみよう。\n責めるためじゃなく、\nお礼を言う相手を探すんだ。"},
@@ -253,11 +253,11 @@ static const Page kPg_CD003_epi[] = {
     {Speaker::Cocoa, Emotion::Soft, "しおりの裏、覚えてる？\n「つづきは、ここで」って\n書いたんだったね。"},
     {Speaker::Mocha, Emotion::Smile, "じゃあ、一ページ目から\nじゃなくて、つづきから。\nコーヒーは何杯にします？"},
     {Speaker::Latte, Emotion::Smile, "今日は、みんなの分。\nゆっくり淹れよう。"},
-    {Speaker::Narrator, Emotion::Neutral, "三つの小さな謎が、\n一つの「おかえ\nり」になった。\n喫茶「余白」は、\n今日も営業中。"},
+    {Speaker::Narrator, Emotion::Neutral, "三つの小さな謎が、\n一つの「おかえ\nり」になった。\n喫茶CaféTamuは、\n今日も営業中。"},
 };
 
 static const Page kPg_CD003_recap[] = {
-    {Speaker::Narrator, Emotion::Neutral, "モカがしおりの糸を直した。\n戻ったココアを迎えて、\n「余白の一ペー\nジ」が始まった。"},
+    {Speaker::Narrator, Emotion::Neutral, "モカがしおりの糸を直した。\n戻ったココアを迎えて、\n「CaféTamuの一ページ」が\n始まった。"},
 };
 
 const Character kCharacters[] = {
@@ -351,7 +351,7 @@ const size_t kEpisodeCount = sizeof(kEpisodes) / sizeof(kEpisodes[0]);
 
 const StringEntry kStrings[] = {
     {"game_title", "CAFE DETECTIVE"},
-    {"world_title", "喫茶「余白」"},
+    {"world_title", "喫茶CaféTamu"},
     {"pack_title", "つづきは、ここで。"},
     {"menu_new", "まだ読んでいない話"},
     {"menu_replay", "もう一度読む"},
@@ -387,7 +387,7 @@ const StringEntry kStrings[] = {
     {"assisted", "ヒント付きで解決"},
     {"explanation", "手帳で確かめる"},
     {"ending", "物語のつづき"},
-    {"collectible", "余白の手帳に記録しました"},
+    {"collectible", "CaféTamuの手帳に記録"},
     {"chapter_end", "第一章 おわり"},
     {"back_home", "HOMEへ"},
     {"pause", "あとで読む"},
@@ -416,7 +416,7 @@ const char *findString(const char *key) {
 
 const StringEntry kWrappedStrings[] = {
     {"game_title", "CAFE DETECTIVE"},
-    {"world_title", "喫茶「余白」"},
+    {"world_title", "喫茶CaféTamu"},
     {"pack_title", "つづきは、ここで。"},
     {"menu_new", "まだ読んでいない話"},
     {"menu_replay", "もう一度読む"},
@@ -452,7 +452,7 @@ const StringEntry kWrappedStrings[] = {
     {"assisted", "ヒント付きで解決"},
     {"explanation", "手帳で確かめる"},
     {"ending", "物語のつづき"},
-    {"collectible", "余白の手帳に記録しました"},
+    {"collectible", "CaféTamuの手帳に記録"},
     {"chapter_end", "第一章 おわり"},
     {"back_home", "HOMEへ"},
     {"pause", "あとで読む"},

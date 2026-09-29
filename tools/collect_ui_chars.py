@@ -24,7 +24,13 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--check", action="store_true")
 args = ap.parse_args()
 
-def collect(paths) -> set:
+# ASCII 以外でも英字の書体（Montserrat）の -r で収録する文字（tools/gen_fonts.sh と合わせる）。
+# 日本語の一覧（--symbols）に入れると Zen Maru Gothic の字形が優先されてしまうので一覧から外す
+HOME_LATIN = {"°"}
+GAME_LATIN = {"°", "é"}   # é は店名「CaféTamu」
+
+
+def collect(paths, latin: set) -> set:
     found = set()
     for path in paths:
         if path.suffix not in (".cpp", ".h", ".hpp") or not path.is_file():
@@ -32,7 +38,7 @@ def collect(paths) -> set:
         text = path.read_text(encoding="utf-8", errors="replace")
         for literal in STRING_RE.findall(text):
             for ch in literal:
-                if ord(ch) > 0x7E:
+                if ord(ch) > 0x7E and ch not in latin:
                     found.add(ch)
     return found
 
@@ -49,8 +55,8 @@ def merge(symbols_file: pathlib.Path, chars: set) -> list:
     return missing
 
 
-home_chars = collect([SRC / "HomeScreen.cpp"])
-game_chars = collect(list((SRC / "ui").rglob("*")) + list((SRC / "games").rglob("*")))
+home_chars = collect([SRC / "HomeScreen.cpp"], HOME_LATIN)
+game_chars = collect(list((SRC / "ui").rglob("*")) + list((SRC / "games").rglob("*")), GAME_LATIN)
 
 missing = merge(HOME_SYMBOLS, home_chars) + merge(GAME_SYMBOLS, game_chars)
 
@@ -61,11 +67,11 @@ def glyphs_missing_in_fonts() -> list:
     一覧だけ更新してフォントを作り直し忘れると、一覧との照合は通るのに画面では □ になる
     （2026-09-21 に「犠牲」などで実際に起きた）。--check ではフォントの実体まで確かめる。
     """
-    pairs = [(HOME_SYMBOLS, ["ct_font_22", "ct_font_30"]),
-             (GAME_SYMBOLS, ["ct_font_jp_20", "ct_font_jp_22", "ct_font_jp_40"])]
+    pairs = [(HOME_SYMBOLS, HOME_LATIN, ["ct_font_22", "ct_font_30"]),
+             (GAME_SYMBOLS, GAME_LATIN, ["ct_font_jp_20", "ct_font_jp_22", "ct_font_jp_40"])]
     out = []
-    for symbols_file, fonts in pairs:
-        listed = set(symbols_file.read_text(encoding="utf-8")) - {chr(10), chr(13)}
+    for symbols_file, latin, fonts in pairs:
+        listed = (set(symbols_file.read_text(encoding="utf-8")) - {chr(10), chr(13)}) | latin
         for name in fonts:
             src = (SRC / "fonts" / (name + ".c")).read_text(encoding="utf-8", errors="replace")
             have = {chr(int(h, 16)) for h in re.findall(r"/\* U\+([0-9A-Fa-f]{4,6})", src)}

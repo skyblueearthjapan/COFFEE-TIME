@@ -1,4 +1,4 @@
-"""探偵ゲーム「喫茶『余白』の事件簿」の脚本 JSON を ESP32 ファーム用の C++ ソースへ変換する。
+"""探偵ゲーム「喫茶CaféTamuの事件簿」の脚本 JSON を ESP32 ファーム用の C++ ソースへ変換する。
 
 使い方:
   python tools/gen_detective_data.py
@@ -78,7 +78,11 @@ ASCII_RUN_CHARS = set(
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     "abcdefghijklmnopqrstuvwxyz"
     ":.-/%+"
+    "é"   # 店名「CaféTamu」。フォントは英字と同じ Montserrat から採る（tools/gen_fonts.sh）
 )
+
+# ASCII 以外で半角の幅として数える文字（上の店名の é）
+HALF_WIDTH_EXTRA = "é"
 
 # 意味の切れ目。限界の少し手前にこれがあれば、そこで改行したほうが読みやすい
 SENTENCE_BREAK = "。、！？．，!?"
@@ -132,8 +136,8 @@ def lit(s: str) -> str:
 
 
 def units(s: str) -> int:
-    """半角いくつ分か（ASCII=1 / それ以外=2）。ct_font_jp_22 の送り幅 11px/22px に合わせた見積り。"""
-    return sum(1 if ord(ch) < 0x80 else 2 for ch in s)
+    """半角いくつ分か（ASCII と é=1 / それ以外=2）。ct_font_jp_22 の送り幅 11px/22px に合わせた見積り。"""
+    return sum(1 if ord(ch) < 0x80 or ch in HALF_WIDTH_EXTRA else 2 for ch in s)
 
 
 def atomize(text: str) -> list:

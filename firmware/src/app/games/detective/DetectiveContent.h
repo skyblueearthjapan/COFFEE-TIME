@@ -99,7 +99,7 @@ const char *findWrappedString(const char *key);
 
 constexpr const char *kPackId = "YOHAKU_CH01";
 constexpr const char *kPackTitle = "つづきは、ここで。";
-constexpr const char *kWorldTitle = "喫茶「余白」";
+constexpr const char *kWorldTitle = "喫茶CaféTamu";
 constexpr const char *kGameTitle = "CAFE DETECTIVE";
 constexpr const char *kContentVersion = "1.0.0";
 

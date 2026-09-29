@@ -74,7 +74,7 @@ lv_obj_t *createEntryScreen()
     makeMenuItem(scr, "エスパー対決", openEsperCb, nullptr, -3 * kStep / 2, true, kHeight);
     makeMenuItem(scr, "リバーシ", openReversiCb, nullptr, -kStep / 2, true, kHeight);
     makeMenuItem(scr, "POKER TABLE", openCardsCb, nullptr, kStep / 2, true, kHeight);
-    makeMenuItem(scr, "喫茶「余白」の事件簿", openDetectiveCb, nullptr, 3 * kStep / 2, true, kHeight);
+    makeMenuItem(scr, "喫茶CaféTamuの事件簿", openDetectiveCb, nullptr, 3 * kStep / 2, true, kHeight);
     makeMenuItem(scr, "閉店後の人狼会", openWerewolfCb, nullptr, 5 * kStep / 2, true, kHeight);
 
     makeBackButton(scr);

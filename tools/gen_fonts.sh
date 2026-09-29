@@ -42,8 +42,10 @@ done
 
 # ゲーム画面用（人狼など）: 文字数が多いので ct_font_jp_<size> として分離。
 # 20: 補助文字/タイトル, 22: 本文/ボタン, 40: 役職名表示
+# 0xE9 (é) は店名「CaféTamu」。英字と同じ書体にするため Montserrat から採る
+# （--symbols に入れると Zen Maru Gothic の字形になる。collect_ui_chars.py の GAME_LATIN と合わせる）
 for sz in 20 22 40; do
-    $CONV --size $sz --font Montserrat-Medium.ttf -r 0x20-0x7E,0xB0 \
+    $CONV --size $sz --font Montserrat-Medium.ttf -r 0x20-0x7E,0xB0,0xE9 \
         --font ZenMaruGothic-Medium.ttf --symbols "$GAME_JP" \
         -o "$OUT/ct_font_jp_$sz.c" --lv-font-name ct_font_jp_$sz
 done

@@ -304,7 +304,7 @@ const PagedEntry kTutorial[] = {
 const size_t kTutorialCount = sizeof(kTutorial) / sizeof(kTutorial[0]);
 
 const char *const kIntroVariants[] = {
-    "閉店後の喫茶「余白」。\n{players}人で囲む小さな卓。\n今夜は誰が、どんな役？",
+    "閉店後の喫茶CaféTamu。\n{players}人で囲む小さな卓。\n今夜は誰が、どんな役？",
     "ラテが二つの封筒を置く。\n「ここにも役職があるよ。\n誰に配られたかは秘密」",
     "カップは{players}個、伏せ札は2枚。\n人狼はこの席にいるのか、\n封筒で眠っているのか。",
     "モカが時計を置きました。\n「話し終わったら投票です。\n落ち着いて聞いてみてね」",
@@ -313,7 +313,7 @@ const char *const kIntroVariants[] = {
     "明日の準備はひと休み。\nいつもの顔に、\n今夜だけの秘密の役。",
     "砂糖とミルクも準備OK。\n足りないのは、\n今夜の答えを探す会話。",
     "前と同じ役になっても、\nこれは新しいゲーム。\n伏せ札も配り直します。",
-    "少し灯りを落とした余白。\n「ウソはゲームの中だけ」\nそれが、今夜の約束。",
+    "少し灯りを落としたCaféTamu。\n「ウソはゲームの中だけ」\nそれが、今夜の約束。",
     "ポットの湯気が消える頃、\nいつものカフェが\nひと晩だけの村になります。",
     "「勝っても、負けても一杯」\nラテが笑いました。\nそれでは役職を配ります。",
 };
@@ -388,7 +388,7 @@ const SeatCharacter *findSeatCharacter(int seat) {
 }
 
 const StoryPage kStory[] = {
-    {"S1", "閉店後の人狼会", "閉店後の喫茶「余白」。\n常連たちの中に、\n人に化けた「人狼」が\nまぎれているらしい。", "\xEE\xBD\x9E"},   // nightlight_round
+    {"S1", "閉店後の人狼会", "閉店後の喫茶CaféTamu。\n常連たちの中に、\n人に化けた「人狼」が\nまぎれているらしい。", "\xEE\xBD\x9E"},   // nightlight_round
     {"S2", "閉店後の人狼会", "人狼は、人のふりをして\nうそをつく。放っておくと\n常連がひとりずつ\n消えてしまう…という噂。", "\xEE\xA4\x9D"},   // pets
     {"S3", "閉店後の人狼会", "村人は、話し合いと投票で\n人狼を見つけ出す。\n見つけられなければ、\n人狼の勝ち。", "\xEF\x88\xB3"},   // groups
     {"S4", "閉店後の人狼会", "占い師は、夜のあいだに\nひとりだけ正体を\n占える。その結果が\n推理の手がかりになる。", "\xEE\xA3\xB4"},   // visibility
@@ -399,7 +399,7 @@ const StoryPage kStory[] = {
 const size_t kStoryCount = sizeof(kStory) / sizeof(kStory[0]);
 
 const StoryPage kStoryStd[] = {
-    {"T1", "閉店後の人狼会", "閉店後の喫茶「余白」。\n常連たちの中に、\n人に化けた「人狼」が\nまぎれているらしい。", "\xEE\xBD\x9E"},   // nightlight_round
+    {"T1", "閉店後の人狼会", "閉店後の喫茶CaféTamu。\n常連たちの中に、\n人に化けた「人狼」が\nまぎれているらしい。", "\xEE\xBD\x9E"},   // nightlight_round
     {"T2", "閉店後の人狼会", "人狼は、人のふりをして\nうそをつく。そして夜ごとに\n常連をひとりずつ\nおそっていく。", "\xEE\xA4\x9D"},   // pets
     {"T3", "閉店後の人狼会", "村人は、話し合いと投票で\n人狼を見つけ出す。\n毎日ひとりを追放して、\n人狼を追いつめよう。", "\xEF\x88\xB3"},   // groups
     {"T4", "閉店後の人狼会", "占い師は、毎晩ひとりだけ\n正体を占える。\nその結果が\n推理の手がかりになる。", "\xEE\xA3\xB4"},   // visibility
