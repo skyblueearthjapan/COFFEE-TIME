@@ -108,8 +108,8 @@ uint8_t dimChoice() { return s_cfg.dim_choice; }
 uint32_t dimSeconds() { return kDimSeconds[s_cfg.dim_choice]; }
 bool sound() { return s_cfg.sound != 0; }
 uint8_t maxCups() { return s_cfg.max_cups; }
-// 日付が変わったときの残りは常に 0 杯（2026-09-21 ユーザー確認: 朝は必ず 0 から始める運用）。
-// 設定画面から項目を外したので、保存値が何であっても 0 杯として扱う。入れ物の形式は変えない
+// 使っていない（2026-09-29 から、日付が変わっても残りは前日のまま引き継ぐ。cup::checkNewDay）。
+// 設定画面の隠れた項目のためだけに残す。入れ物の形式は変えない
 bool morningFull() { return false; }
 
 void setBrightness(uint8_t percent) { s_cfg.brightness = clampU8(percent, 10, 100); }

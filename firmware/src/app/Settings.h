@@ -27,7 +27,7 @@ uint8_t dimChoice();    // 暗くするまでの時間の添字 (0〜4)
 uint32_t dimSeconds();  // 同上を秒に直したもの。0 なら暗くしない
 bool sound();           // 操作音
 uint8_t maxCups();      // 前回の補充で作った杯数 5〜15（HOME の長押しで 5・8・10 から選ぶ。設定画面の項目は無い）
-bool morningFull();     // 日付が変わったときの残りを満杯にするか（false なら 0 杯）
+bool morningFull();     // 使っていない（2026-09-29 から残りは日をまたいで引き継ぐ）。設定画面の隠れた項目のためだけに残す
 
 // いずれも値を丸めて保持するだけ。NVS への書き込みは save() で行う
 void setBrightness(uint8_t percent);

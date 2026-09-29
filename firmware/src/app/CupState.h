@@ -58,7 +58,8 @@ void saveIfDirty();                 // 変更があれば NVS に保存（loop �
 
 void takeOne();                     // +1：飲んだ杯数を増やし、残りを減らす
 void refill(uint32_t cups = 0);     // 作った：残りを cups 杯にする（0 = 前回と同じ杯数）
-bool checkNewDay(uint32_t ymd);     // 日付が変わっていれば本日分をリセット。切り替えたら true
+void resetRemaining();              // 残りを 0 にする（補充の回数には数えない）
+bool checkNewDay(uint32_t ymd);     // 日付が変わっていれば本日分をリセット（残りは引き継ぐ）。切り替えたら true
 
 uint32_t taken();                   // 本日飲まれた杯数
 uint32_t remaining();               // 残り杯数
@@ -73,7 +74,7 @@ bool historyFor(uint32_t ymd, DayRecord &out);   // その日の記録があれ�
 // --- 開発用：誤って入った記録を消す -----------------------------------------
 // 自動操作の誤タップで本物の「+1」が入ってしまったときの後始末だけに使う。
 // どちらも **GAS（シート）へは何も送らない**（シートの行は手で消す）。
-// 残り杯数 left と last_take_min にも触らない（朝は 0 杯から始まるので、誤タップで left は減っていない）。
+// 残り杯数 left と last_take_min にも触らない（left を戻したいときは HOME の長押しで補充し直す）。
 
 // 今日の杯数を 1 減らす。時間帯のグラフからも 1 つ減らし、減らした場所を out_bucket に返す
 // （0〜23 = その時間帯 / -1 = 時刻不明の分 (unknown) / -2 = 減らせる場所が無かった）。

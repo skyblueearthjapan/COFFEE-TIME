@@ -476,6 +476,14 @@ void refill(uint32_t cups)
     Serial.printf("[CUP] refill left=%lu\n", (unsigned long)s_remaining);
 }
 
+void resetRemaining()
+{
+    // 残りを 0 にするだけ（補充の回数・時刻には数えない）。めったに使わない（2026-09-29 要望）
+    s_remaining = 0;
+    s_dirty = true;
+    Serial.println("[CUP] reset left=0");
+}
+
 bool checkNewDay(uint32_t ymd)
 {
     if (ymd == 0 || ymd == s_ymd) {
@@ -487,11 +495,11 @@ bool checkNewDay(uint32_t ymd)
         // 前日の確定値を履歴へ。NVS への書き込みはここだけ（1 日 1 回）
         appendHistory(s_ymd, s_taken, s_today.refills, s_today.games);
         s_taken = 0;
-        // 朝いちばんの残り: 既定は 0 杯（まだ作っていない扱い）。設定で満杯にもできる
-        s_remaining = settings::morningFull() ? maxCups() : 0;
+        // 残りは前日のまま引き継ぐ（2026-09-29 要望: 夜に作り置きして、その時に補充の入力まで済ませる）。
+        // 「今日」の杯数と今日の内訳だけを 0 に戻す
         clearToday(ymd);
         rolled = true;
-        Serial.printf("[CUP] new day %lu: reset (left=%lu)\n",
+        Serial.printf("[CUP] new day %lu: reset today (left=%lu kept)\n",
                       (unsigned long)ymd, (unsigned long)s_remaining);
     }
     s_ymd = ymd;
@@ -572,8 +580,8 @@ bool undoOne(int &out_bucket)
     }
     const uint32_t before = s_taken;
     --s_taken;
-    // 残り杯数 left は動かさない。朝いちばんは 0 杯から始まるので、
-    // 誤って入った 1 杯でも left は減っていない（takeOne は left>0 のときだけ減らす）
+    // 残り杯数 left は動かさない（その 1 杯で left が減ったかは記録に残っていない）。
+    // 9/29 から残りは日をまたいで引き継ぐので、left を戻したいときは HOME の長押しで補充し直す
 
     // どの時間帯の 1 杯だったかは記録に残っていないので、
     // **いまの時刻に近い順に、数の入っている時間帯を 1 つだけ探して減らす**。

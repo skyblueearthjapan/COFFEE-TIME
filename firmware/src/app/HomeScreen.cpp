@@ -200,12 +200,17 @@ static void plusOneClickedCb(lv_event_t *e)
 
 // --- 補充の杯数を選ぶ小窓（2026-09-29 要望: 長押しで 5・8・10 から選ぶ） -------------------
 // 選んだ数がそのまま「残り」になる。押さずに 10 秒たつか「やめる」で閉じ、何も記録しない。
+// 「残りを 0 に」は確かめの画面を 1 枚はさむ（めったに使わない。まちがえて押しても 1 回は止まる）。
 // 部品は create() で 1 度だけ作り、隠す／出すで使い回す（イベントの途中で lv_obj_del しないため）
 static lv_obj_t *makeLabel(lv_obj_t *parent, const lv_font_t *font, lv_color_t color, const char *text);
 
 static const uint8_t kRefillChoices[] = {5, 8, 10};
 static constexpr uint32_t kRefillPickerMs = 10000;
 static lv_obj_t *s_picker = nullptr;        // 画面全体を覆う受け皿（開いている間は下の ＋1 を押させない）
+static lv_obj_t *s_picker_choose = nullptr; // 杯数を選ぶ面
+static lv_obj_t *s_picker_confirm = nullptr;// 「0 にしますか？」の面
+static lv_obj_t *s_confirm_text = nullptr;
+static lv_obj_t *s_reset_btn = nullptr;
 static lv_timer_t *s_picker_timer = nullptr;
 
 static void closeRefillPicker()
@@ -225,15 +230,29 @@ static void pickerTimeoutCb(lv_timer_t *t)
     closeRefillPicker();   // 自分のタイマーもここで消える（LVGL 8 はコールバック内の削除を許す）
 }
 
-static void openRefillPicker()
+// 操作があるたびに 10 秒を数え直す
+static void restartPickerTimer()
 {
-    lv_obj_clear_flag(s_picker, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_move_foreground(s_picker);
     if (s_picker_timer) {
         lv_timer_reset(s_picker_timer);
     } else {
         s_picker_timer = lv_timer_create(pickerTimeoutCb, kRefillPickerMs, nullptr);
     }
+}
+
+static void openRefillPicker()
+{
+    lv_obj_clear_flag(s_picker_choose, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(s_picker_confirm, LV_OBJ_FLAG_HIDDEN);
+    // 残りが 0 なら「0 に」は押せない
+    if (cup::remaining() == 0) {
+        lv_obj_add_state(s_reset_btn, LV_STATE_DISABLED);
+    } else {
+        lv_obj_clear_state(s_reset_btn, LV_STATE_DISABLED);
+    }
+    lv_obj_clear_flag(s_picker, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_move_foreground(s_picker);
+    restartPickerTimer();
 }
 
 static void pickerChoiceCb(lv_event_t *e)
@@ -263,6 +282,62 @@ static void pickerCancelCb(lv_event_t *e)
     closeRefillPicker();
 }
 
+static void resetAskCb(lv_event_t *e)
+{
+    (void)e;
+    lv_label_set_text_fmt(s_confirm_text, "残り %lu 杯を\n0 にしますか？", (unsigned long)cup::remaining());
+    lv_obj_add_flag(s_picker_choose, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(s_picker_confirm, LV_OBJ_FLAG_HIDDEN);
+    restartPickerTimer();
+    Serial.println("[HOME] view=picker-confirm");
+}
+
+static void resetDoCb(lv_event_t *e)
+{
+    (void)e;
+    closeRefillPicker();
+    if (lvgl_port_debug_tap_recent()) {
+        Serial.println("[DEV] ignored: reset from a debug tap");
+        return;
+    }
+    const uint32_t prev = cup::remaining();
+    cup::resetRemaining();
+    // シートには "reset" の 1 行。メールは take のときだけなので出ない
+    recordEvent("reset", prev);
+    refreshCups();
+    pulse(s_left);
+    showToast("残りを 0 にしました");
+}
+
+// 小窓の中の四角いボタン。primary は塗りつぶし（決める側）、それ以外は控えめな枠だけ
+static lv_obj_t *makePickerButton(lv_obj_t *parent, int x_ofs, const char *text, lv_event_cb_t cb,
+                                  bool primary)
+{
+    lv_obj_t *b = lv_btn_create(parent);
+    lv_obj_set_size(b, 150, 48);
+    lv_obj_align(b, LV_ALIGN_BOTTOM_MID, x_ofs, -18);
+    lv_obj_set_style_radius(b, 24, 0);
+    lv_obj_set_style_bg_color(b, primary ? COLOR_BTN : lv_color_hex(0x241A13), 0);
+    lv_obj_set_style_bg_color(b, COLOR_BTN_PRESS, LV_STATE_PRESSED);
+    lv_obj_set_style_border_color(b, primary ? COLOR_BTN_RING : COLOR_SUBTEXT, 0);
+    lv_obj_set_style_border_width(b, primary ? 2 : 1, 0);
+    lv_obj_set_style_shadow_width(b, 0, 0);
+    lv_obj_set_style_opa(b, LV_OPA_40, LV_STATE_DISABLED);
+    lv_obj_add_event_cb(b, cb, LV_EVENT_CLICKED, nullptr);
+    lv_obj_t *l = makeLabel(b, &ct_font_22, primary ? COLOR_TEXT : COLOR_SUBTEXT, text);
+    lv_obj_center(l);
+    return b;
+}
+
+static lv_obj_t *makePickerFace(lv_obj_t *panel)
+{
+    lv_obj_t *face = lv_obj_create(panel);
+    lv_obj_remove_style_all(face);
+    lv_obj_set_size(face, LV_PCT(100), LV_PCT(100));
+    lv_obj_clear_flag(face, LV_OBJ_FLAG_SCROLLABLE);
+    return face;
+}
+
 static void buildRefillPicker(lv_obj_t *scr)
 {
     s_picker = lv_obj_create(scr);
@@ -287,14 +362,16 @@ static void buildRefillPicker(lv_obj_t *scr)
     lv_obj_add_flag(panel, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_clear_flag(panel, LV_OBJ_FLAG_SCROLLABLE);
 
-    lv_obj_t *title = makeLabel(panel, &ct_font_22, COLOR_TEXT, "何杯つくりましたか？");
+    // 杯数を選ぶ面
+    s_picker_choose = makePickerFace(panel);
+    lv_obj_t *title = makeLabel(s_picker_choose, &ct_font_22, COLOR_TEXT, "何杯つくりましたか？");
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 18);
 
-    // 丸ボタンの中心は画面の (136,240) (240,240) (344,240)
+    // 丸ボタンの中心は画面の (136,232) (240,232) (344,232)
     for (size_t i = 0; i < sizeof(kRefillChoices); ++i) {
-        lv_obj_t *b = lv_btn_create(panel);
+        lv_obj_t *b = lv_btn_create(s_picker_choose);
         lv_obj_set_size(b, 88, 88);
-        lv_obj_align(b, LV_ALIGN_CENTER, (int)(i * 104) - 104, 0);
+        lv_obj_align(b, LV_ALIGN_CENTER, (int)(i * 104) - 104, -8);
         lv_obj_set_style_radius(b, LV_RADIUS_CIRCLE, 0);
         lv_obj_set_style_bg_color(b, COLOR_BTN, 0);
         lv_obj_set_style_bg_color(b, COLOR_BTN_PRESS, LV_STATE_PRESSED);
@@ -309,19 +386,19 @@ static void buildRefillPicker(lv_obj_t *scr)
         lv_obj_center(l);
     }
 
-    // 「やめる」の中心は画面の (240,318)
-    lv_obj_t *cancel = lv_btn_create(panel);
-    lv_obj_set_size(cancel, 150, 48);
-    lv_obj_align(cancel, LV_ALIGN_BOTTOM_MID, 0, -18);
-    lv_obj_set_style_radius(cancel, 24, 0);
-    lv_obj_set_style_bg_color(cancel, lv_color_hex(0x241A13), 0);
-    lv_obj_set_style_bg_color(cancel, COLOR_BTN_PRESS, LV_STATE_PRESSED);
-    lv_obj_set_style_border_color(cancel, COLOR_SUBTEXT, 0);
-    lv_obj_set_style_border_width(cancel, 1, 0);
-    lv_obj_set_style_shadow_width(cancel, 0, 0);
-    lv_obj_add_event_cb(cancel, pickerCancelCb, LV_EVENT_CLICKED, nullptr);
-    lv_obj_t *cl = makeLabel(cancel, &ct_font_22, COLOR_SUBTEXT, "やめる");
-    lv_obj_center(cl);
+    // 下の段の中心は画面の (158,318) と (322,318)。どちらも HOME の ＋1（中心 240,332・半径 75）の外
+    s_reset_btn = makePickerButton(s_picker_choose, -82, "残りを 0 に", resetAskCb, false);
+    makePickerButton(s_picker_choose, 82, "やめる", pickerCancelCb, false);
+
+    // 「0 にしますか？」の面。決める「0 にする」は右＝「残りを 0 に」と反対側
+    // （続けて 2 回押しても左の「やめる」に当たり、0 にはならない）
+    s_picker_confirm = makePickerFace(panel);
+    s_confirm_text = makeLabel(s_picker_confirm, &ct_font_22, COLOR_TEXT, "");
+    lv_obj_set_width(s_confirm_text, 300);
+    lv_obj_set_style_text_align(s_confirm_text, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_align(s_confirm_text, LV_ALIGN_TOP_MID, 0, 52);
+    makePickerButton(s_picker_confirm, -82, "やめる", pickerCancelCb, false);
+    makePickerButton(s_picker_confirm, 82, "0 にする", resetDoCb, true);
 
     lv_obj_add_flag(s_picker, LV_OBJ_FLAG_HIDDEN);
 }
@@ -369,7 +446,7 @@ static void clockTimerCb(lv_timer_t *t)
         const uint32_t ymd = (tm.tm_year + 1900) * 10000 + (tm.tm_mon + 1) * 100 + tm.tm_mday;
         const uint32_t prev_left = cup::remaining();
         // 日付が変わったときだけ記録する。イベント名は "newday" のままなので、
-        // 「朝いちばんの残り」を満杯にしても GAS の通知条件（take かつ 3/0 杯）には掛からない
+        // 引き継いだ残りを送っても GAS の通知条件（take かつ 3/0 杯）には掛からない
         if (cup::checkNewDay(ymd)) {
             recordEvent("newday", prev_left);
             refreshCups();

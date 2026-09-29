@@ -39,7 +39,7 @@ bool localIp(char *out, size_t cap);
 int pendingReports();
 
 // 杯数イベントを送信キューに積む（どのタスクからでも呼べる）。
-// event: "take" / "refill" / "newday"。prev はイベント前の残り杯数（通知の重複防止に使う）
+// event: "take" / "refill" / "newday" / "reset"（残りを 0 に）。prev はイベント前の残り杯数（通知の重複防止に使う）
 void reportEvent(const char *event, uint32_t taken, uint32_t left, uint32_t prev);
 
 // --- GAS への「1 件だけ」の往復（ゲームに依存しない依頼箱）-------------------
