@@ -16,7 +16,8 @@ void setWeather(const net::Weather &w);
 void addOneCup();
 
 void debugTake();                          // 開発用：+1 と同じ処理
-void debugRefill();                        // 開発用：LEFT 長押しと同じ処理
+void debugRefill();                        // 開発用：前回と同じ杯数で補充（本物の記録）
+void debugOpenRefillPicker();              // 開発用：補充の杯数を選ぶ小窓を開くだけ（HOME のときだけ）
 // 開発用：誤って入った今日の 1 杯を取り消す（シリアルの "Y!undo" からだけ呼ぶ）。
 // SD の操作ログには残すが、**GAS（シート）へは何も送らない**（シートの行は手で消す）
 bool debugUndoCup();

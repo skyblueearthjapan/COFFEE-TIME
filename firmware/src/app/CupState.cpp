@@ -404,7 +404,7 @@ void load()
     loadToday(prefs);
     prefs.end();
     if (s_remaining > maxCups()) {
-        s_remaining = maxCups();    // 「1 回に作る杯数」を減らした直後はここで丸まる
+        s_remaining = maxCups();    // 設定が読めず既定値に戻ったときなどの保険
     }
     loadHistory();
     // 5 つめ以降のゲームの回数（杯数の塊とは別の名前空間。壊れていても杯数に影響しない）
@@ -456,8 +456,14 @@ void takeOne()
     Serial.printf("[CUP] +1 taken=%lu left=%lu\n", (unsigned long)s_taken, (unsigned long)s_remaining);
 }
 
-void refill()
+void refill(uint32_t cups)
 {
+    // 作った杯数は補充のたびに 5・8・10 から選ぶ（2026-09-29 要望）。メールのゲージの満タンにも
+    // 使うので、設定の max_cups に残す（入れ物の形式は変えない。書くのは変わったときだけ）
+    if (cups != 0 && cups != settings::maxCups()) {
+        settings::setMaxCups((uint8_t)(cups > 255 ? 255 : cups));
+        settings::save();
+    }
     s_remaining = maxCups();
     if (s_today.refills < 65535) {
         ++s_today.refills;

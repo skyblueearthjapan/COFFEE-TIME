@@ -17,7 +17,7 @@ enum class SettingsSub : uint8_t {
     DimTimeout,     // 画面を暗くする
     TimeSet,        // 時刻を合わせる
     Sound,          // 操作音
-    MaxCups,        // 1 回に作る杯数
+    MaxCups,        // 1 回に作る杯数（一覧に出さない。9/29 から HOME の長押しで 5・8・10 を選ぶ）
     Morning,        // 朝いちばんの残り
     Wifi,           // Wi-Fi（状態の表示のみ）
     SystemInfo,     // システム情報

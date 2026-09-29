@@ -198,7 +198,136 @@ static void plusOneClickedCb(lv_event_t *e)
     addOneCup();
 }
 
-// 残り杯数を長押し（1.5 秒）すると「コーヒーを作った」として上限まで補充する
+// --- 補充の杯数を選ぶ小窓（2026-09-29 要望: 長押しで 5・8・10 から選ぶ） -------------------
+// 選んだ数がそのまま「残り」になる。押さずに 10 秒たつか「やめる」で閉じ、何も記録しない。
+// 部品は create() で 1 度だけ作り、隠す／出すで使い回す（イベントの途中で lv_obj_del しないため）
+static lv_obj_t *makeLabel(lv_obj_t *parent, const lv_font_t *font, lv_color_t color, const char *text);
+
+static const uint8_t kRefillChoices[] = {5, 8, 10};
+static constexpr uint32_t kRefillPickerMs = 10000;
+static lv_obj_t *s_picker = nullptr;        // 画面全体を覆う受け皿（開いている間は下の ＋1 を押させない）
+static lv_timer_t *s_picker_timer = nullptr;
+
+static void closeRefillPicker()
+{
+    if (s_picker_timer) {
+        lv_timer_del(s_picker_timer);
+        s_picker_timer = nullptr;
+    }
+    if (s_picker) {
+        lv_obj_add_flag(s_picker, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+static void pickerTimeoutCb(lv_timer_t *t)
+{
+    (void)t;
+    closeRefillPicker();   // 自分のタイマーもここで消える（LVGL 8 はコールバック内の削除を許す）
+}
+
+static void openRefillPicker()
+{
+    lv_obj_clear_flag(s_picker, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_move_foreground(s_picker);
+    if (s_picker_timer) {
+        lv_timer_reset(s_picker_timer);
+    } else {
+        s_picker_timer = lv_timer_create(pickerTimeoutCb, kRefillPickerMs, nullptr);
+    }
+}
+
+static void pickerChoiceCb(lv_event_t *e)
+{
+    const uint32_t cups = (uint32_t)(uintptr_t)lv_event_get_user_data(e);
+    closeRefillPicker();
+    // ＋1 と同じく、開発用の偽装タップ（シリアル P）からは記録しない
+    if (lvgl_port_debug_tap_recent()) {
+        Serial.printf("[DEV] ignored: refill %lu from a debug tap (use R for a real record)\n",
+                      (unsigned long)cups);
+        return;
+    }
+    const uint32_t prev = cup::remaining();
+    cup::refill(cups);
+    recordEvent("refill", prev);
+    refreshCups();
+    pulse(s_left);
+    // 日本語は 1 文字 3 バイトなので余裕を持たせる
+    char toast[48];
+    snprintf(toast, sizeof(toast), "補充しました：%lu 杯", (unsigned long)cup::remaining());
+    showToast(toast);
+}
+
+static void pickerCancelCb(lv_event_t *e)
+{
+    (void)e;
+    closeRefillPicker();
+}
+
+static void buildRefillPicker(lv_obj_t *scr)
+{
+    s_picker = lv_obj_create(scr);
+    lv_obj_remove_style_all(s_picker);
+    lv_obj_set_size(s_picker, 480, 480);
+    lv_obj_center(s_picker);
+    lv_obj_set_style_bg_color(s_picker, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(s_picker, LV_OPA_60, 0);
+    lv_obj_add_flag(s_picker, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_flag(s_picker, LV_OBJ_FLAG_SCROLLABLE);
+
+    // 丸い画面の内側に収まる大きさ（角は中心から約 206px）
+    lv_obj_t *panel = lv_obj_create(s_picker);
+    lv_obj_remove_style_all(panel);
+    lv_obj_set_size(panel, 340, 240);
+    lv_obj_center(panel);
+    lv_obj_set_style_bg_color(panel, COLOR_BG, 0);
+    lv_obj_set_style_bg_opa(panel, LV_OPA_COVER, 0);
+    lv_obj_set_style_radius(panel, 24, 0);
+    lv_obj_set_style_border_color(panel, COLOR_BTN_RING, 0);
+    lv_obj_set_style_border_width(panel, 2, 0);
+    lv_obj_add_flag(panel, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_flag(panel, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t *title = makeLabel(panel, &ct_font_22, COLOR_TEXT, "何杯つくりましたか？");
+    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 18);
+
+    // 丸ボタンの中心は画面の (136,240) (240,240) (344,240)
+    for (size_t i = 0; i < sizeof(kRefillChoices); ++i) {
+        lv_obj_t *b = lv_btn_create(panel);
+        lv_obj_set_size(b, 88, 88);
+        lv_obj_align(b, LV_ALIGN_CENTER, (int)(i * 104) - 104, 0);
+        lv_obj_set_style_radius(b, LV_RADIUS_CIRCLE, 0);
+        lv_obj_set_style_bg_color(b, COLOR_BTN, 0);
+        lv_obj_set_style_bg_color(b, COLOR_BTN_PRESS, LV_STATE_PRESSED);
+        lv_obj_set_style_border_color(b, COLOR_BTN_RING, 0);
+        lv_obj_set_style_border_width(b, 3, 0);
+        lv_obj_set_style_shadow_width(b, 0, 0);
+        lv_obj_add_event_cb(b, pickerChoiceCb, LV_EVENT_CLICKED,
+                            (void *)(uintptr_t)kRefillChoices[i]);
+        char num[4];
+        snprintf(num, sizeof(num), "%u", (unsigned)kRefillChoices[i]);
+        lv_obj_t *l = makeLabel(b, &lv_font_montserrat_48, COLOR_TEXT, num);
+        lv_obj_center(l);
+    }
+
+    // 「やめる」の中心は画面の (240,318)
+    lv_obj_t *cancel = lv_btn_create(panel);
+    lv_obj_set_size(cancel, 150, 48);
+    lv_obj_align(cancel, LV_ALIGN_BOTTOM_MID, 0, -18);
+    lv_obj_set_style_radius(cancel, 24, 0);
+    lv_obj_set_style_bg_color(cancel, lv_color_hex(0x241A13), 0);
+    lv_obj_set_style_bg_color(cancel, COLOR_BTN_PRESS, LV_STATE_PRESSED);
+    lv_obj_set_style_border_color(cancel, COLOR_SUBTEXT, 0);
+    lv_obj_set_style_border_width(cancel, 1, 0);
+    lv_obj_set_style_shadow_width(cancel, 0, 0);
+    lv_obj_add_event_cb(cancel, pickerCancelCb, LV_EVENT_CLICKED, nullptr);
+    lv_obj_t *cl = makeLabel(cancel, &ct_font_22, COLOR_SUBTEXT, "やめる");
+    lv_obj_center(cl);
+
+    lv_obj_add_flag(s_picker, LV_OBJ_FLAG_HIDDEN);
+}
+
+// 残り杯数を長押し（1.5 秒）すると「コーヒーを作った」として、作った杯数を選ぶ小窓を開く。
+// 指は小窓が出たあとも「残り」の上にあるので、離しても小窓のボタンは押されない
 static void leftBoxEventCb(lv_event_t *e)
 {
     const lv_event_code_t code = lv_event_get_code(e);
@@ -208,16 +337,7 @@ static void leftBoxEventCb(lv_event_t *e)
     } else if (code == LV_EVENT_PRESSING) {
         if (!s_refill_fired && lv_tick_elaps(s_left_press_ms) >= kRefillHoldMs) {
             s_refill_fired = true;
-            const uint32_t prev = cup::remaining();
-            cup::refill();
-            recordEvent("refill", prev);
-            refreshCups();
-            pulse(s_left);
-            // 杯数は設定で 5〜15 に変えられるので、文言も設定値に合わせる
-            // 日本語は 1 文字 3 バイトなので余裕を持たせる
-            char toast[48];
-            snprintf(toast, sizeof(toast), "補充しました：%lu 杯", (unsigned long)cup::maxCups());
-            showToast(toast);
+            openRefillPicker();
         }
     }
 }
@@ -256,6 +376,8 @@ static void clockTimerCb(lv_timer_t *t)
         }
     }
     if (!visible) {
+        // 小窓を開いたまま別の画面へ移ったら閉じておく（戻ったときに古い小窓が残らないように）
+        closeRefillPicker();
         return;
     }
     lv_obj_set_style_text_color(s_wifi, net::wifiConnected() ? COLOR_SUBTEXT : COLOR_DIM, 0);
@@ -404,6 +526,8 @@ bool create()
     lv_obj_align(s_toast, LV_ALIGN_CENTER, 0, -10);
     lv_obj_add_flag(s_toast, LV_OBJ_FLAG_HIDDEN);
 
+    buildRefillPicker(scr);
+
     refreshCups();
     lv_timer_create(clockTimerCb, 1000, nullptr);
     clockTimerCb(nullptr);
@@ -443,6 +567,18 @@ namespace home {
 void debugTake()
 {
     plusOneClickedCb(nullptr);
+}
+
+// 開発用：長押しの代わりに、補充の杯数を選ぶ小窓を開くだけ（記録はしない。自動操作では長押しできないため）
+// 返事の 1 行は tools/uiwalk.py の expect:H:view=picker で確かめる（開けなかったらタップしない）
+void debugOpenRefillPicker()
+{
+    if (ui::isHome()) {
+        openRefillPicker();
+        Serial.println("[HOME] view=picker");
+    } else {
+        Serial.println("[HOME] view=other (picker opens only on HOME)");
+    }
 }
 
 void debugRefill()

@@ -299,6 +299,8 @@ void loop()
             // 開発用：T=+1 / R=補充（通知やシート記録も実際に行われる）
             case 'T': home::debugTake(); break;
             case 'R': home::debugRefill(); break;
+            // 開発用：補充の杯数を選ぶ小窓を開くだけ（長押しの代わり。記録はしない）
+            case 'H': if (!blockedBySecret()) { home::debugOpenRefillPicker(); } break;
             case 'W': net::debugScan(); break;       // 開発用：Wi-Fi スキャン
             // 開発用：画面遷移の確認（スクリーンショット用）。
             // 秘密が映っている間は切り替えない（覗き見防止の手順を飛ばさないため）。

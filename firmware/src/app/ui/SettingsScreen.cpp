@@ -64,12 +64,12 @@ struct Item {
 
 // 「日付が変わったときの残り」は一覧に出さない（2026-09-21 ユーザー確認: 朝は必ず 0 杯から始める運用。
 // 夜の残りは配るかアイスコーヒーにするので、満杯から始める場面が無い）。設定値は既定の 0 杯のまま使う
+// 「1 回に作る杯数」も一覧に出さない（2026-09-29 要望: 補充のたびに HOME の長押しで 5・8・10 から選ぶ）
 const Item kItems[] = {
     {icon::kBrightnessMid, "画面の明るさ", SettingsSub::Brightness},
     {icon::kBedtime, "画面を暗くする", SettingsSub::DimTimeout},
     {icon::kSchedule, "時刻を合わせる", SettingsSub::TimeSet},
     {icon::kVolumeUp, "操作音", SettingsSub::Sound},
-    {icon::kLocalCafe, "1 回に作る杯数", SettingsSub::MaxCups},
     {icon::kWifi, "Wi-Fi", SettingsSub::Wifi},
     {icon::kInfo, "システム情報", SettingsSub::SystemInfo},
 };
